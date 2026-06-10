@@ -1,0 +1,6 @@
+*.ipk
+*.tar.gz
+data/
+.env
+*_pw*
+install_info.txt

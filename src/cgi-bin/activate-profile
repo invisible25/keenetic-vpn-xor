@@ -1,0 +1,26 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+NAME=$(echo "$QUERY_STRING" | sed -n 's/.*name=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$NAME" ] && { echo "нужен ?name="; exit 1; }
+[ -f /opt/etc/openvpn/profiles/${NAME}.ovpn ] || { echo "профиль не найден"; exit 1; }
+
+echo "$NAME" > /opt/etc/openvpn/active-profile
+
+# Восстановить mode и devices из profile-meta если есть
+META=/opt/etc/openvpn/profile-meta/${NAME}.json
+if [ -f "$META" ]; then
+  MODE=$(jq -r '.mode // "devices"' "$META" 2>/dev/null)
+  echo "$MODE" > /opt/etc/openvpn/aim-mode.conf
+  jq -r '.devices[]?' "$META" 2>/dev/null > /opt/etc/openvpn/aim-devices.conf
+fi
+
+# Перезапуск если был активен
+if [ -f /opt/var/run/vpn-aim.pid ] && kill -0 $(cat /opt/var/run/vpn-aim.pid) 2>/dev/null; then
+  /opt/etc/init.d/S30vpn-aim restart >/dev/null 2>&1 &
+  echo "активирован: $NAME (перезапуск VPN)"
+else
+  /opt/sbin/aim-apply-rules.sh 2>/dev/null
+  echo "активирован: $NAME"
+fi

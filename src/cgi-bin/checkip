@@ -1,0 +1,32 @@
+#!/bin/sh
+# Проверка внешнего IP. ?profile=X — через туннель конкретного профиля,
+# иначе через первый запущенный tun_aim*.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+
+DEV=""
+if [ -n "$PROFILE" ]; then
+  SLOT=$(cat /opt/var/run/aim/$PROFILE.slot 2>/dev/null)
+  [ -n "$SLOT" ] && DEV="tun_aim$SLOT"
+else
+  DEV=$(ls /sys/class/net 2>/dev/null | grep '^tun_aim' | head -1)
+fi
+
+[ -z "$DEV" ] && { echo '{"error":"нет активного VPN"}'; exit 0; }
+ip link show "$DEV" >/dev/null 2>&1 || { echo '{"error":"туннель не поднят"}'; exit 0; }
+
+JSON=$(curl -s --max-time 8 --interface "$DEV" "https://ifconfig.co/json" 2>/dev/null)
+[ -z "$JSON" ] && JSON=$(curl -s --max-time 8 --interface "$DEV" "https://ipinfo.io/json" 2>/dev/null)
+[ -z "$JSON" ] && { echo '{"error":"нет интернета через VPN"}'; exit 0; }
+
+echo "$JSON" | jq --arg dev "$DEV" '{
+  ip: (.ip // .ip_addr // ""),
+  country: (.country // .country_iso // ""),
+  city: (.city // ""),
+  region: (.region // .region_code // ""),
+  org: (.asn_org // .org // .hostname // ""),
+  dev: $dev
+}' 2>/dev/null || echo '{"error":"parse"}'

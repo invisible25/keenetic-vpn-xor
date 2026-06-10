@@ -1,0 +1,32 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+
+if [ "$REQUEST_METHOD" != "POST" ]; then
+  echo "POST only"; exit 0
+fi
+
+BODY=$(head -c 200000)
+DIR=/opt/etc/openvpn/profiles
+mkdir -p "$DIR"
+
+urldecode() {
+  printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
+}
+
+NAME=$(echo "$BODY" | tr '&' '\n' | grep '^name=' | head -1 | sed 's/^name=//')
+CONTENT=$(echo "$BODY" | tr '&' '\n' | grep '^content=' | head -1 | sed 's/^content=//')
+
+NAME=$(urldecode "$NAME" | tr -cd 'A-Za-z0-9._-' | head -c 32)
+[ -z "$NAME" ] && { echo "имя профиля пустое"; exit 1; }
+
+CONTENT=$(urldecode "$CONTENT")
+[ -z "$CONTENT" ] && { echo "конфиг пустой"; exit 1; }
+
+echo "$CONTENT" | grep -qE '^(client|tls-client)' || { echo "не похоже на client-config (нет 'client')"; exit 1; }
+echo "$CONTENT" | grep -qE '^remote ' || { echo "нет директивы 'remote'"; exit 1; }
+
+echo "$CONTENT" | sed '/^block-outside-dns/d' > "$DIR/${NAME}.ovpn"
+chmod 600 "$DIR/${NAME}.ovpn"
+echo "Сохранён профиль: ${NAME} ($(wc -l < $DIR/${NAME}.ovpn) строк)"

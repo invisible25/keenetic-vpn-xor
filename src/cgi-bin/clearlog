@@ -1,0 +1,12 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+for sf in /opt/var/run/aim/*.slot; do
+  [ -f "$sf" ] || continue
+  pr=$(basename "$sf" .slot)
+  : > "/opt/var/log/vpn-aim-$pr.log" 2>/dev/null
+done
+: > /opt/var/log/vpn-aim.log 2>/dev/null
+: > /opt/var/log/vpn-aim-action.log 2>/dev/null
+echo "лог очищен"

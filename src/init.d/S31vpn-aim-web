@@ -1,0 +1,32 @@
+#!/bin/sh
+PIDFILE=/opt/var/run/vpn-aim-web.pid
+CFG=/opt/etc/lighttpd/vpn-aim.conf
+BIN=/opt/sbin/lighttpd
+
+# PID жив И это действительно наш lighttpd (после ребута PID могли переиспользовать)
+is_running() {
+  P=$(cat "$PIDFILE" 2>/dev/null); [ -n "$P" ] || return 1
+  grep -q "vpn-aim.conf" "/proc/$P/cmdline" 2>/dev/null
+}
+
+# LAN-IP роутера для подсказки (подсеть/имя моста у всех разные — не хардкодим)
+lan_ip() {
+  for IFACE in br0 br1 br2 br3; do
+    A=$(/opt/sbin/ip -4 addr show "$IFACE" 2>/dev/null | awk '/inet /{split($2,a,"/"); print a[1]; exit}')
+    case "$A" in 10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) echo "$A"; return ;; esac
+  done
+  echo "192.168.1.1"
+}
+
+case "$1" in
+  start)
+    if is_running; then echo "already running"; exit 0; fi
+    rm -f "$PIDFILE"
+    $BIN -f $CFG
+    sleep 1
+    is_running && echo "vpn-aim-web: http://$(lan_ip):8888/" || { echo "failed"; tail -5 /opt/var/log/vpn-aim-web.err 2>/dev/null; exit 1; }
+    ;;
+  stop) is_running && kill $(cat $PIDFILE) 2>/dev/null; rm -f $PIDFILE; echo stopped ;;
+  restart) $0 stop; sleep 1; $0 start ;;
+  status) is_running && echo RUNNING || echo INACTIVE ;;
+esac

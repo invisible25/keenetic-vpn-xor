@@ -1,0 +1,13 @@
+#!/bin/sh
+# Суммарный трафик по всем активным tun_aim*.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+RX=0; TX=0
+for dev in $(ls /sys/class/net 2>/dev/null | grep '^tun_aim'); do
+  r=$(cat /sys/class/net/$dev/statistics/rx_bytes 2>/dev/null); t=$(cat /sys/class/net/$dev/statistics/tx_bytes 2>/dev/null)
+  RX=$((RX + ${r:-0})); TX=$((TX + ${t:-0}))
+done
+UP=false; ls /sys/class/net 2>/dev/null | grep -q '^tun_aim' && UP=true
+printf '{"rx":%s,"tx":%s,"up":%s}' "$RX" "$TX" "$UP"

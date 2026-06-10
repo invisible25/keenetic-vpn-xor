@@ -1,0 +1,40 @@
+#!/bin/sh
+# Системная информация роутера: NDM RCI (show/version + show/system) + /proc.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+RCI=http://127.0.0.1:79/rci
+V=$(curl -s -m4 "$RCI/show/version" 2>/dev/null)
+S=$(curl -s -m4 "$RCI/show/system" 2>/dev/null)
+LOAD=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' '/')
+
+# Температура CPU — best-effort из sysfs (милли-°C → °C)
+TEMP=""
+for z in /sys/class/thermal/thermal_zone*/temp; do
+  [ -f "$z" ] || continue
+  t=$(cat "$z" 2>/dev/null); [ -z "$t" ] && continue
+  [ "$t" -gt 1000 ] 2>/dev/null && t=$((t/1000))
+  TEMP=$t; break
+done
+
+# $V и $S — два JSON-объекта; jq -s сольёт в массив [version, system]
+printf '%s\n%s\n' "$V" "$S" | jq -s --arg load "$LOAD" --arg temp "$TEMP" '
+  (.[0] // {}) as $v | (.[1] // {}) as $s |
+  ($s.memory // "" | split("/")) as $mem |
+  {
+    model:      ($v.model   // ""),
+    hw_id:      ($v.hw_id   // ""),
+    os_title:   ($v.title   // ""),
+    os_release: ($v.release // ""),
+    arch:       ($v.arch    // ""),
+    cpu:        ($v.cpu     // ""),
+    cpuload:    ($s.cpuload // null),
+    memtotal:   ($s.memtotal // null),
+    memfree:    ($s.memfree  // null),
+    memused:    (($mem[0] // "") | if . == "" then null else (tonumber? // null) end),
+    uptime:     ($s.uptime  // null),
+    loadavg:    $load,
+    cputemp:    (if $temp == "" then null else $temp end)
+  }
+' 2>/dev/null || echo '{"model":"","error":"rci"}'

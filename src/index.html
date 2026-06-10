@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPENVPN+XOR · Invisible Net Control</title>
+<meta name="theme-color" content="#f6f3ea">
+<link rel="icon" href="/logo.svg">
+<style>
+:root {
+  --bg: #f6f3ea;
+  --bg-alt: #fffdf7;
+  --surface: #ffffff;
+  --ink: #1c1b18;
+  --ink-2: #4f4a42;
+  --muted: #8a8377;
+  --gold: #c9a876;
+  --gold-deep: #8b6f47;
+  --gold-soft: #ece0c8;
+  --line: #e4ddcd;
+  --charcoal: #1f1f1f;
+  --on-charcoal: #f6f3ea;
+  --on-gold: #1c1b18;
+  --ok: #4a7c4a;
+  --bad: #b14d4d;
+  --warn: #a3742a;
+  --info: #5d7a8b;
+  --shadow-rgb: 31, 31, 31;
+  --radius: 14px;
+  --serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --bg: #16140f;
+  --bg-alt: #1c1a14;
+  --surface: #24211a;
+  --ink: #f0ece1;
+  --ink-2: #c5beb0;
+  --muted: #8a8377;
+  --gold: #d4b585;
+  --gold-deep: #d4b585;
+  --gold-soft: #3a3327;
+  --line: #3a352d;
+  --charcoal: #ece0c8;
+  --on-charcoal: #1c1b18;
+  --on-gold: #1c1b18;
+  --ok: #6ba66b;
+  --bad: #d97070;
+  --warn: #c89548;
+  --info: #8aaec4;
+  --shadow-rgb: 0, 0, 0;
+}
+/* ── Доп. тёмные темы (подсмотрено в AWG-Manager) ── */
+[data-theme="tokyonight"] {
+  --bg: #1a1b26; --bg-alt: #1f2335; --surface: #24283b;
+  --ink: #c0caf5; --ink-2: #a9b1d6; --muted: #565f89;
+  --gold: #7aa2f7; --gold-deep: #7aa2f7; --gold-soft: rgba(122,162,247,0.14);
+  --line: #3b4261; --charcoal: #7aa2f7; --on-charcoal: #16161e; --on-gold: #16161e;
+  --ok: #9ece6a; --bad: #f7768e; --warn: #e0af68; --info: #7dcfff;
+  --shadow-rgb: 0, 0, 0;
+}
+[data-theme="neo"] {
+  --bg: #0a0a0a; --bg-alt: #141414; --surface: #1a1a1a;
+  --ink: #f5f5dc; --ink-2: #c8c8a0; --muted: #7a7a5a;
+  --gold: #e6e84a; --gold-deep: #e6e84a; --gold-soft: rgba(230,232,74,0.12);
+  --line: #2a2a18; --charcoal: #e6e84a; --on-charcoal: #0a0a0a; --on-gold: #0a0a0a;
+  --ok: #a3e84a; --bad: #ff5c5c; --warn: #e8b84a; --info: #4ad8e8;
+  --shadow-rgb: 0, 0, 0;
+}
+[data-theme="mint"] {
+  --bg: #1e2530; --bg-alt: #27303f; --surface: #2c3646;
+  --ink: #dbe6e4; --ink-2: #a8bdba; --muted: #6b7d80;
+  --gold: #7fd4c8; --gold-deep: #7fd4c8; --gold-soft: rgba(127,212,200,0.14);
+  --line: #3a4757; --charcoal: #7fd4c8; --on-charcoal: #1e2530; --on-gold: #1e2530;
+  --ok: #86d99c; --bad: #e88c8c; --warn: #e8c88c; --info: #8cc8e8;
+  --shadow-rgb: 0, 0, 0;
+}
+/* custom — переменные ставит JS инлайн на documentElement через color-mix() */
+html { transition: background-color .25s; background: var(--bg) }
+* { box-sizing: border-box; margin: 0; padding: 0 }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+code, .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace }
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 30px 18px 60px }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line);
+}
+.logo { display: flex; align-items: center; gap: 12px }
+.logo img { height: 42px; width: auto }
+.logo-text { font-family: var(--sans); font-weight: 600; font-size: 22px; letter-spacing: 0 }
+.logo-text em { font-style: normal; color: var(--gold-deep); font-weight: 600 }
+
+.eyebrow {
+  font-family: var(--sans); font-size: 11px; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--gold-deep);
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.eyebrow::before, .eyebrow::after {
+  content: ""; width: 18px; height: 1px; background: var(--gold);
+}
+
+.pill {
+  padding: 6px 14px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+}
+.pill.on { color: var(--ok); border-color: rgba(74,124,74,0.4); background: rgba(74,124,74,0.06) }
+.pill.off { color: var(--bad); border-color: rgba(177,77,77,0.4); background: rgba(177,77,77,0.06) }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 24px; margin-bottom: 16px;
+  transition: box-shadow .2s, border-color .2s;
+}
+.card:hover { box-shadow: 0 8px 28px rgba(31,31,31,0.05) }
+.card h2 {
+  font-family: var(--sans); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--gold-deep);
+  margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;
+}
+.card h2 .extra { text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 500 }
+.card h2 .extra small { font-size: 11px }
+
+.big-status {
+  font-family: var(--serif); font-size: 32px; font-weight: 600;
+  letter-spacing: -0.5px; line-height: 1;
+}
+.big-status em { font-style: italic; }
+.big-status.on em { color: var(--ok) }
+.big-status.off em { color: var(--bad) }
+.active-profile {
+  font-size: 14px; color: var(--ink-2); margin-top: 8px;
+}
+.active-profile b { color: var(--ink); font-weight: 600; font-family: var(--serif); font-size: 15px }
+.active-ip { color: var(--gold-deep); font-family: ui-monospace, monospace; margin-left: 10px; font-size: 13px }
+
+.power-buttons { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 22px; border-radius: 9px;
+  font-family: var(--sans); font-weight: 600; font-size: 14px;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+  transition: transform .15s, background .2s, color .2s, box-shadow .2s;
+}
+.btn:hover { transform: translateY(-1px) }
+.btn:active { transform: translateY(0) }
+.btn-primary { background: var(--charcoal); color: var(--on-charcoal) }
+.btn-primary:hover { box-shadow: 0 8px 20px rgba(31,31,31,0.18) }
+.btn-gold { background: var(--gold); color: var(--on-gold) }
+.btn-gold:hover { background: color-mix(in srgb, var(--gold), #fff 15%); box-shadow: 0 8px 20px rgba(201,168,118,0.35) }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--line) }
+.btn-ghost:hover { background: rgba(31,31,31,0.04); border-color: var(--ink) }
+.btn-warn { background: var(--surface); color: var(--bad); border-color: rgba(177,77,77,0.3) }
+.btn-warn:hover { background: rgba(177,77,77,0.06); border-color: var(--bad) }
+.btn-on { flex: 1; min-width: 100px; background: var(--ok); color: white }
+.btn-on:hover { background: #3d6b3d; box-shadow: 0 8px 20px rgba(74,124,74,0.3) }
+.btn-off { flex: 1; min-width: 100px; background: var(--surface); color: var(--bad); border-color: rgba(177,77,77,0.3) }
+.btn-off:hover { background: rgba(177,77,77,0.06); border-color: var(--bad) }
+.btn-small { padding: 7px 14px; font-size: 13px }
+.btn-icon { padding: 11px 14px }
+
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px }
+.stat-box {
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+}
+.stat-label {
+  font-size: 10px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1.6px; font-weight: 600;
+}
+.stat-value {
+  font-family: var(--serif); font-size: 24px; font-weight: 600;
+  margin-top: 4px; letter-spacing: -0.5px;
+}
+
+.checkip-box {
+  background: var(--gold-soft); border: 1px solid var(--gold); border-radius: 10px;
+  padding: 16px; margin-top: 16px; display: none;
+}
+.checkip-box.show { display: block }
+.checkip-row { display: flex; gap: 16px; flex-wrap: wrap }
+.checkip-row > div { flex: 1; min-width: 110px }
+.checkip-row .label {
+  font-size: 10px; color: var(--gold-deep); text-transform: uppercase;
+  letter-spacing: 1.4px; font-weight: 600;
+}
+.checkip-row .value {
+  font-family: var(--serif); font-size: 16px; font-weight: 600;
+  margin-top: 3px; color: var(--ink); word-break: break-word;
+}
+
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 18px;
+  background: var(--surface); padding: 5px; border-radius: 11px; border: 1px solid var(--line);
+}
+.tab {
+  flex: 1; padding: 9px 4px; text-align: center;
+  border-radius: 7px; cursor: pointer; font-weight: 500; font-size: 13px; color: var(--ink-2);
+  transition: all .15s;
+}
+.tab.active { background: var(--charcoal); color: var(--bg); font-weight: 600 }
+.tab:hover:not(.active) { background: var(--bg-alt); color: var(--ink) }
+
+.section { display: none }
+.section.active { display: block }
+
+.profile-card {
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 11px;
+  padding: 15px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.profile-card:hover { border-color: var(--gold) }
+.profile-card.is-active { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 8px 24px rgba(201,168,118,0.18) }
+.profile-info { flex: 1; min-width: 0; cursor: pointer; user-select: none }
+.profile-info:active { opacity: .8 }
+.profile-name {
+  font-family: var(--serif); font-weight: 600; font-size: 18px;
+  display: flex; align-items: center; gap: 10px; color: var(--ink);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0 }
+.dot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok) }
+/* Карандаш-кнопка редактирования — крупная зона нажатия */
+.edit-btn {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--line);
+  color: var(--gold-deep); font-size: 18px; cursor: pointer;
+  transition: all .15s; line-height: 1;
+}
+.edit-btn:hover { background: var(--gold-soft); border-color: var(--gold); transform: translateY(-1px) }
+.edit-btn:active { transform: translateY(0) }
+.select-badge {
+  display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--gold-deep);
+  vertical-align: middle;
+}
+.profile-meta {
+  font-size: 12px; color: var(--ink-2); margin-top: 4px;
+  font-family: ui-monospace, monospace; word-break: break-all;
+}
+.profile-actions { display: flex; gap: 6px; flex-shrink: 0 }
+
+.input, .select, .textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+  padding: 10px 13px; border-radius: 8px; font-family: var(--sans); font-size: 14px;
+  outline: none; transition: border-color .15s;
+}
+.input:focus, .select:focus, .textarea:focus { border-color: var(--gold-deep) }
+.textarea { font-family: ui-monospace, monospace; font-size: 12px; min-height: 220px; resize: vertical }
+.field { margin-bottom: 12px }
+.field label {
+  display: block; font-size: 10px; color: var(--gold-deep);
+  margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.4px;
+}
+
+.mode-toggle {
+  display: flex; gap: 0; background: var(--bg-alt); border-radius: 10px;
+  padding: 4px; margin-bottom: 14px; border: 1px solid var(--line);
+}
+.mode-toggle .opt {
+  flex: 1; padding: 10px; text-align: center; cursor: pointer;
+  border-radius: 7px; font-weight: 500; font-size: 13px; color: var(--ink-2);
+}
+.mode-toggle .opt.active { background: var(--charcoal); color: var(--bg); font-weight: 600 }
+
+.dev-row {
+  display: flex; align-items: center; padding: 12px; border-bottom: 1px solid var(--line);
+  gap: 14px;
+}
+.dev-row:last-child { border: none }
+.dev-row:hover { background: var(--bg-alt) }
+.dev-row input[type=checkbox] {
+  width: 18px; height: 18px; accent-color: var(--gold-deep); cursor: pointer; flex-shrink: 0;
+}
+.dev-info { flex: 1; min-width: 0 }
+.dev-name { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--ink); word-break: break-word }
+.dev-name.unknown { color: var(--muted); font-style: italic; font-weight: 400 }
+.dev-meta {
+  font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace;
+  margin-top: 3px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+.iface-badge {
+  display: inline-block; padding: 2px 9px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 999px; font-size: 10px;
+  font-weight: 600; color: var(--gold-deep); letter-spacing: 0.3px;
+  font-family: var(--sans);
+}
+.policy-badge {
+  display: inline-block; padding: 2px 9px; background: rgba(126,109,84,0.08);
+  border: 1px solid var(--line); border-radius: 999px; font-size: 10px;
+  font-weight: 600; color: var(--ink-2); letter-spacing: 0;
+  font-family: var(--sans);
+}
+/* ── Расписание: недельная сетка по часам (как в Keenetic) ── */
+.sched-box {
+  margin: -4px 0 10px; padding: 12px 14px 14px;
+  border: 1px solid var(--line); border-top: none;
+  border-radius: 0 0 12px 12px; background: rgba(126,109,84,0.04);
+}
+.edit-btn.sched-on { background: var(--gold-soft); border-color: var(--gold) }
+.edit-btn.sched-open { color: var(--gold-deep); background: rgba(126,109,84,0.14); border-radius: 7px }
+.sg-wrap {
+  display: grid; grid-template-columns: 28px 1fr; gap: 3px 6px;
+  user-select: none; touch-action: none;
+  overflow-x: auto; padding: 0 6px 4px 0;  /* на узких экранах сетка скроллится, ячейки не вырождаются */
+}
+.sg-corner { position: sticky; left: 0; background: var(--surface); z-index: 1 }
+.sg-hours { position: relative; height: 16px; font-size: 10px; color: var(--ink-2); font-family: var(--sans); min-width: 432px }
+.sg-hours span { position: absolute; transform: translateX(-50%); top: 0 }
+.sg-day {
+  font-size: 11px; color: var(--ink-2); font-weight: 600;
+  display: flex; align-items: center; font-family: var(--sans);
+  position: sticky; left: 0; background: var(--surface); z-index: 1;
+}
+.sg-row { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; min-width: 432px }
+.sg-cell {
+  height: 20px; border-radius: 3px; cursor: pointer;
+  background: rgba(126,109,84,0.10); border: 1px solid transparent;
+}
+.sg-cell:nth-child(3n+1) { border-left: 1px solid var(--line) }
+.sg-cell:hover { border-color: var(--gold-deep) }
+.sg-cell.on { background: var(--gold) }
+
+.switch { position: relative; display: inline-block; width: 46px; height: 25px; flex-shrink: 0 }
+.switch input { opacity: 0; width: 0; height: 0 }
+.switch-slider {
+  position: absolute; inset: 0; background: var(--line); border-radius: 26px;
+  cursor: pointer; transition: .2s;
+}
+.switch-slider:before {
+  position: absolute; content: ""; height: 19px; width: 19px;
+  left: 3px; top: 3px; background: white; border-radius: 50%;
+  transition: .2s; box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.switch input:checked + .switch-slider { background: var(--gold) }
+.switch input:checked + .switch-slider:before { transform: translateX(21px) }
+
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid var(--line); gap: 12px;
+}
+.setting-row:last-child { border: none }
+.setting-label { font-weight: 500; color: var(--ink) }
+.setting-hint { font-size: 12px; color: var(--ink-2); margin-top: 3px; line-height: 1.5 }
+
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px }
+.input-row .field { margin: 0 }
+
+pre.log {
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px; font-size: 11px; max-height: 400px; overflow: auto;
+  white-space: pre-wrap; word-break: break-all;
+  font-family: ui-monospace, monospace; color: var(--ink-2); line-height: 1.65;
+}
+
+.muted-section { opacity: 0.5; pointer-events: none }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--charcoal); border: 1px solid var(--gold);
+  color: var(--bg); padding: 12px 22px; border-radius: 10px; font-size: 14px;
+  box-shadow: 0 12px 36px rgba(31,31,31,0.25); z-index: 100; opacity: 0;
+  transition: opacity .2s; max-width: 90%;
+}
+.toast.show { opacity: 1 }
+.toast.error { border-color: var(--bad) }
+.toast.ok { border-color: var(--ok) }
+
+.searchbox {
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+  padding: 9px 13px; border-radius: 8px; font-size: 13px; width: 100%;
+  margin-bottom: 12px; outline: none; font-family: inherit;
+}
+.searchbox:focus { border-color: var(--gold-deep) }
+
+.daemon-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 11px; font-family: ui-monospace, monospace; font-weight: 500;
+}
+.daemon-badge.running { background: rgba(74,124,74,0.1); color: var(--ok); border: 1px solid rgba(74,124,74,0.3) }
+.daemon-badge.stopped { background: var(--bg-alt); color: var(--muted); border: 1px solid var(--line) }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(31,31,31,0.55);
+  backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center;
+  z-index: 200; padding: 20px;
+}
+.modal-overlay.show { display: flex }
+.modal {
+  background: var(--surface); border: 1px solid var(--gold); border-radius: var(--radius);
+  padding: 30px; width: 100%; max-width: 720px; max-height: 90vh; overflow: auto;
+  box-shadow: 0 24px 70px rgba(31,31,31,0.3);
+}
+.modal h3 {
+  font-family: var(--serif); font-size: 22px; font-weight: 600; letter-spacing: -0.3px;
+  margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center;
+}
+.modal h3 .close {
+  background: transparent; border: 1px solid var(--line); border-radius: 8px;
+  padding: 4px 12px; cursor: pointer; color: var(--muted); font-weight: 400; font-size: 18px;
+  transition: all .15s;
+}
+.modal h3 .close:hover { color: var(--ink); border-color: var(--ink) }
+.modal .meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 18px;
+  font-size: 11px; color: var(--gold-deep); text-transform: uppercase; letter-spacing: 1.4px; font-weight: 600;
+}
+.modal .meta-grid > div {
+  padding: 10px 14px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 8px;
+}
+.modal .meta-grid b {
+  color: var(--ink); font-weight: 500; display: block; margin-top: 4px;
+  font-family: ui-monospace, monospace; font-size: 13px; text-transform: none; letter-spacing: 0;
+  word-break: break-all;
+}
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end }
+
+@media (max-width: 540px) {
+  .wrap { padding: 18px 12px 40px }
+  .stats-row { grid-template-columns: 1fr }
+  .checkip-row > div { min-width: 45% }
+  .modal { padding: 22px }
+  /* карточка профиля: контролы (⏰ ✎ тумблер) не должны сжимать имя */
+  .profile-card { gap: 8px; padding: 13px 12px }
+  .edit-btn { width: 34px; height: 34px; font-size: 16px }
+}
+
+/* ── Sysinfo-карточка ── */
+.sys-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px }
+.sys-row:last-child { border: none }
+.sys-row > span { color: var(--ink-2) }
+.sys-row > b { color: var(--ink); font-weight: 600 }
+
+/* ── Выбор темы ── */
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px }
+.theme-swatch {
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--ink-2); text-align: center; transition: all .15s;
+}
+.theme-swatch:hover { border-color: var(--gold) }
+.theme-swatch.active { border-color: var(--gold-deep); box-shadow: 0 0 0 2px var(--gold-soft); color: var(--ink) }
+.sw-prev {
+  display: block; height: 40px; border-radius: 6px; margin-bottom: 6px;
+  background: var(--sw-bg); border: 1px solid rgba(127,127,127,0.2); position: relative; overflow: hidden;
+}
+.sw-prev::before { content: ""; position: absolute; left: 8px; top: 9px; width: 38%; height: 6px; border-radius: 3px; background: var(--sw-fg) }
+.sw-prev::after  { content: ""; position: absolute; left: 8px; top: 21px; right: 8px; height: 5px; border-radius: 3px; background: var(--sw-ink); opacity: .55 }
+.custom-row { display: none; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line) }
+.custom-row label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-2); font-weight: 600 }
+.custom-row input[type=color] { width: 52px; height: 34px; border: 1px solid var(--line); border-radius: 7px; background: none; cursor: pointer; padding: 2px }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a href="/" class="logo" style="text-decoration:none;color:inherit">
+    <img src="/logo.svg" alt="">
+    <div class="logo-text">OPENVPN<em>+XOR</em></div>
+  </a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button id="theme-btn" class="btn btn-ghost btn-icon" onclick="toggleTheme()" title="Сменить тему" style="padding:8px 12px;font-size:16px">🌙</button>
+    <div id="header-pill" class="pill">…</div>
+  </div>
+</header>
+
+<div class="card">
+  <div class="eyebrow" style="margin-bottom:14px">Status</div>
+  <div>
+    <div id="big-status" class="big-status">…</div>
+    <div class="active-profile">Активные профили: <b id="active-profile">—</b></div>
+  </div>
+  <div class="power-buttons">
+    <select class="select" id="checkip-profile" style="flex:0 1 auto;max-width:200px;height:42px"></select>
+    <button class="btn btn-gold" onclick="checkIp()">Проверить IP</button>
+    <button class="btn btn-ghost btn-icon" onclick="loadAll()" title="Обновить">↻</button>
+  </div>
+  <div class="setting-hint" style="margin-top:8px">Вкл/выкл — тумблером на профиле во вкладке «Профили». «Проверить IP» — выход выбранного туннеля.</div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-label">↓ Получено</div><div class="stat-value" id="rx">0 B</div></div>
+    <div class="stat-box"><div class="stat-label">↑ Отправлено</div><div class="stat-value" id="tx">0 B</div></div>
+  </div>
+  <div id="checkip-box" class="checkip-box">
+    <div class="checkip-row">
+      <div><div class="label">IP</div><div class="value" id="ci-ip">—</div></div>
+      <div><div class="label">Страна</div><div class="value" id="ci-country">—</div></div>
+      <div><div class="label">Город</div><div class="value" id="ci-city">—</div></div>
+      <div><div class="label">Провайдер</div><div class="value" id="ci-org">—</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="profiles">Профили</div>
+  <div class="tab" data-tab="devices">Устройства</div>
+  <div class="tab" data-tab="routes">Маршруты</div>
+  <div class="tab" data-tab="settings">Настройки</div>
+  <div class="tab" data-tab="log">Лог</div>
+</div>
+
+<div class="section active" data-section="profiles">
+  <div class="card">
+    <h2><span>Профили VPN</span><span class="extra"><small id="profiles-hint">клик по карточке — выбрать · ✎ — редактировать · тумблер — вкл/выкл</small></span></h2>
+    <div id="profile-list"></div>
+  </div>
+  <div class="card">
+    <h2>Добавить новый профиль</h2>
+    <div class="field">
+      <label>Название</label>
+      <input class="input" id="new-name" placeholder="MyVPN" maxlength="32">
+    </div>
+    <div class="field">
+      <label>Конфиг .ovpn</label>
+      <textarea class="textarea" id="new-content" placeholder="client&#10;dev tun&#10;proto udp&#10;remote ..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="uploadProfile()" style="width:100%">Сохранить профиль</button>
+  </div>
+</div>
+
+<div class="section" data-section="devices">
+  <div class="card">
+    <h2><span>Кого пускать через VPN</span><span class="extra"><small id="dev-count"></small></span></h2>
+    <div class="field">
+      <label>Профиль (куда направлять выбранные устройства)</label>
+      <select class="select" id="dev-profile" onchange="onDevProfileChange()"></select>
+    </div>
+    <div class="setting-hint" style="margin:10px 0 14px">Имена и сети — из админки Кинетика. Устройство можно привязать только к одному профилю.</div>
+    <div class="mode-toggle">
+      <div class="opt" id="mode-devices" onclick="setMode('devices')">Выбранные</div>
+      <div class="opt" id="mode-all" onclick="setMode('all')">Весь LAN</div>
+    </div>
+    <div id="devices-section">
+      <input type="text" class="searchbox" id="dev-search" placeholder="Поиск по имени, IP или MAC" oninput="filterDevs()">
+      <div id="dev-list"></div>
+      <button class="btn btn-primary" onclick="saveDevs()" style="width:100%;margin-top:14px">Сохранить выбор</button>
+    </div>
+  </div>
+</div>
+
+<div class="section" data-section="routes">
+  <div class="card">
+    <h2><span>Маршруты IP / подсетей</span><span class="extra"><small id="routes-count"></small></span></h2>
+    <div class="setting-hint" style="margin-bottom:14px">Указанные подсети идут через VPN независимо от выбранных устройств. Формат: <code class="mono">5.45.0.0/16</code> или <code class="mono">8.8.8.8</code>.</div>
+    <div style="display:grid;grid-template-columns:2fr 3fr auto;gap:8px;align-items:end">
+      <div class="field" style="margin:0">
+        <label>CIDR / IP</label>
+        <input class="input" id="new-cidr" placeholder="5.45.0.0/16">
+      </div>
+      <div class="field" style="margin:0">
+        <label>Комментарий</label>
+        <input class="input" id="new-comment" placeholder="например, какой сервис">
+      </div>
+      <button class="btn btn-gold" onclick="addRoute()" style="height:42px">＋ Добавить</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-ghost" onclick="loadKeeneticRoutes()">↧ Импорт из Keenetic</button>
+    </div>
+    <div id="keenetic-routes-import" style="display:none;margin-top:14px"></div>
+    <div id="routes-list" style="margin-top:18px"></div>
+  </div>
+</div>
+
+<div class="section" data-section="settings">
+  <div class="card">
+    <h2><span>Система</span><span class="extra"><small id="sys-arch"></small></span></h2>
+    <div id="sysinfo">
+      <div class="sys-row"><span>Модель</span><b id="sys-model">…</b></div>
+      <div class="sys-row"><span>ОС</span><b id="sys-os">…</b></div>
+      <div class="sys-row"><span>CPU</span><b id="sys-cpu">…</b></div>
+      <div class="sys-row"><span>Память</span><b id="sys-mem">…</b></div>
+      <div class="sys-row"><span>Uptime</span><b id="sys-uptime">…</b></div>
+      <div class="sys-row"><span>Нагрузка (1/5/15м)</span><b id="sys-load">…</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Тема оформления</h2>
+    <div class="theme-grid">
+      <div class="theme-swatch" data-theme="light" onclick="setTheme('light')" style="--sw-bg:#f6f3ea;--sw-fg:#c9a876;--sw-ink:#1c1b18"><span class="sw-prev"></span>Gold светлая</div>
+      <div class="theme-swatch" data-theme="dark" onclick="setTheme('dark')" style="--sw-bg:#16140f;--sw-fg:#d4b585;--sw-ink:#f0ece1"><span class="sw-prev"></span>Gold тёмная</div>
+      <div class="theme-swatch" data-theme="tokyonight" onclick="setTheme('tokyonight')" style="--sw-bg:#1a1b26;--sw-fg:#7aa2f7;--sw-ink:#c0caf5"><span class="sw-prev"></span>Tokyo Night</div>
+      <div class="theme-swatch" data-theme="neo" onclick="setTheme('neo')" style="--sw-bg:#0a0a0a;--sw-fg:#e6e84a;--sw-ink:#f5f5dc"><span class="sw-prev"></span>Neo</div>
+      <div class="theme-swatch" data-theme="mint" onclick="setTheme('mint')" style="--sw-bg:#1e2530;--sw-fg:#7fd4c8;--sw-ink:#dbe6e4"><span class="sw-prev"></span>Mint</div>
+      <div class="theme-swatch" data-theme="custom" onclick="$('custom-row').style.display='flex'" style="--sw-bg:#15131c;--sw-fg:#7c5cff;--sw-ink:#e8e6f0"><span class="sw-prev"></span>Custom</div>
+    </div>
+    <div class="custom-row" id="custom-row">
+      <label>Акцент<input type="color" id="cu-accent" value="#7c5cff"></label>
+      <label>Фон<input type="color" id="cu-bg" value="#15131c"></label>
+      <label>Текст<input type="color" id="cu-text" value="#e8e6f0"></label>
+      <button class="btn btn-primary btn-small" onclick="applyCustomFromPickers()" style="margin-bottom:1px">Применить</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Общие</h2>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Автозапуск</div>
+        <div class="setting-hint">VPN поднимается при включении роутера</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="autostart-toggle" onchange="setAutostart(this.checked)">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<div class="section" data-section="log">
+  <div class="card">
+    <h2><span>Лог openvpn</span><span class="extra"><label class="setting-hint" style="margin:0;text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted)"><input type="checkbox" id="log-auto" checked onchange="toggleLogAuto()" style="vertical-align:middle;accent-color:var(--gold-deep)"> автообновление</label></span></h2>
+    <pre class="log" id="log-box">…</pre>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost btn-small" onclick="loadLog()">Обновить</button>
+      <button class="btn btn-warn btn-small" onclick="clearLog()">Очистить лог</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<div id="profile-modal" class="modal-overlay" onclick="if(event.target===this)closeProfileEdit()">
+  <div class="modal">
+    <h3>
+      <span>Редактирование профиля</span>
+      <button class="close" onclick="closeProfileEdit()">×</button>
+    </h3>
+    <div class="meta-grid">
+      <div>Remote<b id="m-remote">—</b></div>
+      <div>Режим<b id="m-mode">—</b></div>
+      <div>Устройств в политике<b id="m-devcount">—</b></div>
+      <div>Статус<b id="m-state">—</b></div>
+    </div>
+    <div class="field">
+      <label>Имя профиля</label>
+      <input class="input" id="m-name" maxlength="32">
+    </div>
+    <div class="field">
+      <label>Подключаться через (WAN-интерфейс)</label>
+      <select class="select" id="m-wan-select">
+        <option value="">— Default (через основной канал) —</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Конфигурация .ovpn</label>
+      <textarea class="textarea" id="m-content" style="min-height:300px"></textarea>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between">
+      <button class="btn btn-warn" onclick="deleteFromEditor()">Удалить профиль</button>
+      <span style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="closeProfileEdit()">Отмена</button>
+        <button class="btn btn-primary" onclick="saveProfileEdit()">Сохранить</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ── Темы: пресеты (light/dark/tokyonight/neo/mint) + Custom (3 цвета → color-mix) ──
+const THEME_BG = {light:'#f6f3ea', dark:'#16140f', tokyonight:'#1a1b26', neo:'#0a0a0a', mint:'#1e2530'};
+const CUSTOM_VARS = ['--bg','--bg-alt','--surface','--ink','--ink-2','--muted','--gold','--gold-deep','--gold-soft','--line','--charcoal','--on-charcoal','--on-gold','--shadow-rgb'];
+function _lum(hex){
+  const m = (hex||'').replace('#','').match(/.{2}/g); if (!m) return 0.5;
+  const [r,g,b] = m.map(x => parseInt(x,16)/255); return 0.2126*r + 0.7152*g + 0.0722*b;
+}
+function applyCustom(accent, bg, text){
+  const r = document.documentElement.style, dark = _lum(bg) < 0.5, lift = dark ? '#ffffff' : '#000000';
+  const s = (k,v) => r.setProperty(k,v);
+  s('--bg', bg);
+  s('--bg-alt', `color-mix(in srgb, ${bg}, ${lift} 4%)`);
+  s('--surface', `color-mix(in srgb, ${bg}, ${lift} 7%)`);
+  s('--ink', text);
+  s('--ink-2', `color-mix(in srgb, ${text} 72%, ${bg})`);
+  s('--muted', `color-mix(in srgb, ${text} 45%, ${bg})`);
+  s('--gold', accent); s('--gold-deep', accent);
+  s('--gold-soft', `color-mix(in srgb, ${accent} 14%, ${bg})`);
+  s('--line', `color-mix(in srgb, ${bg}, ${text} 16%)`);
+  s('--charcoal', accent); s('--on-charcoal', bg);
+  s('--on-gold', bg);
+  s('--shadow-rgb', dark ? '0, 0, 0' : '31, 31, 31');
+}
+function clearCustom(){ CUSTOM_VARS.forEach(k => document.documentElement.style.removeProperty(k)); }
+function applyTheme(theme, custom){
+  if (theme === 'custom' && custom){ document.documentElement.setAttribute('data-theme','custom'); applyCustom(custom.accent, custom.bg, custom.text); }
+  else { clearCustom(); document.documentElement.setAttribute('data-theme', theme); }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = (theme==='custom' && custom) ? custom.bg : (THEME_BG[theme] || THEME_BG.light);
+  const btn = $('theme-btn'); if (btn) btn.textContent = (theme==='light') ? '🌙' : '☀';
+  document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.theme === theme));
+}
+function getThemeCfg(){ try { return JSON.parse(localStorage.getItem('vpn-xor-theme-v2')||'null'); } catch(e){ return null; } }
+function setTheme(theme, custom){
+  try { localStorage.setItem('vpn-xor-theme-v2', JSON.stringify({theme, custom: custom||null})); } catch(e){}
+  applyTheme(theme, custom);
+}
+function toggleTheme(){ const c = getThemeCfg(); const t = (c&&c.theme)||'light'; setTheme(t==='light' ? 'dark' : 'light'); }
+function applyCustomFromPickers(){ setTheme('custom', { accent: $('cu-accent').value, bg: $('cu-bg').value, text: $('cu-text').value }); }
+(function initTheme(){
+  let t = getThemeCfg();
+  if (!t){
+    let old = null; try { old = localStorage.getItem('vpn-xor-theme'); } catch(e){}
+    if (old==='dark'||old==='light') t = {theme: old};
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) t = {theme:'dark'};
+    else t = {theme:'light'};
+  }
+  applyTheme(t.theme, t.custom);
+})();
+
+function fmt(b){
+  b = +b || 0;
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0;
+  while (b >= 1024 && i < u.length - 1) { b /= 1024; i++ }
+  return b.toFixed(b < 10 ? 2 : (b < 100 ? 1 : 0)) + ' ' + u[i];
+}
+
+function toast(msg, kind){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (kind || '');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let CURRENT_MODE = 'devices';
+let WANS = [];
+let ACTIVE_PROFILE = '';
+let ALL_DEVS = [];
+let CURRENT_ROUTES = [];
+let LOG_AUTO = true;
+let LOG_TIMER = null;
+let CURRENT_TAB = 'profiles';
+let CURRENT_EDIT = null;
+
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.querySelector('.section[data-section="' + t.dataset.tab + '"]').classList.add('active');
+  CURRENT_TAB = t.dataset.tab;
+  if (CURRENT_TAB === 'log') { startLogAuto(); }
+  else stopLogAuto();
+  if (CURRENT_TAB === 'settings') loadSysinfo();
+});
+
+let VPN_ACTIVE = false;
+async function loadStatus(){
+  const lines = (await (await fetch('/cgi-bin/status')).text()).split('\n');
+  const active = lines[0] === 'ACTIVE';
+  VPN_ACTIVE = active;
+  const cnt = parseInt((lines.find(l => l.startsWith('count=')) || 'count=0').split('=')[1]) || 0;
+  const running = (lines.find(l => l.startsWith('running=')) || 'running=').split('=')[1] || '';
+  $('big-status').className = 'big-status ' + (active ? 'on' : 'off');
+  $('big-status').innerHTML = active
+    ? 'Активно <em>' + cnt + ' профил' + (cnt === 1 ? 'ь' : (cnt < 5 ? 'я' : 'ей')) + '</em>'
+    : 'Соединение <em>не активно</em>';
+  $('header-pill').className = 'pill ' + (active ? 'on' : 'off');
+  $('header-pill').textContent = active ? 'online' : 'offline';
+  $('active-profile').textContent = running || '—';
+}
+
+async function loadStats(){
+  try {
+    const j = await (await fetch('/cgi-bin/stats')).json();
+    $('rx').textContent = fmt(j.rx);
+    $('tx').textContent = fmt(j.tx);
+  } catch(e) {}
+}
+
+// Заполнить выпадающий список «через какой туннель проверять» работающими профилями
+function fillCheckipProfiles(){
+  const sel = $('checkip-profile');
+  if (!sel) return;
+  const prev = sel.value;
+  const running = (PROFILES_CACHE || []).filter(p => p.running);
+  sel.innerHTML = '';
+  if (!running.length) {
+    sel.innerHTML = '<option value="">нет активных</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  for (const p of running) {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = 'через ' + p.name;
+    sel.appendChild(o);
+  }
+  if (running.some(p => p.name === prev)) sel.value = prev;
+}
+
+async function checkIp(){
+  const prof = $('checkip-profile') ? $('checkip-profile').value : '';
+  $('checkip-box').classList.add('show');
+  $('ci-ip').textContent = 'загрузка…';
+  $('ci-country').textContent = '—';
+  $('ci-city').textContent = '—';
+  $('ci-org').textContent = '—';
+  try {
+    const url = '/cgi-bin/checkip' + (prof ? '?profile=' + encodeURIComponent(prof) : '');
+    const j = await (await fetch(url)).json();
+    if (j.error) { $('ci-ip').textContent = '⚠ ' + j.error; return }
+    $('ci-ip').textContent = j.ip || '—';
+    $('ci-country').textContent = j.country || '—';
+    $('ci-city').textContent = j.city || '—';
+    $('ci-org').textContent = j.org || '—';
+  } catch(e) { $('ci-ip').textContent = '⚠ ошибка' }
+}
+
+let PROFILES_CACHE = [];
+async function loadProfiles(){
+  const arr = await (await fetch('/cgi-bin/profiles')).json();
+  PROFILES_CACHE = arr;
+  // открыт редактор расписания ИМЕННО этого профиля — не перерисовываем список
+  // (иначе 5-секундный автообновлятор сбросит рисование по сетке)
+  const openBox = document.querySelector('.sched-box');
+  if (SCHED_OPEN && arr.some(p => p.name === SCHED_OPEN) && openBox && openBox.getAttribute('data-profile') === SCHED_OPEN) {
+    fillCheckipProfiles();
+    return;
+  }
+  if (SCHED_OPEN && !arr.some(p => p.name === SCHED_OPEN)) SCHED_OPEN = '';
+  const box = $('profile-list');
+  box.innerHTML = arr.length ? '' : '<small style="color:var(--muted)">Профилей нет. Добавь ниже.</small>';
+  for (const p of arr) {
+    const card = document.createElement('div');
+    card.className = 'profile-card' + (p.running ? ' is-active' : '');
+    const wanText = p.wan ? '<span class="iface-badge" style="margin-left:8px">via ' + p.wan + '</span>' : '';
+    let policyBadge = '';
+    if (p.mode === 'all') {
+      policyBadge = '<span class="iface-badge" style="margin-left:8px;color:var(--warn);border-color:rgba(163,116,42,0.35)">весь LAN</span>';
+    } else if (p.devices_count > 0) {
+      policyBadge = '<span class="iface-badge" style="margin-left:8px">' + p.devices_count + ' устр.</span>';
+    } else {
+      policyBadge = '<span class="iface-badge" style="margin-left:8px;color:var(--muted)">нет устр.</span>';
+    }
+    if (p.sched) policyBadge += '<span class="iface-badge" style="margin-left:8px" title="Управляется расписанием">⏰ расписание</span>';
+    // Тумблер отражает enabled; зелёная точка — реально поднят (running)
+    const dotLive = p.running ? 'live' : '';
+    let stateLabel;
+    if (p.running) stateLabel = '<span style="color:var(--ok);font-weight:600">● подключено</span>';
+    else if (p.enabled) stateLabel = '<span style="color:var(--warn)">запуск…</span>';
+    else stateLabel = '<span style="color:var(--muted)">выключен</span>';
+    const nm = p.name.replace(/'/g, "\\'");
+    card.innerHTML =
+      '<div class="profile-info" onclick="openDevicesFor(\'' + nm + '\')" title="Нажми — настроить устройства для этого профиля">' +
+        '<div class="profile-name"><span class="dot ' + dotLive + '"></span>' + escapeHtml(p.name) + '</div>' +
+        '<div class="profile-meta">' + stateLabel + wanText + policyBadge + '</div>' +
+      '</div>' +
+      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы">⏰</button>' +
+      '<button class="edit-btn" onclick="event.stopPropagation();editProfile(\'' + nm + '\')" title="Редактировать профиль">✎</button>' +
+      '<label class="switch" onclick="event.stopPropagation()" title="Включить / выключить">' +
+        '<input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' onchange="profileToggle(\'' + nm + '\', this.checked)">' +
+        '<span class="switch-slider"></span>' +
+      '</label>';
+    box.appendChild(card);
+    if (SCHED_OPEN === p.name) {
+      const ed = document.createElement('div');
+      ed.innerHTML = schedEditorHTML();
+      box.appendChild(ed.firstChild);
+      schedBindGrid();
+      schedHint();
+    }
+  }
+  fillCheckipProfiles();
+}
+
+async function loadWans(){
+  // WAN-список нужен только для селектора в редакторе профиля
+  try { WANS = await (await fetch('/cgi-bin/wans')).json(); } catch(e) { WANS = []; }
+}
+
+async function loadAutostart(){
+  const v = (await (await fetch('/cgi-bin/autostart')).text()).trim();
+  $('autostart-toggle').checked = (v === 'yes');
+}
+async function setAutostart(on){
+  await fetch('/cgi-bin/autostart', { method: 'POST', body: on ? 'yes' : 'no' });
+  toast('Автозапуск: ' + (on ? 'включён' : 'выключен'), 'ok');
+}
+
+// ── Sysinfo (модель/CPU/память/uptime через NDM RCI) ──
+function _uptimeHuman(sec){
+  sec = +sec || 0; const d = Math.floor(sec/86400), h = Math.floor(sec%86400/3600), m = Math.floor(sec%3600/60);
+  return (d?d+'д ':'') + (h?h+'ч ':'') + m + 'м';
+}
+let SYSINFO_DONE = false;
+async function loadSysinfo(force){
+  if (SYSINFO_DONE && !force) return;
+  try {
+    const j = await (await fetch('/cgi-bin/sysinfo')).json();
+    $('sys-arch').textContent = j.arch || '';
+    $('sys-model').textContent = j.model || '—';
+    $('sys-os').textContent = (j.os_title ? j.os_title + ' · ' : '') + (j.os_release || '');
+    $('sys-cpu').textContent = (j.cpu || '') + (j.cputemp ? '  ·  ' + j.cputemp + '°C' : '') + (j.cpuload != null ? '  ·  ' + j.cpuload + '%' : '');
+    const mt = +j.memtotal || 0, used = (j.memused != null) ? +j.memused : (mt - (+j.memfree || 0));
+    $('sys-mem').textContent = mt ? Math.round(used/1024) + ' / ' + Math.round(mt/1024) + ' MB (' + Math.round(used/mt*100) + '%)' : '—';
+    $('sys-uptime').textContent = _uptimeHuman(j.uptime);
+    $('sys-load').textContent = j.loadavg || '—';
+    SYSINFO_DONE = true;
+  } catch(e) { $('sys-model').textContent = '(нет данных)'; }
+}
+// инициализация custom-пикеров из сохранённой темы
+(function initCustomPickers(){
+  const c = getThemeCfg();
+  if (c && c.theme === 'custom' && c.custom){
+    const set = (id,v)=>{ const el = $(id); if (el && v) el.value = v; };
+    set('cu-accent', c.custom.accent); set('cu-bg', c.custom.bg); set('cu-text', c.custom.text);
+    const cr = $('custom-row'); if (cr) cr.style.display = 'flex';
+  }
+})();
+
+// ── Расписание профиля: недельная сетка по часам (как в Keenetic), под каждым профилем ──
+let SCHED_OPEN = '';                       // имя профиля с открытым редактором
+let SCHED = { enabled: false, actions: [] };
+let SCHED_GRID = new Array(168).fill(false); // (день-1)*24 + час; true = включён
+let SCHED_PAINT = null;                    // чем красим при протяжке (true/false)
+const DOW_NAMES = {1:'Пн',2:'Вт',3:'Ср',4:'Чт',5:'Пт',6:'Сб',7:'Вс'};
+
+function actionsToGrid(actions){
+  const grid = new Array(168).fill(false);
+  const evs = [];
+  for (const a of actions) for (const d of (a.dow || [])) evs.push({ do: a.do, m: (d-1)*1440 + a.hh*60 + a.mm });
+  if (!evs.length) return grid;
+  for (let k = 0; k < 168; k++) {
+    const km = k * 60;
+    let best = null;
+    for (const e of evs) {
+      const ago = ((km - e.m) % 10080 + 10080) % 10080;
+      if (!best || ago < best.ago) best = { ago: ago, do: e.do };
+    }
+    grid[k] = best.do === 'start';
+  }
+  return grid;
+}
+function gridToActions(grid){
+  const map = {};   // do|hh → {do,hh,mm,dow[]}
+  for (let k = 0; k < 168; k++) {
+    if (grid[k] === grid[(k + 167) % 168]) continue;   // нет перехода
+    const act = grid[k] ? 'start' : 'stop';
+    const key = act + '|' + (k % 24);
+    if (!map[key]) map[key] = { do: act, hh: k % 24, mm: 0, dow: [] };
+    map[key].dow.push(Math.floor(k / 24) + 1);
+  }
+  return Object.values(map);
+}
+
+async function toggleSchedule(name){
+  if (SCHED_OPEN === name) { SCHED_OPEN = ''; loadProfiles(); return; }
+  let j = null;
+  try { j = await (await fetch('/cgi-bin/schedule?profile=' + encodeURIComponent(name))).json(); } catch(e) {}
+  if (!j || typeof j !== 'object') j = {};
+  SCHED = { enabled: j.enabled === true, actions: Array.isArray(j.actions) ? j.actions : [] };
+  SCHED_GRID = actionsToGrid(SCHED.actions);
+  SCHED_OPEN = name;
+  loadProfiles();
+}
+
+function schedEditorHTML(){
+  // подписи часов: 0 3 6 9 12 15 18 21 24
+  let hours = '<div class="sg-corner"></div><div class="sg-hours">';
+  for (let h = 0; h <= 24; h += 3) hours += '<span style="left:' + (h / 24 * 100) + '%">' + h + '</span>';
+  hours += '</div>';
+  let rows = '';
+  for (let d = 0; d < 7; d++) {
+    rows += '<div class="sg-day">' + DOW_NAMES[d + 1] + '</div><div class="sg-row">';
+    for (let h = 0; h < 24; h++) {
+      const k = d * 24 + h;
+      rows += '<div class="sg-cell' + (SCHED_GRID[k] ? ' on' : '') + '" data-k="' + k + '"></div>';
+    }
+    rows += '</div>';
+  }
+  return '<div class="sched-box" data-profile="' + SCHED_OPEN.replace(/"/g, '&quot;') + '">' +
+    '<div class="setting-row" style="padding:4px 0 10px">' +
+      '<div>' +
+        '<div class="setting-label">Расписание активно</div>' +
+        '<div class="setting-hint">Закрась часы, когда профиль должен работать. События — как в Keenetic: в момент границы; между ними ручной тумблер работает.</div>' +
+      '</div>' +
+      '<label class="switch"><input type="checkbox" id="sched-enabled"' + (SCHED.enabled ? ' checked' : '') + '><span class="switch-slider"></span></label>' +
+    '</div>' +
+    '<div class="sg-wrap" id="sched-grid">' + hours + rows + '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+      '<button class="btn btn-ghost btn-small" onclick="schedFill(true)">Все часы</button>' +
+      '<button class="btn btn-ghost btn-small" onclick="schedFill(false)">Очистить</button>' +
+      '<button class="btn btn-primary" style="flex:1;min-width:160px" onclick="saveSchedule()">Сохранить расписание</button>' +
+    '</div>' +
+    '<div class="setting-hint" id="sched-next" style="margin-top:10px"></div>' +
+  '</div>';
+}
+
+function schedBindGrid(){
+  const g = $('sched-grid');
+  if (!g) return;
+  g.addEventListener('pointerdown', e => {
+    const c = e.target.closest('.sg-cell'); if (!c) return;
+    e.preventDefault();
+    SCHED_PAINT = !SCHED_GRID[+c.dataset.k];
+    schedPaintCell(c);
+  });
+  g.addEventListener('pointerover', e => {
+    if (SCHED_PAINT === null) return;
+    const c = e.target.closest('.sg-cell'); if (c) schedPaintCell(c);
+  });
+  // touch: elementFromPoint, т.к. pointerover на тач не «едет» по ячейкам
+  g.addEventListener('pointermove', e => {
+    if (SCHED_PAINT === null || e.pointerType === 'mouse') return;
+    const c = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = c && c.closest ? c.closest('.sg-cell') : null;
+    if (cell) schedPaintCell(cell);
+  });
+}
+// один глобальный сброс рисования (не в schedBindGrid — иначе копился бы при каждом открытии)
+document.addEventListener('pointerup', () => { SCHED_PAINT = null; });
+function schedPaintCell(c){
+  const k = +c.dataset.k;
+  SCHED_GRID[k] = SCHED_PAINT;
+  c.classList.toggle('on', SCHED_PAINT);
+  schedHint();
+}
+function schedFill(v){
+  SCHED_GRID.fill(v);
+  document.querySelectorAll('#sched-grid .sg-cell').forEach(c => c.classList.toggle('on', v));
+  schedHint();
+}
+
+function schedHint(){
+  const el = $('sched-next');
+  if (!el) return;
+  const actions = gridToActions(SCHED_GRID);
+  const acts = [];
+  for (const a of actions) for (const d of a.dow) acts.push({ do: a.do, d: d, hm: a.hh * 60 });
+  if (!acts.length) {
+    el.textContent = SCHED_GRID[0] ? 'Все часы закрашены — профиль всегда включён, событий нет.' : 'Часы не закрашены — событий нет, расписание ничего не делает.';
+    return;
+  }
+  const now = new Date();
+  const nd = now.getDay() === 0 ? 7 : now.getDay();
+  const nm = now.getHours() * 60 + now.getMinutes();
+  let next = null, last = null;
+  for (const x of acts) {
+    let ahead = ((x.d - nd + 7) % 7) * 1440 + (x.hm - nm);
+    if (ahead <= 0) ahead += 10080;
+    let ago = ((nd - x.d + 7) % 7) * 1440 + (nm - x.hm);
+    if (ago < 0) ago += 10080;
+    if (!next || ahead < next.ahead) next = { ...x, ahead };
+    if (!last || ago < last.ago) last = { ...x, ago };
+  }
+  const t = x => String(x.hm / 60 | 0).padStart(2, '0') + ':00';
+  el.textContent = 'Сейчас по расписанию: ' + (last.do === 'start' ? 'включён' : 'выключен') +
+    ' · следующее событие: ' + (next.do === 'start' ? 'Включить' : 'Выключить') +
+    ' в ' + t(next) + ' (' + DOW_NAMES[next.d] + ')';
+}
+
+async function saveSchedule(){
+  if (!SCHED_OPEN) return;
+  SCHED.enabled = $('sched-enabled') ? $('sched-enabled').checked : false;
+  SCHED.actions = gridToActions(SCHED_GRID);
+  let j = null;
+  try {
+    const r = await fetch('/cgi-bin/schedule?profile=' + encodeURIComponent(SCHED_OPEN), { method: 'POST', body: JSON.stringify(SCHED) });
+    j = await r.json();
+  } catch(e) {}
+  if (!j || j.error) { toast('Ошибка сохранения' + (j && j.error ? ': ' + j.error : ''), 'error'); return; }
+  SCHED = { enabled: j.enabled === true, actions: Array.isArray(j.actions) ? j.actions : [] };
+  SCHED_GRID = actionsToGrid(SCHED.actions);
+  toast('Расписание сохранено' + (SCHED.enabled ? '' : ' (не активно)'), 'ok');
+  SCHED_OPEN = '';
+  setTimeout(loadProfiles, 1200);
+  loadProfiles();
+}
+
+// ── Вкладка «Устройства» работает с выбранным в дропдауне профилем ──
+let DEV_PROFILE = '';
+function devQS(){ return DEV_PROFILE ? ('?profile=' + encodeURIComponent(DEV_PROFILE)) : ''; }
+
+function loadDevProfiles(){
+  const sel = $('dev-profile');
+  const prev = DEV_PROFILE;
+  sel.innerHTML = '';
+  for (const p of PROFILES_CACHE) {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name + (p.running ? ' ● работает' : '');
+    sel.appendChild(o);
+  }
+  if (PROFILES_CACHE.some(p => p.name === prev)) DEV_PROFILE = prev;
+  else DEV_PROFILE = PROFILES_CACHE[0] ? PROFILES_CACHE[0].name : '';
+  sel.value = DEV_PROFILE;
+}
+async function onDevProfileChange(){
+  DEV_PROFILE = $('dev-profile').value;
+  await loadMode();
+  await loadDevs();
+}
+async function openDevicesFor(name){
+  // клик по карточке профиля → вкладка «Устройства», сфокусированная на нём
+  document.querySelector('.tab[data-tab="devices"]').click();
+  if (!PROFILES_CACHE.length) await loadProfiles();
+  loadDevProfiles();
+  DEV_PROFILE = name;
+  $('dev-profile').value = name;
+  await loadMode();
+  await loadDevs();
+}
+
+async function loadMode(){
+  if (!DEV_PROFILE) return;
+  CURRENT_MODE = (await (await fetch('/cgi-bin/mode' + devQS())).text()).trim();
+  $('mode-devices').classList.toggle('active', CURRENT_MODE === 'devices');
+  $('mode-all').classList.toggle('active', CURRENT_MODE === 'all');
+  $('devices-section').classList.toggle('muted-section', CURRENT_MODE === 'all');
+}
+async function setMode(m){
+  if (!DEV_PROFILE) { toast('Сначала выбери профиль', 'error'); return }
+  await fetch('/cgi-bin/mode' + devQS(), { method: 'POST', body: m });
+  await loadMode();
+  toast(DEV_PROFILE + ': ' + (m === 'all' ? 'весь LAN' : 'выбранные'), 'ok');
+}
+
+function renderDevs(devs){
+  const box = $('dev-list');
+  box.innerHTML = devs.length ? '' : '<small style="color:var(--muted)">Устройств нет</small>';
+  for (const d of devs) {
+    const row = document.createElement('label');
+    row.className = 'dev-row';
+    const checked = d.selected ? 'checked' : '';
+    const nameHtml = d.name
+      ? '<div class="dev-name">' + escapeHtml(d.name) + '</div>'
+      : '<div class="dev-name unknown">неизвестное устройство</div>';
+    const policyHtml = d.policy_name
+      ? '<span class="policy-badge">Политика: ' + escapeHtml(d.policy_name) + '</span>'
+      : '';
+    row.innerHTML =
+      '<input type="checkbox" data-ip="' + d.ip + '" ' + checked + '>' +
+      '<div class="dev-info">' +
+        nameHtml +
+        '<div class="dev-meta">' +
+          '<span style="color:var(--gold-deep)">' + d.ip + '</span>' +
+          '<span>' + d.mac + '</span>' +
+          (d.iface ? '<span class="iface-badge">' + escapeHtml(d.iface) + '</span>' : '') +
+          policyHtml +
+        '</div>' +
+      '</div>';
+    box.appendChild(row);
+  }
+  $('dev-count').textContent = devs.length ? devs.length + ' устр.' : '';
+}
+
+function filterDevs(){
+  const q = $('dev-search').value.toLowerCase().trim();
+  if (!q) { renderDevs(ALL_DEVS); return }
+  const filtered = ALL_DEVS.filter(d =>
+    (d.name && d.name.toLowerCase().includes(q)) ||
+    d.ip.includes(q) ||
+    d.mac.toLowerCase().includes(q) ||
+    (d.iface && d.iface.toLowerCase().includes(q)) ||
+    (d.policy_name && d.policy_name.toLowerCase().includes(q))
+  );
+  renderDevs(filtered);
+}
+
+async function loadDevs(){
+  if (!DEV_PROFILE) { $('dev-list').innerHTML = '<small style="color:var(--muted)">Выбери профиль выше</small>'; return }
+  try {
+    ALL_DEVS = await (await fetch('/cgi-bin/devices' + devQS())).json();
+    ALL_DEVS.sort((a, b) => {
+      if (a.selected !== b.selected) return b.selected - a.selected;
+      const an = (a.name || 'я' + a.ip).toLowerCase();
+      const bn = (b.name || 'я' + b.ip).toLowerCase();
+      return an.localeCompare(bn);
+    });
+    filterDevs();
+  } catch(e) { $('dev-list').innerHTML = '<small style="color:var(--bad)">Ошибка</small>' }
+}
+
+async function saveDevs(){
+  if (!DEV_PROFILE) { toast('Сначала выбери профиль', 'error'); return }
+  const ips = [...document.querySelectorAll('#dev-list input[type=checkbox]:checked')]
+    .map(c => 'ip=' + encodeURIComponent(c.dataset.ip)).join('&');
+  const r = await fetch('/cgi-bin/save-devices' + devQS(), { method: 'POST', body: ips });
+  toast(await r.text(), 'ok');
+  loadProfiles();
+  loadDevs();
+}
+
+async function loadRoutes(){
+  try {
+    const arr = await (await fetch('/cgi-bin/routes')).json();
+    CURRENT_ROUTES = arr;
+    const box = $('routes-list');
+    box.innerHTML = arr.length ? '' : '<small style="color:var(--muted)">Маршрутов нет.</small>';
+    $('routes-count').textContent = arr.length ? arr.length + ' маршрут.' : '';
+    arr.forEach((r, idx) => {
+      const row = document.createElement('div');
+      row.className = 'dev-row';
+      const enabled = r.enabled !== false;
+      const comment = r.comment ? '<div class="dev-meta"><span>' + escapeHtml(r.comment) + '</span></div>' : '';
+      row.innerHTML =
+        '<label class="switch"><input type="checkbox" ' + (enabled ? 'checked' : '') + ' onchange="toggleRoute(' + idx + ')"><span class="switch-slider"></span></label>' +
+        '<div class="dev-info" style="margin-left:6px">' +
+          '<div class="dev-name mono" style="color:var(--gold-deep)">' + escapeHtml(r.cidr) + '</div>' +
+          comment +
+        '</div>' +
+        '<button class="btn btn-warn btn-small" onclick="deleteRoute(' + idx + ')">×</button>';
+      box.appendChild(row);
+    });
+  } catch(e) { $('routes-list').innerHTML = '<small style="color:var(--bad)">Ошибка</small>' }
+}
+async function loadKeeneticRoutes(){
+  const box = $('keenetic-routes-import');
+  box.style.display = 'block';
+  box.innerHTML = '<small style="color:var(--muted)">Читаю маршруты Keenetic...</small>';
+  try {
+    const arr = await (await fetch('/cgi-bin/keenetic-routes')).json();
+    const existing = new Set(CURRENT_ROUTES.map(r => r.cidr));
+    const fresh = arr.filter(r => !r.existing && !existing.has(r.cidr));
+    if (!arr.length) {
+      box.innerHTML = '<small style="color:var(--muted)">Статических маршрутов Keenetic не найдено.</small>';
+      return;
+    }
+    let html = '<div class="setting-hint" style="margin-bottom:10px">Будут добавлены только отмеченные CIDR. Системные default/kernel маршруты не импортируются.</div>';
+    html += '<div style="max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px">';
+    arr.forEach((r, idx) => {
+      const disabled = (r.existing || existing.has(r.cidr)) ? 'disabled' : '';
+      const checked = disabled ? '' : 'checked';
+      const note = disabled ? ' <span class="iface-badge" style="color:var(--muted)">уже есть</span>' : '';
+      html += '<label class="dev-row" style="cursor:' + (disabled ? 'default' : 'pointer') + '">' +
+        '<input type="checkbox" class="keenetic-route-check" data-idx="' + idx + '" ' + checked + ' ' + disabled + '>' +
+        '<div class="dev-info">' +
+          '<div class="dev-name mono" style="color:var(--gold-deep)">' + escapeHtml(r.cidr) + note + '</div>' +
+          '<div class="dev-meta"><span>' + escapeHtml(r.interface_label || r.interface || '') + '</span>' +
+          (r.gateway && r.gateway !== '0.0.0.0' ? '<span>via ' + escapeHtml(r.gateway) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</label>';
+    });
+    html += '</div>';
+    html += '<button class="btn btn-primary" onclick="importKeeneticRoutes()" style="width:100%;margin-top:12px" ' + (fresh.length ? '' : 'disabled') + '>Импортировать выбранные</button>';
+    box.dataset.routes = JSON.stringify(arr);
+    box.innerHTML = html;
+  } catch(e) {
+    box.innerHTML = '<small style="color:var(--bad)">Не удалось прочитать маршруты Keenetic</small>';
+  }
+}
+async function importKeeneticRoutes(){
+  const box = $('keenetic-routes-import');
+  const arr = JSON.parse(box.dataset.routes || '[]');
+  const checks = [...document.querySelectorAll('.keenetic-route-check:checked')];
+  if (!checks.length) { toast('Ничего не выбрано', 'error'); return }
+  // Собираем все выбранные в один массив и шлём ОДНИМ запросом (атомарно, без гонок)
+  const payload = [];
+  for (const c of checks) {
+    const r = arr[Number(c.dataset.idx)];
+    if (r && r.cidr) payload.push({ cidr: r.cidr, comment: r.comment || 'Keenetic' });
+  }
+  const resp = await fetch('/cgi-bin/routes', {
+    method: 'POST',
+    body: 'action=import&data=' + encodeURIComponent(JSON.stringify(payload))
+  });
+  try {
+    const after = await resp.json();
+    toast('Импортировано: ' + payload.length + ' (всего маршрутов: ' + (after.length ?? '?') + ')', 'ok');
+  } catch(e) {
+    toast('Импортировано: ' + payload.length, 'ok');
+  }
+  await loadRoutes();
+  await loadKeeneticRoutes();
+}
+async function addRoute(){
+  const cidr = $('new-cidr').value.trim();
+  const comment = $('new-comment').value.trim();
+  if (!cidr) { toast('CIDR обязателен', 'error'); return }
+  const r = await fetch('/cgi-bin/routes', {
+    method: 'POST',
+    body: 'action=add&cidr=' + encodeURIComponent(cidr) + '&comment=' + encodeURIComponent(comment)
+  });
+  const j = await r.json();
+  if (j.error) { toast('Ошибка: ' + j.error, 'error'); return }
+  toast('Маршрут добавлен', 'ok');
+  $('new-cidr').value = ''; $('new-comment').value = '';
+  loadRoutes();
+}
+async function deleteRoute(idx){
+  await fetch('/cgi-bin/routes', { method: 'POST', body: 'action=delete&index=' + idx });
+  loadRoutes();
+}
+async function toggleRoute(idx){
+  await fetch('/cgi-bin/routes', { method: 'POST', body: 'action=toggle&index=' + idx });
+  loadRoutes();
+}
+
+function fillModalWanSelect(selected){
+  const sel = $('m-wan-select');
+  sel.innerHTML = '<option value="">— Default (через основной канал) —</option>';
+  for (const w of WANS) {
+    const opt = document.createElement('option');
+    opt.value = w.iface;
+    const title = w.label || w.iface;
+    const details = w.label ? ' (' + w.iface + (w.ip ? ', ' + w.ip : '') + ')' : (w.ip ? ' (' + w.ip + ')' : '');
+    opt.textContent = title + details + (w.default ? ' — основной' : '');
+    sel.appendChild(opt);
+  }
+  sel.value = selected || '';
+}
+// Клик по карточке — выбрать профиль активным (без принудительного коннекта).
+// Если VPN сейчас запущен — activate-profile переподнимет уже на новом профиле.
+function clearCheckIp(){
+  $('checkip-box').classList.remove('show');
+  $('ci-ip').textContent = '—'; $('ci-country').textContent = '—';
+  $('ci-city').textContent = '—'; $('ci-org').textContent = '—';
+}
+async function selectProfile(name){
+  if (name === ACTIVE_PROFILE) { toast('Уже выбран: ' + name); return }
+  clearCheckIp();                       // прячем устаревший результат проверки IP
+  try {
+    await fetch('/cgi-bin/activate-profile?name=' + encodeURIComponent(name));
+    ACTIVE_PROFILE = name;
+    toast('Выбран профиль: ' + name, 'ok');
+    setTimeout(loadAll, 900);
+  } catch(e) { toast('Не удалось выбрать', 'error') }
+}
+async function editProfile(name){
+  try {
+    if (!WANS.length) await loadWans();
+    const j = await (await fetch('/cgi-bin/profile?name=' + encodeURIComponent(name))).json();
+    if (j.error) { toast('Ошибка: ' + j.error, 'error'); return }
+    CURRENT_EDIT = name;
+    $('m-name').value = j.name;
+    $('m-content').value = j.content || '';
+    $('m-remote').textContent = j.remote || '—';
+    $('m-mode').textContent = j.mode === 'all' ? 'весь LAN' : 'выбранные';
+    $('m-devcount').textContent = j.devices_count + ' устр.';
+    const pc = PROFILES_CACHE.find(x => x.name === j.name);
+    $('m-state').textContent = (pc && pc.running) ? '● подключено' : ((pc && pc.enabled) ? 'запуск…' : 'выключен');
+    fillModalWanSelect(j.wan);
+    $('profile-modal').classList.add('show');
+  } catch(e) { toast('Не удалось открыть', 'error') }
+}
+async function deleteFromEditor(){
+  if (!CURRENT_EDIT) return;
+  if (!confirm('Удалить профиль "' + CURRENT_EDIT + '"?')) return;
+  const r = await fetch('/cgi-bin/delete-profile?name=' + encodeURIComponent(CURRENT_EDIT));
+  toast(await r.text(), 'ok');
+  closeProfileEdit();
+  loadProfiles();
+}
+function closeProfileEdit(){ $('profile-modal').classList.remove('show'); CURRENT_EDIT = null }
+async function saveProfileEdit(){
+  if (!CURRENT_EDIT) return;
+  const newName = $('m-name').value.trim();
+  const content = $('m-content').value;
+  if (!newName) { toast('Имя обязательно', 'error'); return }
+  if (!content.match(/^remote /m)) { toast('В конфиге нет строки remote', 'error'); return }
+  const wan = $('m-wan-select').value;
+  // 1) сохраняем WAN для профиля (по текущему имени, до переименования)
+  await fetch('/cgi-bin/profile-wan?name=' + encodeURIComponent(CURRENT_EDIT), {
+    method: 'POST', body: 'wan=' + encodeURIComponent(wan)
+  });
+  // 2) сохраняем имя/конфиг (может переименовать → рестарт если активен)
+  const body = 'name=' + encodeURIComponent(newName) + '&content=' + encodeURIComponent(content);
+  const r = await fetch('/cgi-bin/profile?name=' + encodeURIComponent(CURRENT_EDIT), { method: 'POST', body });
+  const j = await r.json();
+  if (j.error) { toast('Ошибка: ' + j.error, 'error'); return }
+  toast(j.restarted ? 'Сохранён, VPN перезапущен' : 'Сохранён', 'ok');
+  closeProfileEdit();
+  setTimeout(loadAll, 1500);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && CURRENT_EDIT) closeProfileEdit();
+});
+
+async function loadLog(){ $('log-box').textContent = await (await fetch('/cgi-bin/log')).text() }
+function startLogAuto(){
+  if (LOG_TIMER) clearInterval(LOG_TIMER);
+  loadLog();
+  if (LOG_AUTO) LOG_TIMER = setInterval(loadLog, 3000);
+}
+function stopLogAuto(){ if (LOG_TIMER) { clearInterval(LOG_TIMER); LOG_TIMER = null } }
+function toggleLogAuto(){
+  LOG_AUTO = $('log-auto').checked;
+  if (LOG_AUTO) startLogAuto(); else stopLogAuto();
+}
+
+// Независимый вкл/выкл конкретного профиля (несколько могут работать разом)
+const TOGGLE_BUSY = {};
+async function profileToggle(name, on){
+  if (TOGGLE_BUSY[name]) return;
+  TOGGLE_BUSY[name] = true;
+  clearCheckIp();
+  $('big-status').innerHTML = '<em style="color:var(--muted)">' + (on ? 'запуск' : 'остановка') + ' · ' + escapeHtml(name) + '…</em>';
+  await fetch('/cgi-bin/connect?name=' + encodeURIComponent(name) + '&on=' + (on ? '1' : '0'));
+  let tries = 0;
+  const poll = async () => {
+    tries++;
+    let running = null;
+    try {
+      const arr = await (await fetch('/cgi-bin/profiles')).json();
+      const p = arr.find(x => x.name === name);
+      running = p ? p.running : false;
+    } catch(e) {}
+    if ((on ? running === true : running === false) || tries >= 16) {
+      TOGGLE_BUSY[name] = false; loadAll(); return;
+    }
+    setTimeout(poll, 1200);
+  };
+  setTimeout(poll, 1500);
+}
+
+async function clearLog(){
+  if (!confirm('Очистить лог openvpn?')) return;
+  await fetch('/cgi-bin/clearlog');
+  toast('Лог очищен', 'ok');
+  loadLog();
+}
+
+async function activate(name){
+  const r = await fetch('/cgi-bin/activate-profile?name=' + encodeURIComponent(name));
+  toast(await r.text(), 'ok');
+  setTimeout(loadAll, 1500);
+}
+
+async function del(name){
+  if (!confirm('Удалить профиль "' + name + '"?')) return;
+  const r = await fetch('/cgi-bin/delete-profile?name=' + encodeURIComponent(name));
+  toast(await r.text(), 'ok');
+  loadProfiles();
+}
+
+async function uploadProfile(){
+  const name = $('new-name').value.trim();
+  const content = $('new-content').value;
+  if (!name) { toast('Имя обязательно', 'error'); return }
+  if (!content) { toast('Конфиг пустой', 'error'); return }
+  const body = 'name=' + encodeURIComponent(name) + '&content=' + encodeURIComponent(content);
+  const r = await fetch('/cgi-bin/upload-profile', { method: 'POST', body });
+  const txt = (await r.text()).trim();
+  toast(txt, txt.startsWith('Сохранён') ? 'ok' : 'error');
+  if (txt.startsWith('Сохранён')) {
+    $('new-name').value = '';
+    $('new-content').value = '';
+    loadProfiles();
+  }
+}
+
+async function loadAll(){
+  await loadWans();
+  await loadStatus();
+  await loadProfiles();          // заполняет PROFILES_CACHE
+  loadDevProfiles();             // дропдаун профилей во вкладке «Устройства»
+  await Promise.all([
+    loadStats(), loadAutostart(), loadRoutes()
+  ]);
+  await loadMode();              // режим/устройства для выбранного в дропдауне профиля
+  await loadDevs();
+}
+
+loadAll();
+setInterval(() => { loadStatus(); loadStats(); loadProfiles(); }, 5000);
+</script>
+</body>
+</html>

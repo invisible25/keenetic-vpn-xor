@@ -1,0 +1,33 @@
+#!/bin/sh
+# Расписание профиля (как «Расписание» в Keenetic).
+#   GET  ?profile=X — отдать {enabled, actions:[{do,hh,mm,dow}]}
+#   POST ?profile=X — сохранить (body = JSON), затем schedule-sync профиля
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$PROFILE" ] && { echo '{"error":"need profile"}'; exit 0; }
+META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
+mkdir -p /opt/etc/openvpn/profile-meta
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 16384)
+  CLEAN=$(echo "$BODY" | jq -c '{
+    enabled: (.enabled == true),
+    actions: [ .actions[]? | select(.do == "start" or .do == "stop")
+      | { do: .do,
+          hh: ((.hh | tonumber? // 0) | floor | if . < 0 or . > 23 then 0 else . end),
+          mm: ((.mm | tonumber? // 0) | floor | if . < 0 or . > 59 then 0 else . end),
+          dow: ([ .dow[]? | tonumber? | floor | select(. >= 1 and . <= 7) ] | unique) }
+      | select(.dow | length > 0) ]
+  }' 2>/dev/null)
+  [ -z "$CLEAN" ] && { echo '{"error":"bad json"}'; exit 0; }
+  OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
+  echo "$OLD" | jq --argjson s "$CLEAN" '. + {schedule: $s}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
+  ( /opt/sbin/aim-manager.sh schedule-sync "$PROFILE" >/dev/null 2>&1 & )
+  echo "$CLEAN"
+else
+  [ -f "$META" ] && jq -c '.schedule // {"enabled":false,"actions":[]}' "$META" 2>/dev/null \
+    || echo '{"enabled":false,"actions":[]}'
+fi

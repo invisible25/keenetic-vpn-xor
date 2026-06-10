@@ -1,0 +1,10 @@
+#!/bin/sh
+case "$1" in
+  start)
+    AS=$(cat /opt/etc/openvpn/aim-autostart.conf 2>/dev/null | tr -d '[:space:]')
+    if [ "$AS" = "yes" ]; then
+      /opt/etc/init.d/S30vpn-aim start
+    fi
+    ;;
+  stop|status|restart) ;;
+esac

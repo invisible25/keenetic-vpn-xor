@@ -1,0 +1,74 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+F=/opt/etc/openvpn/aim-routes.conf
+LOCK=/opt/var/run/aim-routes.lock
+
+# Простой mkdir-lock (атомарен в любой fs). Ждём до 5 сек.
+i=0
+while ! mkdir "$LOCK" 2>/dev/null; do
+  i=$((i+1)); [ "$i" -ge 50 ] && break; sleep 0.1 2>/dev/null || sleep 1
+done
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+# Гарантируем валидную базу: если файл битый/пустой — стартуем с []
+if ! jq -e '.' "$F" >/dev/null 2>&1; then
+  echo '[]' > "$F"
+fi
+
+is_valid_cidr() {
+  echo "$1" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?$'
+}
+
+urldecode() {
+  printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
+}
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 65536)
+  ACTION=$(echo "$BODY" | tr '&' '\n' | grep '^action=' | sed 's/^action=//' | tr -cd 'a-z')
+  CIDR=$(echo "$BODY" | tr '&' '\n' | grep '^cidr=' | sed 's/^cidr=//' | sed 's/%2F/\//g; s/%2f/\//g; s/+/ /g' | tr -cd '0-9./')
+  COMMENT_RAW=$(echo "$BODY" | tr '&' '\n' | grep '^comment=' | sed 's/^comment=//')
+  COMMENT=$(urldecode "$COMMENT_RAW" | tr -d '"' | head -c 80)
+  IDX=$(echo "$BODY" | tr '&' '\n' | grep '^index=' | sed 's/^index=//' | tr -cd '0-9')
+
+  case "$ACTION" in
+    add)
+      if ! is_valid_cidr "$CIDR"; then echo '{"error":"invalid cidr"}'; exit 0; fi
+      jq --arg c "$CIDR" --arg cm "$COMMENT" \
+        'if any(.[]?; .cidr == $c) then . else . + [{cidr:$c, comment:$cm, enabled:true}] end' \
+        "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      ;;
+    import)
+      # bulk: data=<urlencoded JSON array of {cidr,comment}> — одна атомарная запись
+      DATA_RAW=$(echo "$BODY" | tr '&' '\n' | grep '^data=' | sed 's/^data=//')
+      DATA=$(urldecode "$DATA_RAW")
+      if echo "$DATA" | jq -e 'type == "array"' >/dev/null 2>&1; then
+        jq --argjson incoming "$DATA" '
+          . as $cur
+          | reduce $incoming[] as $r ($cur;
+              if ($r.cidr // "") == "" then .
+              elif any(.[]?; .cidr == $r.cidr) then .
+              else . + [{cidr:$r.cidr, comment:($r.comment // "Keenetic"), enabled:true}]
+              end)
+        ' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      else
+        echo '{"error":"bad data"}'; exit 0
+      fi
+      ;;
+    delete)
+      jq --argjson i "${IDX:-0}" 'del(.[$i])' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      ;;
+    deleteall)
+      echo '[]' > "$F"
+      ;;
+    toggle)
+      jq --argjson i "${IDX:-0}" '.[$i].enabled = (.[$i].enabled | not)' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      ;;
+  esac
+  /opt/sbin/aim-apply-rules.sh >/dev/null 2>&1
+fi
+
+cat "$F"

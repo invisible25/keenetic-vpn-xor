@@ -1,0 +1,37 @@
+#!/bin/sh
+# Агрегированный лог: последние действия + логи всех запущенных профилей.
+# В мультипрофиле openvpn пишет в /opt/var/log/vpn-aim-<profile>.log,
+# поэтому старый единый vpn-aim.log пустой — собираем по слотам.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+
+LOGDIR=/opt/var/log
+RUN=/opt/var/run/aim
+ANY=0
+
+if [ -s "$LOGDIR/vpn-aim-action.log" ]; then
+  echo "===== последние действия ====="
+  tail -12 "$LOGDIR/vpn-aim-action.log"
+  ANY=1
+fi
+
+for sf in "$RUN"/*.slot; do
+  [ -f "$sf" ] || continue
+  pr=$(basename "$sf" .slot)
+  LF="$LOGDIR/vpn-aim-$pr.log"
+  [ -f "$LF" ] || continue
+  echo
+  echo "===== $pr (slot $(cat "$sf" 2>/dev/null)) ====="
+  tail -20 "$LF" | grep -vE '^VERIFY'
+  ANY=1
+done
+
+if [ -s "$LOGDIR/vpn-aim.log" ]; then
+  echo
+  echo "===== общий ====="
+  tail -15 "$LOGDIR/vpn-aim.log"
+  ANY=1
+fi
+
+[ "$ANY" = 0 ] && echo "лог пуст (нет запущенных профилей)"

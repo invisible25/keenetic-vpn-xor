@@ -1,0 +1,42 @@
+#!/bin/sh
+# Список устройств LAN с именами Кинетика. ?profile=X — отметить выбранные
+# из meta этого профиля.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
+SELECTED=""
+[ -f "$META" ] && SELECTED=$(jq -r '.devices[]?' "$META" 2>/dev/null | tr '\n' ' ')
+
+HOSTLIST=$(curl -s --max-time 2 http://127.0.0.1:79/rci/show/ip/hotspot 2>/dev/null)
+
+if echo "$HOSTLIST" | jq -e '.host' >/dev/null 2>&1; then
+  echo "$HOSTLIST" | jq --arg sel " $SELECTED " '
+    [.host[]
+      | select(.active == true)
+      | select(.ip != null and .ip != "")
+      | . as $h
+      | {
+          ip: $h.ip,
+          mac: $h.mac,
+          name: (if ($h.name // "") != "" then $h.name else ($h.hostname // "") end),
+          iface: ((($h.interface // {}).description) // (($h.interface // {}).name) // ""),
+          selected: ($sel | contains(" " + $h.ip + " "))
+        }
+    ] | sort_by(.ip)'
+else
+  echo '['
+  awk -v sel=" $SELECTED " '
+    NR>1 {
+      ip=$1; mac=$4; iface=$6
+      if (mac == "00:00:00:00:00:00") next
+      if (iface == "eth3" || iface == "eth2.4") next
+      selected = (index(sel, " " ip " ") > 0) ? "true" : "false"
+      printf "%s{\"ip\":\"%s\",\"mac\":\"%s\",\"name\":\"\",\"iface\":\"%s\",\"selected\":%s}", (NR==2?"":","), ip, mac, iface, selected
+    }
+  ' /proc/net/arp
+  echo
+  echo ']'
+fi

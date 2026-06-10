@@ -1,0 +1,23 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+NAME=$(echo "$QUERY_STRING" | sed -n 's/.*name=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$NAME" ] && { echo "нужен ?name="; exit 1; }
+META=/opt/etc/openvpn/profile-meta/${NAME}.json
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 64)
+  WAN=$(echo "$BODY" | sed 's/^wan=//' | tr -cd 'A-Za-z0-9._-')
+  mkdir -p /opt/etc/openvpn/profile-meta
+  TMP="${META}.tmp.$$"
+  if [ -f "$META" ] && jq -e . "$META" >/dev/null 2>&1; then
+    jq --arg wan "$WAN" '.wan = $wan' "$META" > "$TMP"
+  else
+    jq -n --arg wan "$WAN" '{wan:$wan}' > "$TMP"
+  fi
+  mv "$TMP" "$META"
+  echo "saved: $NAME -> $WAN"
+else
+  [ -f "$META" ] && cat "$META" || echo '{}'
+fi

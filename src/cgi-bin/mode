@@ -1,0 +1,19 @@
+#!/bin/sh
+# Режим профиля (выбранные/весь LAN). ?profile=X. GET — вернуть, POST body=all|devices.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+
+PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$PROFILE" ] && { echo devices; exit 0; }
+META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
+mkdir -p /opt/etc/openvpn/profile-meta
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 32)
+  case "$BODY" in *all*) M=all ;; *) M=devices ;; esac
+  OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
+  echo "$OLD" | jq --arg m "$M" '. + {mode: $m}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
+  ( /opt/sbin/aim-manager.sh apply >/dev/null 2>&1 & )
+fi
+[ -f "$META" ] && jq -r '.mode // "devices"' "$META" 2>/dev/null || echo devices

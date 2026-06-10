@@ -1,0 +1,29 @@
+#!/bin/sh
+# Сохранить выбранные устройства в meta профиля. ?profile=X, POST body ip=...&ip=...
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+
+PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$PROFILE" ] && { echo "нужен ?profile="; exit 0; }
+META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
+mkdir -p /opt/etc/openvpn/profile-meta
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 8192)
+  TMP=$(mktemp)
+  echo "$BODY" | tr '&' '\n' | while read -r line; do
+    ip=${line#ip=}
+    case "$ip" in
+      [0-9]*.[0-9]*.[0-9]*.[0-9]*) echo "$ip" >> "$TMP" ;;
+    esac
+  done
+  DEVICES_JSON=$(awk 'BEGIN{printf "["} {if(NR>1)printf ","; printf "\"%s\"", $0} END{printf "]"}' "$TMP")
+  rm -f "$TMP"
+  OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
+  echo "$OLD" | jq --argjson d "$DEVICES_JSON" '. + {devices: $d}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
+  ( /opt/sbin/aim-manager.sh apply >/dev/null 2>&1 & )
+  echo "Сохранено для $PROFILE: $(echo "$DEVICES_JSON" | jq 'length') устройств"
+else
+  [ -f "$META" ] && jq -r '.devices[]?' "$META" 2>/dev/null
+fi

@@ -1,0 +1,38 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+ROUTES=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/ip/route 2>/dev/null)
+IFACES=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null)
+AIM=/opt/etc/openvpn/aim-routes.conf
+
+echo "$ROUTES" | jq -e . >/dev/null 2>&1 || ROUTES='[]'
+echo "$IFACES" | jq -e . >/dev/null 2>&1 || IFACES='{}'
+[ -f "$AIM" ] || echo '[]' > "$AIM"
+
+jq -n --argjson routes "$ROUTES" --argjson ifaces "$IFACES" --slurpfile aim "$AIM" '
+  ($aim[0] // []) as $current
+  | [
+      $routes[]
+      | select(.static == true)
+      | select((.rejecting // false) != true)
+      | select((.destination // "") != "0.0.0.0/0")
+      | select((.destination // "") != "")
+      | select((.destination // "") | contains(":") | not)
+      | . as $r
+      | ($r.interface // "") as $iface
+      | (($ifaces[$iface].description // "") as $d | if $d != "" then $d else $iface end) as $label
+      | {
+          cidr: $r.destination,
+          gateway: ($r.gateway // ""),
+          interface: $iface,
+          interface_label: $label,
+          metric: ($r.metric // 0),
+          comment: ("Keenetic: " + $label + (if ($r.gateway // "") != "0.0.0.0" and ($r.gateway // "") != "" then " via " + $r.gateway else "" end)),
+          existing: any($current[]?; .cidr == $r.destination)
+        }
+    ]
+  | unique_by(.cidr)
+  | sort_by(.cidr)
+'

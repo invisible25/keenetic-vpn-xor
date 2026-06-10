@@ -1,0 +1,54 @@
+#!/bin/sh
+# Список WAN-аплинков как в Кинетике: дружественные имена (KWRT, Turkmentelecom,
+# V3, 3dmax…) + маппинг на Linux-устройство по IP-адресу (для ip rule oif).
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+# Карта Linux: { "10.0.0.112":"eth2.4", "192.168.88.4":"eth3", ... }
+LMAP=$(ip -o -4 addr show 2>/dev/null \
+  | awk '{split($4,a,"/"); print a[1]" "$2}' \
+  | grep -vE '^(127\.|172\.2[0-9]\.|172\.3[01]\.)' \
+  | jq -R -s 'split("\n")|map(select(length>0)|split(" "))|map({(.[0]):.[1]})|add // {}')
+
+IFS_JSON=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null)
+
+if echo "$IFS_JSON" | jq -e 'type=="object"' >/dev/null 2>&1; then
+  echo "$IFS_JSON" | jq --argjson lmap "$LMAP" '
+    [ to_entries[]
+      | .key as $k | .value as $v
+      | select($v.address != null and $v.address != "" and $v.address != "0.0.0.0")
+      | ($v.type // "") as $t
+      # исключаем LAN-мосты/wifi/порты; всё остальное с адресом — аплинк
+      | select(["Bridge","AccessPoint","Wireless","WifiMaster","WifiStation","Switch","Port","Loopback"] | index($t) == null)
+      | ($lmap[$v.address] // "") as $dev
+      | select($dev != "")              # без Linux-устройства маршрутизировать нельзя
+      | {
+          iface: $dev,
+          label: ($v.description // $v.id // $dev),
+          ndm: ($v.id // $k),
+          ip: $v.address,
+          type: $t,
+          default: ($v.defaultgw // false),
+          connected: (($v.connected // "no") == "yes")
+        }
+    ]
+    | unique_by(.iface)
+    | sort_by([(.default | not), (.connected | not), .label])
+  '
+else
+  # Fallback: сырые Linux-интерфейсы (если RCI недоступен)
+  DEFGW=$(ip route show default 2>/dev/null | head -1 | awk '{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
+  echo '['
+  first=1
+  for iface in $(ip -o link 2>/dev/null | awk -F': ' '{print $2}' | sed 's/@.*//'); do
+    case "$iface" in lo|br*|tunl*|sit*|ip6tnl*|dummy*|ra*|tun*|ovpn_br*|ezcfg*) continue ;; esac
+    IP=$(ip -br -4 addr show "$iface" 2>/dev/null | awk '{print $3}')
+    [ -z "$IP" ] && continue
+    [ $first -eq 0 ] && echo ','
+    first=0
+    DEF=false; [ "$iface" = "$DEFGW" ] && DEF=true
+    printf '{"iface":"%s","label":"%s","ndm":"","ip":"%s","type":"","default":%s,"connected":true}' "$iface" "$iface" "$IP" "$DEF"
+  done
+  echo; echo ']'
+fi

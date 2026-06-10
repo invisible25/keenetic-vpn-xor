@@ -1,0 +1,82 @@
+#!/bin/sh
+# /cgi-bin/profile?name=X
+#   GET  — отдаёт содержимое .ovpn + metadata (devices_count, mode из profile-meta)
+#   POST — обновляет .ovpn (body: content=<urlencoded>) и опционально name= (rename)
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+NAME=$(echo "$QUERY_STRING" | sed -n 's/.*name=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$NAME" ] && { echo '{"error":"need ?name="}'; exit 0; }
+
+DIR=/opt/etc/openvpn/profiles
+META=/opt/etc/openvpn/profile-meta/${NAME}.json
+F=$DIR/${NAME}.ovpn
+
+urldecode() {
+  printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
+}
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  [ -f "$F" ] || { echo '{"error":"not found"}'; exit 0; }
+  BODY=$(head -c 200000)
+
+  NEW_NAME=$(echo "$BODY" | tr '&' '\n' | grep '^name=' | head -1 | sed 's/^name=//')
+  CONTENT=$(echo "$BODY" | tr '&' '\n' | grep '^content=' | head -1 | sed 's/^content=//')
+
+  if [ -n "$CONTENT" ]; then
+    CONTENT=$(urldecode "$CONTENT")
+    echo "$CONTENT" | grep -qE '^remote ' || { echo '{"error":"no remote line"}'; exit 0; }
+    echo "$CONTENT" | sed '/^block-outside-dns/d' > "$F"
+    chmod 600 "$F"
+  fi
+
+  if [ -n "$NEW_NAME" ]; then
+    NEW_NAME=$(urldecode "$NEW_NAME" | tr -cd 'A-Za-z0-9._-' | head -c 32)
+    if [ -n "$NEW_NAME" ] && [ "$NEW_NAME" != "$NAME" ]; then
+      [ -f "$DIR/${NEW_NAME}.ovpn" ] && { echo '{"error":"name already exists"}'; exit 0; }
+      mv "$F" "$DIR/${NEW_NAME}.ovpn"
+      [ -f "$META" ] && mv "$META" "/opt/etc/openvpn/profile-meta/${NEW_NAME}.json"
+      # active-profile rename
+      ACTIVE=$(cat /opt/etc/openvpn/active-profile 2>/dev/null | tr -d '[:space:]')
+      [ "$ACTIVE" = "$NAME" ] && echo "$NEW_NAME" > /opt/etc/openvpn/active-profile
+      NAME="$NEW_NAME"
+      F="$DIR/${NAME}.ovpn"
+      META=/opt/etc/openvpn/profile-meta/${NAME}.json
+    fi
+  fi
+
+  # Если этот профиль активен и запущен — рестартуем
+  ACTIVE=$(cat /opt/etc/openvpn/active-profile 2>/dev/null | tr -d '[:space:]')
+  if [ "$ACTIVE" = "$NAME" ] && [ -f /opt/var/run/vpn-aim.pid ] && kill -0 "$(cat /opt/var/run/vpn-aim.pid)" 2>/dev/null; then
+    /opt/etc/init.d/S30vpn-aim restart >/dev/null 2>&1 &
+    RESTARTED=true
+  else
+    RESTARTED=false
+  fi
+
+  jq -n --arg name "$NAME" --argjson r "$RESTARTED" '{ok: true, name: $name, restarted: $r}'
+  exit 0
+fi
+
+# GET
+[ -f "$F" ] || { echo '{"error":"not found"}'; exit 0; }
+CONTENT=$(cat "$F")
+DEV_COUNT=0
+MODE=devices
+WAN=""
+if [ -f "$META" ]; then
+  DEV_COUNT=$(jq -r '.devices | length // 0' "$META" 2>/dev/null)
+  MODE=$(jq -r '.mode // "devices"' "$META" 2>/dev/null)
+  WAN=$(jq -r '.wan // ""' "$META" 2>/dev/null)
+fi
+REMOTE=$(grep -E '^remote ' "$F" 2>/dev/null | head -1 | awk '{print $2}')
+
+jq -n \
+  --arg name "$NAME" \
+  --arg content "$CONTENT" \
+  --arg remote "$REMOTE" \
+  --arg mode "$MODE" \
+  --arg wan "$WAN" \
+  --argjson devCount "${DEV_COUNT:-0}" \
+  '{name: $name, content: $content, remote: $remote, mode: $mode, wan: $wan, devices_count: $devCount}'

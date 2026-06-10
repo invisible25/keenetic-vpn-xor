@@ -1,0 +1,11 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+ST=$(/opt/sbin/aim-manager.sh status 2>/dev/null)
+RUN=$(echo "$ST" | jq '[.[]|select(.running)] | length' 2>/dev/null)
+[ -z "$RUN" ] && RUN=0
+if [ "$RUN" -gt 0 ]; then echo ACTIVE; else echo INACTIVE; fi
+echo "count=$RUN"
+# имена работающих профилей
+echo "running=$(echo "$ST" | jq -r '[.[]|select(.running)|.name]|join(", ")' 2>/dev/null)"

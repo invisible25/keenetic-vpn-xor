@@ -1,0 +1,13 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain\r\n\r\n"
+F=/opt/etc/openvpn/aim-autostart.conf
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 16)
+  case "$BODY" in
+    *yes*|*true*|*on*|*1*) echo yes > "$F" ;;
+    *) echo no > "$F" ;;
+  esac
+fi
+cat "$F" 2>/dev/null || echo no

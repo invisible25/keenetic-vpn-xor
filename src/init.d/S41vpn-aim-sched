@@ -1,0 +1,48 @@
+#!/bin/sh
+# Планировщик расписаний VPN+XOR (как «Расписание» в Keenetic).
+# Исполняет события start/stop из .schedule в profile-meta/<name>.json:
+# при старте — schedule-sync (приводит состояние после перезагрузки),
+# дальше каждые 30с — schedule-tick (события с прошлого тика).
+
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
+PIDFILE=/opt/var/run/aim/sched.pid
+MGR=/opt/sbin/aim-manager.sh
+
+loop() {
+  "$MGR" schedule-sync >/dev/null 2>&1
+  while true; do
+    sleep 30
+    "$MGR" schedule-tick >/dev/null 2>&1
+  done
+}
+
+# PID жив И это действительно наш процесс (после ребута PID могли переиспользовать)
+is_running() {
+  P=$(cat "$PIDFILE" 2>/dev/null); [ -n "$P" ] || return 1
+  grep -q "S41vpn-aim-sched" "/proc/$P/cmdline" 2>/dev/null
+}
+
+case "$1" in
+  start)
+    if is_running; then
+      echo "sched: already running"; exit 0
+    fi
+    rm -f "$PIDFILE"
+    mkdir -p /opt/var/run/aim
+    loop &
+    echo $! > "$PIDFILE"
+    echo "sched: started PID=$(cat $PIDFILE)"
+    ;;
+  stop)
+    is_running && kill "$(cat "$PIDFILE")" 2>/dev/null
+    rm -f "$PIDFILE"
+    echo "sched: stopped"
+    ;;
+  status)
+    is_running && echo "running PID=$(cat $PIDFILE)" || echo "stopped"
+    ;;
+  restart) $0 stop; sleep 1; $0 start ;;
+  *) echo "{start|stop|restart|status}"; exit 1 ;;
+esac
