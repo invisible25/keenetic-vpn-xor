@@ -13,9 +13,9 @@
   --surface: #ffffff;
   --ink: #1c1b18;
   --ink-2: #4f4a42;
-  --muted: #8a8377;
+  --muted: #6e675b;
   --gold: #c9a876;
-  --gold-deep: #8b6f47;
+  --gold-deep: #806538;
   --gold-soft: #ece0c8;
   --line: #e4ddcd;
   --charcoal: #1f1f1f;
@@ -53,7 +53,7 @@
 /* ── Доп. тёмные темы (подсмотрено в AWG-Manager) ── */
 [data-theme="tokyonight"] {
   --bg: #1a1b26; --bg-alt: #1f2335; --surface: #24283b;
-  --ink: #c0caf5; --ink-2: #a9b1d6; --muted: #565f89;
+  --ink: #c0caf5; --ink-2: #a9b1d6; --muted: #7e88bd;
   --gold: #7aa2f7; --gold-deep: #7aa2f7; --gold-soft: rgba(122,162,247,0.14);
   --line: #3b4261; --charcoal: #7aa2f7; --on-charcoal: #16161e; --on-gold: #16161e;
   --ok: #9ece6a; --bad: #f7768e; --warn: #e0af68; --info: #7dcfff;
@@ -61,7 +61,7 @@
 }
 [data-theme="neo"] {
   --bg: #0a0a0a; --bg-alt: #141414; --surface: #1a1a1a;
-  --ink: #f5f5dc; --ink-2: #c8c8a0; --muted: #7a7a5a;
+  --ink: #f5f5dc; --ink-2: #c8c8a0; --muted: #9d9d72;
   --gold: #e6e84a; --gold-deep: #e6e84a; --gold-soft: rgba(230,232,74,0.12);
   --line: #2a2a18; --charcoal: #e6e84a; --on-charcoal: #0a0a0a; --on-gold: #0a0a0a;
   --ok: #a3e84a; --bad: #ff5c5c; --warn: #e8b84a; --info: #4ad8e8;
@@ -69,7 +69,7 @@
 }
 [data-theme="mint"] {
   --bg: #1e2530; --bg-alt: #27303f; --surface: #2c3646;
-  --ink: #dbe6e4; --ink-2: #a8bdba; --muted: #6b7d80;
+  --ink: #dbe6e4; --ink-2: #a8bdba; --muted: #94a8ab;
   --gold: #7fd4c8; --gold-deep: #7fd4c8; --gold-soft: rgba(127,212,200,0.14);
   --line: #3a4757; --charcoal: #7fd4c8; --on-charcoal: #1e2530; --on-gold: #1e2530;
   --ok: #86d99c; --bad: #e88c8c; --warn: #e8c88c; --info: #8cc8e8;
@@ -458,10 +458,16 @@ pre.log {
 .custom-row { display: none; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line) }
 .custom-row label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-2); font-weight: 600 }
 .custom-row input[type=color] { width: 52px; height: 34px; border: 1px solid var(--line); border-radius: 7px; background: none; cursor: pointer; padding: 2px }
+
+/* ── Доступность: видимый фокус для клавиатуры + sr-only ── */
+:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; border-radius: 5px }
+.tab:focus-visible, .theme-swatch:focus-visible, .opt:focus-visible, .profile-info:focus-visible { outline-offset: -2px }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0 }
 </style>
 </head>
 <body>
 <div class="wrap">
+<h1 class="sr-only">Панель управления OpenVPN+XOR для Keenetic</h1>
 
 <header>
   <a href="/" class="logo" style="text-decoration:none;color:inherit">
@@ -500,13 +506,13 @@ pre.log {
   </div>
 </div>
 
-<div class="tabs">
-  <div class="tab active" data-tab="profiles">Профили</div>
-  <div class="tab" data-tab="devices">Устройства</div>
-  <div class="tab" data-tab="routes">Маршруты</div>
-  <div class="tab" data-tab="settings">Настройки</div>
-  <div class="tab" data-tab="log">Лог</div>
-</div>
+<nav class="tabs" role="tablist" aria-label="Разделы панели">
+  <div class="tab active" data-tab="profiles" role="tab" tabindex="0" aria-selected="true">Профили</div>
+  <div class="tab" data-tab="devices" role="tab" tabindex="0" aria-selected="false">Устройства</div>
+  <div class="tab" data-tab="routes" role="tab" tabindex="0" aria-selected="false">Маршруты</div>
+  <div class="tab" data-tab="settings" role="tab" tabindex="0" aria-selected="false">Настройки</div>
+  <div class="tab" data-tab="log" role="tab" tabindex="0" aria-selected="false">Лог</div>
+</nav>
 
 <div class="section active" data-section="profiles">
   <div class="card">
@@ -609,7 +615,7 @@ pre.log {
         <div class="setting-hint">VPN поднимается при включении роутера</div>
       </div>
       <label class="switch">
-        <input type="checkbox" id="autostart-toggle" onchange="setAutostart(this.checked)">
+        <input type="checkbox" id="autostart-toggle" aria-label="Автозапуск VPN при включении роутера" onchange="setAutostart(this.checked)">
         <span class="switch-slider"></span>
       </label>
     </div>
@@ -629,7 +635,7 @@ pre.log {
 
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <div id="profile-modal" class="modal-overlay" onclick="if(event.target===this)closeProfileEdit()">
   <div class="modal">
@@ -750,14 +756,32 @@ let CURRENT_TAB = 'profiles';
 let CURRENT_EDIT = null;
 
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
-  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
   document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
-  t.classList.add('active');
+  t.classList.add('active'); t.setAttribute('aria-selected','true');
   document.querySelector('.section[data-section="' + t.dataset.tab + '"]').classList.add('active');
   CURRENT_TAB = t.dataset.tab;
   if (CURRENT_TAB === 'log') { startLogAuto(); }
   else stopLogAuto();
   if (CURRENT_TAB === 'settings') loadSysinfo();
+});
+
+// Доступность: активация div-интерактива с клавиатуры (Enter/Space) + стрелки по вкладкам
+document.addEventListener('keydown', e => {
+  const el = e.target;
+  if (!el.matches || !el.matches('.tab, .theme-swatch, .opt, .profile-info')) return;
+  if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); el.click(); return; }
+  if (el.matches('.tab') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    e.preventDefault();
+    const tabs = [...document.querySelectorAll('.tab')];
+    const i = tabs.indexOf(el);
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    next.focus(); next.click();
+  }
+});
+// Доступность: статический div-интерактив (свотчи тем, переключатель режима) — фокусируемый
+document.querySelectorAll('.theme-swatch, .opt').forEach(el => {
+  el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
 });
 
 let VPN_ACTIVE = false;
@@ -858,14 +882,14 @@ async function loadProfiles(){
     else stateLabel = '<span style="color:var(--muted)">выключен</span>';
     const nm = p.name.replace(/'/g, "\\'");
     card.innerHTML =
-      '<div class="profile-info" onclick="openDevicesFor(\'' + nm + '\')" title="Нажми — настроить устройства для этого профиля">' +
+      '<div class="profile-info" tabindex="0" role="button" aria-label="Настроить устройства профиля ' + escapeHtml(p.name) + '" onclick="openDevicesFor(\'' + nm + '\')" title="Нажми — настроить устройства для этого профиля">' +
         '<div class="profile-name"><span class="dot ' + dotLive + '"></span>' + escapeHtml(p.name) + '</div>' +
         '<div class="profile-meta">' + stateLabel + wanText + policyBadge + '</div>' +
       '</div>' +
-      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы">⏰</button>' +
-      '<button class="edit-btn" onclick="event.stopPropagation();editProfile(\'' + nm + '\')" title="Редактировать профиль">✎</button>' +
+      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы" aria-label="Расписание профиля ' + escapeHtml(p.name) + '">⏰</button>' +
+      '<button class="edit-btn" onclick="event.stopPropagation();editProfile(\'' + nm + '\')" title="Редактировать профиль" aria-label="Редактировать профиль ' + escapeHtml(p.name) + '">✎</button>' +
       '<label class="switch" onclick="event.stopPropagation()" title="Включить / выключить">' +
-        '<input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' onchange="profileToggle(\'' + nm + '\', this.checked)">' +
+        '<input type="checkbox" aria-label="Включить профиль ' + escapeHtml(p.name) + '" ' + (p.enabled ? 'checked' : '') + ' onchange="profileToggle(\'' + nm + '\', this.checked)">' +
         '<span class="switch-slider"></span>' +
       '</label>';
     box.appendChild(card);
@@ -991,7 +1015,7 @@ function schedEditorHTML(){
         '<div class="setting-label">Расписание активно</div>' +
         '<div class="setting-hint">Закрась часы, когда профиль должен работать. События — как в Keenetic: в момент границы; между ними ручной тумблер работает.</div>' +
       '</div>' +
-      '<label class="switch"><input type="checkbox" id="sched-enabled"' + (SCHED.enabled ? ' checked' : '') + '><span class="switch-slider"></span></label>' +
+      '<label class="switch"><input type="checkbox" id="sched-enabled" aria-label="Расписание активно"' + (SCHED.enabled ? ' checked' : '') + '><span class="switch-slider"></span></label>' +
     '</div>' +
     '<div class="sg-wrap" id="sched-grid">' + hours + rows + '</div>' +
     '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
@@ -1145,7 +1169,7 @@ function renderDevs(devs){
       ? '<span class="policy-badge">Политика: ' + escapeHtml(d.policy_name) + '</span>'
       : '';
     row.innerHTML =
-      '<input type="checkbox" data-ip="' + d.ip + '" ' + checked + '>' +
+      '<input type="checkbox" aria-label="Через VPN: ' + escapeHtml(d.name || d.ip) + '" data-ip="' + d.ip + '" ' + checked + '>' +
       '<div class="dev-info">' +
         nameHtml +
         '<div class="dev-meta">' +
@@ -1210,7 +1234,7 @@ async function loadRoutes(){
       const enabled = r.enabled !== false;
       const comment = r.comment ? '<div class="dev-meta"><span>' + escapeHtml(r.comment) + '</span></div>' : '';
       row.innerHTML =
-        '<label class="switch"><input type="checkbox" ' + (enabled ? 'checked' : '') + ' onchange="toggleRoute(' + idx + ')"><span class="switch-slider"></span></label>' +
+        '<label class="switch"><input type="checkbox" aria-label="Маршрут ' + escapeHtml(r.cidr) + ' через VPN" ' + (enabled ? 'checked' : '') + ' onchange="toggleRoute(' + idx + ')"><span class="switch-slider"></span></label>' +
         '<div class="dev-info" style="margin-left:6px">' +
           '<div class="dev-name mono" style="color:var(--gold-deep)">' + escapeHtml(r.cidr) + '</div>' +
           comment +
