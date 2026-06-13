@@ -121,6 +121,25 @@ if [ -x /opt/sbin/aim-manager.sh ]; then
   ok "профили приведены в соответствие"
 fi
 
+# === Проверяем, что службы реально поднялись ===
+info "Проверяю, что всё запустилось..."
+HEALTH_OK=yes
+# Веб-панель: не просто «процесс есть», а реально отвечает на порту 8888.
+if curl -s -o /dev/null --max-time 4 http://127.0.0.1:8888/ 2>/dev/null; then
+  ok "веб-панель отвечает на порту 8888"
+else
+  HEALTH_OK=no
+  warn "веб-панель не отвечает. Запусти вручную:  /opt/etc/init.d/S31vpn-aim-web start"
+  warn "и загляни в лог:  /opt/var/log/vpn-aim-web.err"
+fi
+# Планировщик расписаний.
+if /opt/etc/init.d/S41vpn-aim-sched status 2>/dev/null | grep -qi running; then
+  ok "планировщик расписаний работает"
+else
+  HEALTH_OK=no
+  warn "планировщик не запущен. Запусти:  /opt/etc/init.d/S41vpn-aim-sched start"
+fi
+
 # === Финал ===
 # Робастное определение LAN-IP роутера (для ссылки http://<IP>:8888/).
 # Подсеть и имя моста у разных Keenetic РАЗНЫЕ (br0/br1, 192.168.1.1 /
@@ -194,11 +213,18 @@ ok "  Открой:  http://$IP:8888/"
 ok "=========================================="
 echo
 echo "Что дальше:"
-echo "  1. Открой UI в браузере на любом устройстве LAN"
-echo "  2. Таб «Профили» → вставь свой .ovpn → Сохранить"
-echo "  3. Включи тумблер на профиле (подожди 10-20с — XOR-хендшейк)"
-echo "  4. Таб «Устройства» — выбери кто пойдёт через VPN"
+echo "  1. Открой http://$IP:8888/ в браузере — с любого устройства в сети роутера."
+echo "  2. Вкладка «Профили» → вставь свой .ovpn → «Сохранить»."
+echo "  3. Включи профиль тумблером и подожди 10-20 секунд (идёт XOR-хендшейк)."
+echo "  4. Вкладка «Устройства» → отметь, кто пойдёт через VPN."
 echo
-echo "Управление через SSH:"
-echo "  /opt/sbin/aim-manager.sh {reconcile|apply|status|stopall}"
-echo "  /opt/etc/init.d/S41vpn-aim-sched {start|stop|status}   # планировщик расписаний"
+echo "  Если у роутера несколько каналов в интернет или включён штатный VPN Keenetic —"
+echo "  выбери в профиле физический WAN (вкладка «Профили» → ✎). Иначе openvpn может"
+echo "  уходить мимо нужного канала, и подключение не поднимется."
+echo
+echo "Если что-то не так — проверь по SSH:"
+echo "  /opt/sbin/aim-manager.sh status              # какие профили подняты"
+echo "  /opt/etc/init.d/S31vpn-aim-web status        # веб-панель"
+echo "  /opt/etc/init.d/S41vpn-aim-sched status      # планировщик"
+echo "  tail -f /opt/var/log/vpn-aim-<профиль>.log   # лог openvpn нужного профиля"
+[ "$HEALTH_OK" = no ] && warn "Часть служб не поднялась — см. подсказки выше."
