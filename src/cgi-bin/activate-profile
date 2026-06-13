@@ -21,6 +21,6 @@ if [ -f /opt/var/run/vpn-aim.pid ] && kill -0 $(cat /opt/var/run/vpn-aim.pid) 2>
   /opt/etc/init.d/S30vpn-aim restart >/dev/null 2>&1 &
   echo "активирован: $NAME (перезапуск VPN)"
 else
-  /opt/sbin/aim-apply-rules.sh 2>/dev/null
+  /opt/sbin/aim-manager.sh apply >/dev/null 2>&1
   echo "активирован: $NAME"
 fi

@@ -9,9 +9,9 @@ LOG=/opt/var/log/vpn-aim-${AIM_PROFILE:-$SLOT}.log
 
 echo "[$(date '+%F %T')] up: dev=$DEV slot=$SLOT profile=$AIM_PROFILE ip=$ifconfig_local" >> "$LOG"
 
-# default route в таблицу профиля
-ip route flush table "$TABLE" 2>/dev/null
-ip route add default dev "$DEV" table "$TABLE" 2>/dev/null
+# default в таблицу профиля — атомарно (replace, без flush → без окна утечки)
+ip route replace default dev "$DEV" table "$TABLE" 2>/dev/null
+ip route replace blackhole default table "$TABLE" metric 9999 2>/dev/null  # kill-switch fallback
 
 # NAT + forward + MSS clamp
 iptables -t nat -C POSTROUTING -o "$DEV" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o "$DEV" -j MASQUERADE

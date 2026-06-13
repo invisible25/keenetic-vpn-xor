@@ -67,6 +67,19 @@ alloc_slot() {
   return 1   # нет свободных слотов
 }
 
+# ---- определить WAN профиля: явный из meta, иначе авто (физ. uplink Keenetic) ----
+# Авто берёт интерфейс с флагом defaultgw=true из NDM RCI (это ISP-аплинк, НЕ
+# policy-VPN), маппит address→Linux-устройство. Нужно, чтобы openvpn выходил к
+# своему серверу через физический WAN, даже когда штатный VPN Keenetic — default.
+resolve_wan() {
+  W=$(meta_get "$1" '.wan'); [ -n "$W" ] && { echo "$W"; return; }
+  IFJSON=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null)
+  [ -z "$IFJSON" ] && return
+  ADDR=$(echo "$IFJSON" | jq -r 'to_entries[]|.value|select((.defaultgw//false)==true and (.connected//"no")=="yes")|.address // empty' 2>/dev/null | head -1)
+  [ -z "$ADDR" ] && return
+  ip -o -4 addr show 2>/dev/null | awk -v a="$ADDR" 'index($4,a"/")==1{print $2; exit}'
+}
+
 # ---- запуск одного профиля ----
 start_one() {
   PROFILE=$1
@@ -86,17 +99,42 @@ start_one() {
     n=$((n+1)); [ "$n" -ge 20 ] && break; sleep 0.2 2>/dev/null || sleep 1
   done
 
-  # WAN-policy: трафик к VPN-серверам этого профиля через выбранный канал
-  WAN=$(meta_get "$PROFILE" '.wan')
+  # WAN-policy: трафик самого процесса openvpn к VPN-серверу должен выходить
+  # через выбранный физический WAN, даже когда штатный VPN Keenetic стал
+  # default-route. Иначе исходящий UDP уходит в Keenetic-VPN → TLS timeout.
+  WAN=$(resolve_wan "$PROFILE")     # явный из meta или авто (физ. uplink)
+  WAN_ARGS=""
   if [ -n "$WAN" ]; then
-    PRIO=$((30 + SLOT))   # WAN-policy: выше правил устройств, но ниже системных
-    for r in $(grep -E '^remote ' "$CFG" 2>/dev/null | awk '{print $2}' | sort -u); do
+    PRIO=$((30 + SLOT))             # ниже политик Keenetic (fwmark prio 100-110)
+    WTABLE=$((201 + SLOT))
+    WMARK=$((4100 + SLOT))
+    while ip rule del priority "$PRIO" 2>/dev/null; do :; done
+    ip route flush table "$WTABLE" 2>/dev/null
+
+    # Шлюз WAN: ищем ЛЮБОЙ via на интерфейсе (default может забрать Keenetic-VPN),
+    # для PPP/p2p (PPPoE/SSTP/L2TP) шлюз не нужен — выход через сам dev.
+    GW=$(ip -4 route show dev "$WAN" 2>/dev/null | sed -n 's/.*[[:space:]]via[[:space:]]\([0-9.]\{1,\}\).*/\1/p' | head -1)
+    [ -z "$GW" ] && GW=$(ip -4 route show table main 2>/dev/null | sed -n "s|.*via[[:space:]]\([0-9.]\{1,\}\)[[:space:]]dev[[:space:]]$WAN\([[:space:]].*\)\?\$|\1|p" | head -1)
+    if [ -n "$GW" ]; then
+      ip route replace default via "$GW" dev "$WAN" table "$WTABLE" 2>/dev/null
+    else
+      ip route replace default dev "$WAN" table "$WTABLE" 2>/dev/null
+    fi
+
+    # ОСНОВНОЙ механизм: правило по АДРЕСУ VPN-сервера. Сопоставляется на этапе
+    # FIB по dst — иммунно к затиранию метки, бьёт политики Keenetic (prio<100).
+    for r in $(grep -E '^[[:space:]]*remote[[:space:]]' "$CFG" 2>/dev/null | awk '{print $2}' | sort -u); do
       case "$r" in
-        *[a-z]*) IP=$(nslookup "$r" 2>/dev/null | awk '/^Address [0-9]/{print $3; exit}') ;;
-        *)       IP="$r" ;;
+        *[a-zA-Z]*) IP=$(nslookup "$r" 2>/dev/null | awk '/^Address[ :]/{print $NF}' | grep -E '^[0-9.]+$' | grep -vE '^127\.' | head -1) ;;
+        *)          IP="$r" ;;
       esac
-      [ -n "$IP" ] && ip rule add to "$IP" oif "$WAN" priority "$PRIO" 2>/dev/null
+      [ -n "$IP" ] && ip rule add to "$IP" lookup "$WTABLE" priority "$PRIO" 2>/dev/null
     done
+
+    # ВТОРИЧНЫЙ механизм (catch-all для hostname/непредсказуемых IP): SO_MARK от
+    # openvpn → fwmark-правило. Работает, т.к. NDM не метит router-originated OUTPUT.
+    ip rule add fwmark "$WMARK" lookup "$WTABLE" priority "$PRIO" 2>/dev/null
+    WAN_ARGS="--mark $WMARK"
   fi
 
   "$BIN" \
@@ -110,6 +148,7 @@ start_one() {
     --pull-filter ignore "redirect-gateway" \
     --pull-filter ignore "route" \
     --pull-filter ignore "dhcp-option" \
+    $WAN_ARGS \
     --up "$UP" --down "$DOWN" --route-up "$UP"
   echo "[$PROFILE] start slot=$SLOT dev=$DEV"
 }
@@ -124,10 +163,12 @@ stop_one() {
   rm -f "$RUN/$PROFILE.pid"
   if [ -n "$SLOT" ]; then
     TABLE=$((101 + SLOT))
+    WTABLE=$((201 + SLOT))
     PRIOW=$((30 + SLOT))
     while ip rule del table "$TABLE" 2>/dev/null; do :; done
     while ip rule del priority "$PRIOW" 2>/dev/null; do :; done
     ip route flush table "$TABLE" 2>/dev/null
+    ip route flush table "$WTABLE" 2>/dev/null
     DEV="tun_aim$SLOT"
     iptables -t nat -D POSTROUTING -o "$DEV" -j MASQUERADE 2>/dev/null
     ip link show "$DEV" >/dev/null 2>&1 && ip link delete "$DEV" 2>/dev/null
@@ -143,9 +184,10 @@ apply_one() {
   DEV="tun_aim$SLOT"; TABLE=$((101 + SLOT))
   ip link show "$DEV" >/dev/null 2>&1 || return 0
 
-  # default route в таблицу профиля
-  ip route flush table "$TABLE" 2>/dev/null
-  ip route add default dev "$DEV" table "$TABLE" 2>/dev/null
+  # default в таблицу профиля — атомарно (replace), без flush: иначе между
+  # flush и add таблица пуста → пакет привязанного устройства утекает мимо VPN.
+  ip route replace default dev "$DEV" table "$TABLE" 2>/dev/null
+  ip route replace blackhole default table "$TABLE" metric 9999 2>/dev/null  # kill-switch fallback
 
   # очистить старые from/to правила этого профиля и заново.
   # Приоритеты ниже 100 — чтобы перебить fwmark-правила Keenetic (политики доступа, prio 100-110).

@@ -68,7 +68,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
       jq --argjson i "${IDX:-0}" '.[$i].enabled = (.[$i].enabled | not)' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
       ;;
   esac
-  /opt/sbin/aim-apply-rules.sh >/dev/null 2>&1
+  /opt/sbin/aim-manager.sh apply >/dev/null 2>&1
 fi
 
 cat "$F"

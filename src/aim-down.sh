@@ -13,4 +13,5 @@ iptables -D FORWARD -o "$DEV" -j ACCEPT 2>/dev/null
 iptables -D FORWARD -i "$DEV" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
 iptables -t mangle -D FORWARD -o "$DEV" -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null
 ip route flush table "$TABLE" 2>/dev/null
+ip route add blackhole default table "$TABLE" metric 9999 2>/dev/null
 exit 0
