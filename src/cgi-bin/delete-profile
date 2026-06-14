@@ -4,7 +4,10 @@ export PATH
 printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
 NAME=$(echo "$QUERY_STRING" | sed -n 's/.*name=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
 [ -z "$NAME" ] && { echo "нужен ?name="; exit 1; }
-ACTIVE=$(cat /opt/etc/openvpn/active-profile 2>/dev/null | tr -d '[:space:]')
-[ "$NAME" = "$ACTIVE" ] && { echo "нельзя удалить активный профиль"; exit 1; }
+# Блокируем удаление запущенного профиля (multi-profile: проверяем pid-файл)
+PIDF="/opt/var/run/aim/${NAME}.pid"
+if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
+  echo "нельзя удалить запущенный профиль: сначала выключи тумблер"; exit 1
+fi
 rm -f /opt/etc/openvpn/profiles/${NAME}.ovpn /opt/etc/openvpn/profile-meta/${NAME}.json
 echo "удалён: $NAME"

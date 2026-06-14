@@ -14,12 +14,14 @@ echo "[+] Упаковываю файлы приложения..."
 /opt/bin/tar czf "$DEST/vpn-xor-files.tar.gz" \
   /opt/etc/init.d/S30vpn-aim \
   /opt/etc/init.d/S31vpn-aim-web \
+  /opt/etc/init.d/S40vpn-aim-pingcheck \
   /opt/etc/init.d/S41vpn-aim-sched \
   /opt/etc/init.d/S95vpn-aim-autostart \
   /opt/etc/lighttpd/vpn-aim.conf \
   /opt/etc/openvpn/aim-up.sh \
   /opt/etc/openvpn/aim-down.sh \
   /opt/sbin/aim-manager.sh \
+  /opt/share/vpn-aim/aim-lib.sh \
   /opt/share/vpn-aim/index.html \
   /opt/share/vpn-aim/logo.svg \
   /opt/share/vpn-aim/cgi-bin \

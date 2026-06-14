@@ -13,9 +13,7 @@ DIR=/opt/etc/openvpn/profiles
 META=/opt/etc/openvpn/profile-meta/${NAME}.json
 F=$DIR/${NAME}.ovpn
 
-urldecode() {
-  printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
-}
+. /opt/share/vpn-aim/aim-lib.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
   [ -f "$F" ] || { echo '{"error":"not found"}'; exit 0; }
@@ -46,10 +44,12 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     fi
   fi
 
-  # Если этот профиль активен и запущен — рестартуем
-  ACTIVE=$(cat /opt/etc/openvpn/active-profile 2>/dev/null | tr -d '[:space:]')
-  if [ "$ACTIVE" = "$NAME" ] && [ -f /opt/var/run/vpn-aim.pid ] && kill -0 "$(cat /opt/var/run/vpn-aim.pid)" 2>/dev/null; then
-    /opt/etc/init.d/S30vpn-aim restart >/dev/null 2>&1 &
+  # Если профиль запущен — рестартуем (multi-profile path)
+  PIDF="/opt/var/run/aim/${NAME}.pid"
+  if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
+    ( /opt/sbin/aim-manager.sh stop-one "$NAME" >/dev/null 2>&1
+      /opt/sbin/aim-manager.sh start-one "$NAME" >/dev/null 2>&1
+      /opt/sbin/aim-manager.sh apply      >/dev/null 2>&1 ) &
     RESTARTED=true
   else
     RESTARTED=false

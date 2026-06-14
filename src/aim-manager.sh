@@ -125,7 +125,7 @@ start_one() {
     # FIB по dst — иммунно к затиранию метки, бьёт политики Keenetic (prio<100).
     for r in $(grep -E '^[[:space:]]*remote[[:space:]]' "$CFG" 2>/dev/null | awk '{print $2}' | sort -u); do
       case "$r" in
-        *[a-zA-Z]*) IP=$(nslookup "$r" 2>/dev/null | awk '/^Address[ :]/{print $NF}' | grep -E '^[0-9.]+$' | grep -vE '^127\.' | head -1) ;;
+        *[a-zA-Z]*) IP=$(timeout 5 nslookup "$r" 2>/dev/null | awk '/^Address[ :]/{print $NF}' | grep -E '^[0-9.]+$' | grep -vE '^127\.' | head -1) ;;
         *)          IP="$r" ;;
       esac
       [ -n "$IP" ] && ip rule add to "$IP" lookup "$WTABLE" priority "$PRIO" 2>/dev/null
@@ -148,6 +148,11 @@ start_one() {
     --pull-filter ignore "redirect-gateway" \
     --pull-filter ignore "route" \
     --pull-filter ignore "dhcp-option" \
+    --pull-filter ignore "ping" \
+    --pull-filter ignore "ping-restart" \
+    --keepalive 10 60 \
+    --persist-key \
+    --persist-tun \
     $WAN_ARGS \
     --up "$UP" --down "$DOWN" --route-up "$UP"
   echo "[$PROFILE] start slot=$SLOT dev=$DEV"
@@ -342,27 +347,48 @@ status_json() {
   for f in "$PROFILES"/*.ovpn; do
     [ -f "$f" ] || continue
     pr=$(basename "$f" .ovpn)
-    en=false; is_enabled "$pr" && en=true
-    run=false; is_running "$pr" && run=true
-    slot=$(slot_of "$pr"); [ -z "$slot" ] && slot=-1
+
+    # Все поля meta — один jq-вызов
+    en=false; wan=""; mode=devices; devc=0; sched=false
+    if [ -f "$META/$pr.json" ]; then
+      _i=0
+      while IFS= read -r _v; do
+        _i=$((_i+1))
+        case $_i in
+          1) en=$_v ;;
+          2) wan=$_v ;;
+          3) mode=${_v:-devices} ;;
+          4) devc=${_v:-0} ;;
+          5) sched=$_v ;;
+        esac
+      done <<_M
+$(jq -r '(.enabled//false|tostring), (.wan//""), (.mode//"devices"), (.devices|length//0|tostring), (.schedule.enabled//false|tostring)' "$META/$pr.json" 2>/dev/null)
+_M
+    fi
+
+    run=false
+    _p=$(pid_of "$pr"); [ -n "$_p" ] && kill -0 "$_p" 2>/dev/null && run=true
+
+    slot=$(slot_of "$pr"); [ -z "$slot" ] && slot="-1"
     ip=""
-    [ "$run" = true ] && [ "$slot" != "-1" ] && ip=$(ip -br -4 addr show "tun_aim$slot" 2>/dev/null | awk '{print $3}')
-    remote=$(grep -E '^remote ' "$f" 2>/dev/null | head -1 | awk '{print $2}')
-    wan=$(meta_get "$pr" '.wan')
-    mode=$(meta_get "$pr" '.mode'); [ -z "$mode" ] && mode=devices
-    devc=$(jq -r '.devices | length // 0' "$META/$pr.json" 2>/dev/null); [ -z "$devc" ] && devc=0
-    sched=false; [ "$(meta_get "$pr" '.schedule.enabled')" = "true" ] && sched=true
+    [ "$run" = true ] && [ "$slot" != "-1" ] && \
+      ip=$(ip -br -4 addr show "tun_aim$slot" 2>/dev/null | awk '{print $3}')
+    remote=$(grep -Em1 '^remote ' "$f" 2>/dev/null | awk '{print $2}')
+
     [ "$first" -eq 0 ] && echo ','
     first=0
-    printf '{"name":"%s","enabled":%s,"running":%s,"slot":%s,"ip":"%s","remote":"%s","wan":"%s","mode":"%s","devices_count":%s,"sched":%s}' \
-      "$pr" "$en" "$run" "$slot" "$ip" "$remote" "$wan" "$mode" "$devc" "$sched"
+    jq -n --arg name "$pr" --arg ip "${ip:-}" --arg remote "${remote:-}" \
+          --arg wan "${wan:-}" --arg mode "$mode" \
+          --argjson en $en --argjson run $run --argjson slot "${slot:--1}" \
+          --argjson devc "${devc:-0}" --argjson sched $sched \
+      '{name:$name,enabled:$en,running:$run,slot:$slot,ip:$ip,remote:$remote,wan:$wan,mode:$mode,devices_count:$devc,sched:$sched}'
   done
   echo; echo ']'
 }
 
 case "$1" in
-  enable)   jq --arg e true  '.enabled=($e=="true")' "$META/$2.json" 2>/dev/null > "$META/$2.json.tmp" 2>/dev/null && mv "$META/$2.json.tmp" "$META/$2.json" 2>/dev/null || { mkdir -p "$META"; echo '{"enabled":true}' > "$META/$2.json"; }; reconcile ;;
-  disable)  [ -f "$META/$2.json" ] && jq '.enabled=false' "$META/$2.json" > "$META/$2.json.tmp" 2>/dev/null && mv "$META/$2.json.tmp" "$META/$2.json"; reconcile ;;
+  enable)   mkdir -p "$META"; set_meta_enabled "$2" true;  reconcile ;;
+  disable)  mkdir -p "$META"; set_meta_enabled "$2" false; reconcile ;;
   reconcile) reconcile ;;
   apply)     apply ;;
   stopall)   stopall ;;

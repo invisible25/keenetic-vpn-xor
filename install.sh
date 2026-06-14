@@ -69,6 +69,7 @@ info "Распаковка файлов VPN+XOR в /opt..."
 # Права
 chmod +x /opt/etc/init.d/S30vpn-aim 2>/dev/null
 chmod +x /opt/etc/init.d/S31vpn-aim-web 2>/dev/null
+chmod +x /opt/etc/init.d/S40vpn-aim-pingcheck 2>/dev/null
 chmod +x /opt/etc/init.d/S41vpn-aim-sched 2>/dev/null
 chmod +x /opt/etc/init.d/S95vpn-aim-autostart 2>/dev/null
 chmod +x /opt/sbin/aim-manager.sh 2>/dev/null
@@ -111,6 +112,10 @@ info "Старт планировщика расписаний..."
 /opt/etc/init.d/S41vpn-aim-sched start >/dev/null 2>&1 \
   && ok "планировщик запущен" || warn "планировщик не стартовал"
 
+info "Старт watchdog (автопереподключение)..."
+/opt/etc/init.d/S40vpn-aim-pingcheck start >/dev/null 2>&1 \
+  && ok "watchdog запущен" || warn "watchdog не стартовал"
+
 # === Поднять профили, помеченные enabled (мульти-профиль) ===
 # reconcile поднимает OpenVPN с XOR-хендшейком — может тянуться долго.
 # На свежей установке профилей нет (быстро). stdout глушим, чтобы фоновые
@@ -138,6 +143,12 @@ if /opt/etc/init.d/S41vpn-aim-sched status 2>/dev/null | grep -qi running; then
 else
   HEALTH_OK=no
   warn "планировщик не запущен. Запусти:  /opt/etc/init.d/S41vpn-aim-sched start"
+fi
+if /opt/etc/init.d/S40vpn-aim-pingcheck status 2>/dev/null | grep -qi running; then
+  ok "watchdog переподключений работает"
+else
+  HEALTH_OK=no
+  warn "watchdog не запущен. Запусти:  /opt/etc/init.d/S40vpn-aim-pingcheck start"
 fi
 
 # === Финал ===
@@ -225,6 +236,7 @@ echo
 echo "Если что-то не так — проверь по SSH:"
 echo "  /opt/sbin/aim-manager.sh status              # какие профили подняты"
 echo "  /opt/etc/init.d/S31vpn-aim-web status        # веб-панель"
-echo "  /opt/etc/init.d/S41vpn-aim-sched status      # планировщик"
+echo "  /opt/etc/init.d/S40vpn-aim-pingcheck status  # watchdog переподключений
+  /opt/etc/init.d/S41vpn-aim-sched status      # планировщик"
 echo "  tail -f /opt/var/log/vpn-aim-<профиль>.log   # лог openvpn нужного профиля"
 [ "$HEALTH_OK" = no ] && warn "Часть служб не поднялась — см. подсказки выше."

@@ -22,9 +22,7 @@ is_valid_cidr() {
   echo "$1" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?$'
 }
 
-urldecode() {
-  printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
-}
+. /opt/share/vpn-aim/aim-lib.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 65536)
@@ -46,7 +44,13 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
       DATA_RAW=$(echo "$BODY" | tr '&' '\n' | grep '^data=' | sed 's/^data=//')
       DATA=$(urldecode "$DATA_RAW")
       if echo "$DATA" | jq -e 'type == "array"' >/dev/null 2>&1; then
-        jq --argjson incoming "$DATA" '
+        # Фильтруем CIDRs в shell (jq на роутере без regex)
+        VALID_DATA=$(echo "$DATA" | jq -c '.[]' 2>/dev/null | while read -r item; do
+          cidr=$(echo "$item" | jq -r '.cidr // ""' 2>/dev/null)
+          is_valid_cidr "$cidr" && printf '%s\n' "$item"
+        done | jq -sc '.' 2>/dev/null)
+        [ -z "$VALID_DATA" ] && VALID_DATA='[]'
+        jq --argjson incoming "$VALID_DATA" '
           . as $cur
           | reduce $incoming[] as $r ($cur;
               if ($r.cidr // "") == "" then .

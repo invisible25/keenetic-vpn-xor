@@ -1,0 +1,29 @@
+#!/bin/sh
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+LOG=/opt/var/log/vpn-aim-pingcheck.log
+PIDF=/opt/var/run/aim-pingcheck.pid
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 256)
+  ACTION=$(echo "$BODY" | tr '&' '\n' | grep '^action=' | sed 's/^action=//' | tr -cd 'a-z')
+  if [ "$ACTION" = "clear" ]; then
+    > "$LOG" 2>/dev/null
+    echo '{"ok":true}'
+    exit 0
+  fi
+fi
+
+watchdog="stopped"
+[ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null && watchdog="running"
+
+if [ -f "$LOG" ]; then
+  lines=$(tail -100 "$LOG" 2>/dev/null | jq -Rs '[split("\n")[] | select(length>0)]' 2>/dev/null)
+  [ -z "$lines" ] && lines="[]"
+else
+  lines="[]"
+fi
+
+printf '{"watchdog":"%s","lines":%s}\n' "$watchdog" "$lines"

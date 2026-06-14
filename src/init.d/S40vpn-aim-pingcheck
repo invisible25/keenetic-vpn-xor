@@ -1,0 +1,59 @@
+#!/bin/sh
+# Watchdog: перезапускает опавшие VPN-процессы (enabled=true, но pid мёртв).
+# Тикает каждые 30 секунд. Не делает внешних ping — только kill -0 на pid-файл.
+export PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+
+PIDF=/opt/var/run/aim-pingcheck.pid
+LOG=/opt/var/log/vpn-aim-pingcheck.log
+MGR=/opt/sbin/aim-manager.sh
+META=/opt/etc/openvpn/profile-meta
+PROFILES=/opt/etc/openvpn/profiles
+RUN=/opt/var/run/aim
+
+watchdog_loop() {
+  while true; do
+    for meta in "$META"/*.json; do
+      [ -f "$meta" ] || continue
+      pr=$(basename "$meta" .json)
+      [ -f "$PROFILES/$pr.ovpn" ] || continue
+      [ "$(jq -r '.enabled // false' "$meta" 2>/dev/null)" = "true" ] || continue
+      PID=$(cat "$RUN/$pr.pid" 2>/dev/null)
+      if ! { [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; }; then
+        echo "[$(date '+%F %T')] [$pr] процесс мёртв — перезапуск" >> "$LOG"
+        "$MGR" start-one "$pr" >> "$LOG" 2>&1
+        sleep 2
+        "$MGR" apply >> "$LOG" 2>&1
+        echo "[$(date '+%F %T')] [$pr] перезапуск завершён" >> "$LOG"
+      fi
+    done
+    sleep 30
+  done
+}
+
+case "$1" in
+  start)
+    [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null && exit 0
+    mkdir -p "$RUN"
+    watchdog_loop &
+    echo $! > "$PIDF"
+    echo "vpn-aim-pingcheck started (pid=$(cat "$PIDF"))"
+    ;;
+  stop)
+    [ -f "$PIDF" ] && kill "$(cat "$PIDF")" 2>/dev/null
+    rm -f "$PIDF"
+    echo "vpn-aim-pingcheck stopped"
+    ;;
+  restart)
+    $0 stop; sleep 1; $0 start
+    ;;
+  status)
+    if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
+      echo "running (pid=$(cat "$PIDF"))"
+    else
+      echo "stopped"
+    fi
+    ;;
+  *)
+    echo "usage: $0 {start|stop|restart|status}"; exit 1
+    ;;
+esac

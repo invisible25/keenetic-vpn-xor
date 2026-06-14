@@ -15,7 +15,7 @@ jq -n --argjson routes "$ROUTES" --argjson ifaces "$IFACES" --slurpfile aim "$AI
   ($aim[0] // []) as $current
   | [
       $routes[]
-      | select(.static == true)
+      | select(.proto == "static")
       | select((.rejecting // false) != true)
       | select((.destination // "") != "0.0.0.0/0")
       | select((.destination // "") != "")

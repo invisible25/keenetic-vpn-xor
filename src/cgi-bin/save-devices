@@ -12,6 +12,7 @@ mkdir -p /opt/etc/openvpn/profile-meta
 if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 8192)
   TMP=$(mktemp)
+  trap 'rm -f "$TMP"' EXIT
   echo "$BODY" | tr '&' '\n' | while read -r line; do
     ip=${line#ip=}
     case "$ip" in

@@ -27,6 +27,8 @@
   --info: #5d7a8b;
   --shadow-rgb: 31, 31, 31;
   --radius: 14px;
+  --radius-sm: 10px;
+  --radius-inner: 8px;
   --serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 }
@@ -62,9 +64,17 @@
 [data-theme="neo"] {
   --bg: #0a0a0a; --bg-alt: #141414; --surface: #1a1a1a;
   --ink: #f5f5dc; --ink-2: #c8c8a0; --muted: #9d9d72;
-  --gold: #e6e84a; --gold-deep: #e6e84a; --gold-soft: rgba(230,232,74,0.12);
-  --line: #2a2a18; --charcoal: #e6e84a; --on-charcoal: #0a0a0a; --on-gold: #0a0a0a;
-  --ok: #a3e84a; --bad: #ff5c5c; --warn: #e8b84a; --info: #4ad8e8;
+  --gold: #e8a020; --gold-deep: #e8a020; --gold-soft: rgba(232,160,32,0.13);
+  --line: #2a2a1e; --charcoal: #e8a020; --on-charcoal: #0a0a0a; --on-gold: #0a0a0a;
+  --ok: #52d68a; --bad: #ff5c5c; --warn: #d9832a; --info: #4ad8e8;
+  --shadow-rgb: 0, 0, 0;
+}
+[data-theme="catppuccin"] {
+  --bg: #24273a; --bg-alt: #1e2030; --surface: #363a4f;
+  --ink: #cad3f5; --ink-2: #b8c0e0; --muted: #8087a2;
+  --gold: #eed49f; --gold-deep: #f5a97f; --gold-soft: rgba(245,169,127,0.13);
+  --line: #494d64; --charcoal: #8aadf4; --on-charcoal: #1e2030; --on-gold: #1e2030;
+  --ok: #a6da95; --bad: #ed8796; --warn: #f5a97f; --info: #7dc4e4;
   --shadow-rgb: 0, 0, 0;
 }
 [data-theme="mint"] {
@@ -114,8 +124,8 @@ header {
   font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
   background: var(--surface); border: 1px solid var(--line); color: var(--muted);
 }
-.pill.on { color: var(--ok); border-color: rgba(74,124,74,0.4); background: rgba(74,124,74,0.06) }
-.pill.off { color: var(--bad); border-color: rgba(177,77,77,0.4); background: rgba(177,77,77,0.06) }
+.pill.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 8%, transparent) }
+.pill.off { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); background: color-mix(in srgb, var(--bad) 8%, transparent) }
 
 .card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
@@ -162,10 +172,22 @@ header {
 .btn-ghost:hover { background: rgba(31,31,31,0.04); border-color: var(--ink) }
 .btn-warn { background: var(--surface); color: var(--bad); border-color: rgba(177,77,77,0.3) }
 .btn-warn:hover { background: rgba(177,77,77,0.06); border-color: var(--bad) }
-.btn-on { flex: 1; min-width: 100px; background: var(--ok); color: white }
-.btn-on:hover { background: #3d6b3d; box-shadow: 0 8px 20px rgba(74,124,74,0.3) }
-.btn-off { flex: 1; min-width: 100px; background: var(--surface); color: var(--bad); border-color: rgba(177,77,77,0.3) }
-.btn-off:hover { background: rgba(177,77,77,0.06); border-color: var(--bad) }
+.btn-on {
+  flex: 1; min-width: 100px; color: white; transition: all .15s;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--ok) 93%, #fff) 0%, color-mix(in srgb, var(--ok) 90%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 4px 10px color-mix(in srgb, var(--ok) 38%, transparent);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.18);
+}
+.btn-on:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 7px 18px color-mix(in srgb, var(--ok) 50%, transparent) }
+.btn-on:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) }
+.btn-off {
+  flex: 1; min-width: 100px; color: var(--bad); transition: all .15s;
+  background: linear-gradient(to bottom, var(--surface) 0%, color-mix(in srgb, var(--surface) 94%, #000) 100%);
+  border-color: rgba(177,77,77,0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px color-mix(in srgb, var(--bad) 16%, transparent);
+}
+.btn-off:hover { border-color: var(--bad); transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 5px 12px color-mix(in srgb, var(--bad) 22%, transparent) }
+.btn-off:active { transform: translateY(1px); box-shadow: inset 0 2px 3px rgba(0,0,0,0.12) }
 .btn-small { padding: 7px 14px; font-size: 13px }
 .btn-icon { padding: 11px 14px }
 
@@ -214,12 +236,12 @@ header {
 .section.active { display: block }
 
 .profile-card {
-  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 11px;
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 12px;
   padding: 15px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
   transition: border-color .2s, box-shadow .2s;
 }
 .profile-card:hover { border-color: var(--gold) }
-.profile-card.is-active { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 8px 24px rgba(201,168,118,0.18) }
+.profile-card.is-active { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 8px 24px color-mix(in srgb, var(--gold) 25%, transparent) }
 .profile-info { flex: 1; min-width: 0; cursor: pointer; user-select: none }
 .profile-info:active { opacity: .8 }
 .profile-name {
@@ -230,7 +252,7 @@ header {
 .dot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok) }
 /* Карандаш-кнопка редактирования — крупная зона нажатия */
 .edit-btn {
-  flex-shrink: 0; width: 38px; height: 38px; border-radius: 9px;
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 9px;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--surface); border: 1px solid var(--line);
   color: var(--gold-deep); font-size: 18px; cursor: pointer;
@@ -270,6 +292,7 @@ header {
   flex: 1; padding: 10px; text-align: center; cursor: pointer;
   border-radius: 7px; font-weight: 500; font-size: 13px; color: var(--ink-2);
 }
+.mode-toggle .opt:hover:not(.active) { background: var(--line); color: var(--ink) }
 .mode-toggle .opt.active { background: var(--charcoal); color: var(--bg); font-weight: 600 }
 
 .dev-row {
@@ -386,7 +409,7 @@ pre.log {
   display: inline-block; padding: 3px 10px; border-radius: 999px;
   font-size: 11px; font-family: ui-monospace, monospace; font-weight: 500;
 }
-.daemon-badge.running { background: rgba(74,124,74,0.1); color: var(--ok); border: 1px solid rgba(74,124,74,0.3) }
+.daemon-badge.running { background: color-mix(in srgb, var(--ok) 10%, transparent); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent) }
 .daemon-badge.stopped { background: var(--bg-alt); color: var(--muted); border: 1px solid var(--line) }
 
 /* Modal */
@@ -450,11 +473,42 @@ pre.log {
 .theme-swatch:hover { border-color: var(--gold) }
 .theme-swatch.active { border-color: var(--gold-deep); box-shadow: 0 0 0 2px var(--gold-soft); color: var(--ink) }
 .sw-prev {
-  display: block; height: 40px; border-radius: 6px; margin-bottom: 6px;
+  display: block; height: 46px; border-radius: 6px; margin-bottom: 6px;
   background: var(--sw-bg); border: 1px solid rgba(127,127,127,0.2); position: relative; overflow: hidden;
 }
-.sw-prev::before { content: ""; position: absolute; left: 8px; top: 9px; width: 38%; height: 6px; border-radius: 3px; background: var(--sw-fg) }
-.sw-prev::after  { content: ""; position: absolute; left: 8px; top: 21px; right: 8px; height: 5px; border-radius: 3px; background: var(--sw-ink); opacity: .55 }
+/* Имитация шапки nav */
+.sw-prev::before {
+  content: ""; position: absolute; left: 0; top: 0; right: 0; height: 14px;
+  background: color-mix(in srgb, var(--sw-bg) 80%, #000);
+  border-bottom: 1.5px solid var(--sw-fg);
+}
+/* Имитация карточки контента с акцентной левой полосой */
+.sw-prev::after {
+  content: ""; position: absolute;
+  left: 7px; right: 7px; top: 20px; bottom: 6px;
+  background: color-mix(in srgb, var(--sw-bg) 88%, var(--sw-ink));
+  border-radius: 3px; border-left: 2.5px solid var(--sw-fg);
+}
+/* ── Mini theme picker (хедер) ── */
+.theme-picker {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  display: none; flex-direction: row; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 10px; gap: 7px; z-index: 200;
+  box-shadow: 0 6px 20px rgba(var(--shadow-rgb),.18);
+}
+.theme-picker.open { display: flex; animation: popup-in .13s ease-out }
+@keyframes popup-in { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
+.theme-picker-dot {
+  width: 28px; height: 28px; border-radius: 50%; padding: 0; cursor: pointer;
+  background: var(--tp-bg);
+  border: 2.5px solid var(--tp-fg);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+  transition: all .12s;
+}
+.theme-picker-dot:hover { transform: scale(1.15); box-shadow: 0 2px 8px color-mix(in srgb, var(--tp-fg) 45%, transparent) }
+.theme-picker-dot.tp-active { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-fg) 35%, transparent), 0 1px 4px rgba(0,0,0,0.15) }
+
 .custom-row { display: none; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line) }
 .custom-row label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-2); font-weight: 600 }
 .custom-row input[type=color] { width: 52px; height: 34px; border: 1px solid var(--line); border-radius: 7px; background: none; cursor: pointer; padding: 2px }
@@ -475,7 +529,29 @@ pre.log {
     <div class="logo-text">OPENVPN<em>+XOR</em></div>
   </a>
   <div style="display:flex;align-items:center;gap:10px">
-    <button id="theme-btn" class="btn btn-ghost btn-icon" onclick="toggleTheme()" title="Сменить тему" style="padding:8px 12px;font-size:16px">🌙</button>
+    <div style="position:relative">
+      <button id="theme-btn" class="btn btn-ghost btn-icon" onclick="toggleThemePicker()" title="Выбрать тему" style="padding:9px 11px">
+        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <circle cx="8.5" cy="8.5" r="3"/>
+          <circle cx="8.5" cy="1.5" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="1.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="3.6" cy="3.6" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="13.4" cy="13.4" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="13.4" cy="3.6" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="3.6" cy="13.4" r="1" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+      <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="Выбор темы">
+        <button class="theme-picker-dot" data-theme="light"      title="Gold светлая" aria-label="Тема: Gold светлая" style="--tp-bg:#f6f3ea;--tp-fg:#c9a876" onclick="setTheme('light');closeThemePicker()"></button>
+        <button class="theme-picker-dot" data-theme="dark"       title="Gold тёмная"  aria-label="Тема: Gold тёмная"  style="--tp-bg:#16140f;--tp-fg:#d4b585" onclick="setTheme('dark');closeThemePicker()"></button>
+        <button class="theme-picker-dot" data-theme="tokyonight" title="Tokyo Night"  aria-label="Тема: Tokyo Night"  style="--tp-bg:#1a1b26;--tp-fg:#7aa2f7" onclick="setTheme('tokyonight');closeThemePicker()"></button>
+        <button class="theme-picker-dot" data-theme="neo"        title="Cyber"        aria-label="Тема: Cyber"        style="--tp-bg:#0a0a0a;--tp-fg:#e8a020" onclick="setTheme('neo');closeThemePicker()"></button>
+        <button class="theme-picker-dot" data-theme="mint"       title="Mint"         aria-label="Тема: Mint"         style="--tp-bg:#1e2530;--tp-fg:#7fd4c8" onclick="setTheme('mint');closeThemePicker()"></button>
+        <button class="theme-picker-dot" data-theme="catppuccin" title="Catppuccin"   aria-label="Тема: Catppuccin"   style="--tp-bg:#24273a;--tp-fg:#8aadf4" onclick="setTheme('catppuccin');closeThemePicker()"></button>
+      </div>
+    </div>
     <div id="header-pill" class="pill">…</div>
   </div>
 </header>
@@ -556,7 +632,7 @@ pre.log {
 <div class="section" data-section="routes">
   <div class="card">
     <h2><span>Маршруты IP / подсетей</span><span class="extra"><small id="routes-count"></small></span></h2>
-    <div class="setting-hint" style="margin-bottom:14px">Указанные подсети идут через VPN независимо от выбранных устройств. Формат: <code class="mono">5.45.0.0/16</code> или <code class="mono">8.8.8.8</code>.</div>
+    <div class="setting-hint" style="margin-bottom:14px">Указанные подсети идут через VPN независимо от выбранных устройств. Правила применяются при старте туннеля. Формат: <code class="mono">5.45.0.0/16</code> или <code class="mono">8.8.8.8</code>.</div>
     <div style="display:grid;grid-template-columns:2fr 3fr auto;gap:8px;align-items:end">
       <div class="field" style="margin:0">
         <label>CIDR / IP</label>
@@ -595,8 +671,9 @@ pre.log {
       <div class="theme-swatch" data-theme="light" onclick="setTheme('light')" style="--sw-bg:#f6f3ea;--sw-fg:#c9a876;--sw-ink:#1c1b18"><span class="sw-prev"></span>Gold светлая</div>
       <div class="theme-swatch" data-theme="dark" onclick="setTheme('dark')" style="--sw-bg:#16140f;--sw-fg:#d4b585;--sw-ink:#f0ece1"><span class="sw-prev"></span>Gold тёмная</div>
       <div class="theme-swatch" data-theme="tokyonight" onclick="setTheme('tokyonight')" style="--sw-bg:#1a1b26;--sw-fg:#7aa2f7;--sw-ink:#c0caf5"><span class="sw-prev"></span>Tokyo Night</div>
-      <div class="theme-swatch" data-theme="neo" onclick="setTheme('neo')" style="--sw-bg:#0a0a0a;--sw-fg:#e6e84a;--sw-ink:#f5f5dc"><span class="sw-prev"></span>Neo</div>
+      <div class="theme-swatch" data-theme="neo" onclick="setTheme('neo')" style="--sw-bg:#0a0a0a;--sw-fg:#e8a020;--sw-ink:#f5f5dc"><span class="sw-prev"></span>Cyber</div>
       <div class="theme-swatch" data-theme="mint" onclick="setTheme('mint')" style="--sw-bg:#1e2530;--sw-fg:#7fd4c8;--sw-ink:#dbe6e4"><span class="sw-prev"></span>Mint</div>
+      <div class="theme-swatch" data-theme="catppuccin" onclick="setTheme('catppuccin')" style="--sw-bg:#24273a;--sw-fg:#8aadf4;--sw-ink:#cad3f5"><span class="sw-prev"></span>Catppuccin</div>
       <div class="theme-swatch" data-theme="custom" onclick="$('custom-row').style.display='flex'" style="--sw-bg:#15131c;--sw-fg:#7c5cff;--sw-ink:#e8e6f0"><span class="sw-prev"></span>Custom</div>
     </div>
     <div class="custom-row" id="custom-row">
@@ -629,6 +706,14 @@ pre.log {
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="btn btn-ghost btn-small" onclick="loadLog()">Обновить</button>
       <button class="btn btn-warn btn-small" onclick="clearLog()">Очистить лог</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2><span>Watchdog / переподключения</span><span class="extra"><small id="watchdog-status" style="font-weight:500"></small></span></h2>
+    <pre class="log" id="pinglog-box">…</pre>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost btn-small" onclick="loadPingLog()">Обновить</button>
+      <button class="btn btn-warn btn-small" onclick="clearPingLog()">Очистить</button>
     </div>
   </div>
 </div>
@@ -677,7 +762,7 @@ pre.log {
 const $ = id => document.getElementById(id);
 
 // ── Темы: пресеты (light/dark/tokyonight/neo/mint) + Custom (3 цвета → color-mix) ──
-const THEME_BG = {light:'#f6f3ea', dark:'#16140f', tokyonight:'#1a1b26', neo:'#0a0a0a', mint:'#1e2530'};
+const THEME_BG = {light:'#f6f3ea', dark:'#16140f', tokyonight:'#1a1b26', neo:'#0a0a0a', mint:'#1e2530', catppuccin:'#24273a'};
 const CUSTOM_VARS = ['--bg','--bg-alt','--surface','--ink','--ink-2','--muted','--gold','--gold-deep','--gold-soft','--line','--charcoal','--on-charcoal','--on-gold','--shadow-rgb'];
 function _lum(hex){
   const m = (hex||'').replace('#','').match(/.{2}/g); if (!m) return 0.5;
@@ -705,8 +790,8 @@ function applyTheme(theme, custom){
   else { clearCustom(); document.documentElement.setAttribute('data-theme', theme); }
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = (theme==='custom' && custom) ? custom.bg : (THEME_BG[theme] || THEME_BG.light);
-  const btn = $('theme-btn'); if (btn) btn.textContent = (theme==='light') ? '🌙' : '☀';
   document.querySelectorAll('.theme-swatch').forEach(s => s.classList.toggle('active', s.dataset.theme === theme));
+  updateThemePickerDot(theme);
 }
 function getThemeCfg(){ try { return JSON.parse(localStorage.getItem('vpn-xor-theme-v2')||'null'); } catch(e){ return null; } }
 function setTheme(theme, custom){
@@ -714,6 +799,17 @@ function setTheme(theme, custom){
   applyTheme(theme, custom);
 }
 function toggleTheme(){ const c = getThemeCfg(); const t = (c&&c.theme)||'light'; setTheme(t==='light' ? 'dark' : 'light'); }
+function toggleThemePicker(){ $('theme-picker').classList.toggle('open'); }
+function closeThemePicker(){ $('theme-picker').classList.remove('open'); }
+function updateThemePickerDot(theme){
+  if (!theme){ const c=getThemeCfg(); theme=(c&&c.theme)||'light'; }
+  document.querySelectorAll('.theme-picker-dot').forEach(d=>d.classList.toggle('tp-active', d.dataset.theme===theme));
+}
+document.addEventListener('click', e=>{
+  const p=$('theme-picker'); if(!p||!p.classList.contains('open')) return;
+  const btn=$('theme-btn');
+  if(!p.contains(e.target) && !btn.contains(e.target)) closeThemePicker();
+});
 function applyCustomFromPickers(){ setTheme('custom', { accent: $('cu-accent').value, bg: $('cu-bg').value, text: $('cu-text').value }); }
 (function initTheme(){
   let t = getThemeCfg();
@@ -761,7 +857,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   t.classList.add('active'); t.setAttribute('aria-selected','true');
   document.querySelector('.section[data-section="' + t.dataset.tab + '"]').classList.add('active');
   CURRENT_TAB = t.dataset.tab;
-  if (CURRENT_TAB === 'log') { startLogAuto(); }
+  if (CURRENT_TAB === 'log') { startLogAuto(); loadPingLog(); }
   else stopLogAuto();
   if (CURRENT_TAB === 'settings') loadSysinfo();
 });
@@ -873,7 +969,7 @@ async function loadProfiles(){
     } else {
       policyBadge = '<span class="iface-badge" style="margin-left:8px;color:var(--muted)">нет устр.</span>';
     }
-    if (p.sched) policyBadge += '<span class="iface-badge" style="margin-left:8px" title="Управляется расписанием">⏰ расписание</span>';
+    if (p.sched) policyBadge += '<span class="iface-badge" style="margin-left:8px" title="Управляется расписанием"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" style="vertical-align:-1px"><circle cx="6" cy="6" r="4.5"/><polyline points="6,3 6,6 8,7.5"/></svg> расписание</span>';
     // Тумблер отражает enabled; зелёная точка — реально поднят (running)
     const dotLive = p.running ? 'live' : '';
     let stateLabel;
@@ -886,7 +982,7 @@ async function loadProfiles(){
         '<div class="profile-name"><span class="dot ' + dotLive + '"></span>' + escapeHtml(p.name) + '</div>' +
         '<div class="profile-meta">' + stateLabel + wanText + policyBadge + '</div>' +
       '</div>' +
-      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы" aria-label="Расписание профиля ' + escapeHtml(p.name) + '">⏰</button>' +
+      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы" aria-label="Расписание профиля ' + escapeHtml(p.name) + '"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><polyline points="7,3.5 7,7 9.5,8.8"/></svg></button>' +
       '<button class="edit-btn" onclick="event.stopPropagation();editProfile(\'' + nm + '\')" title="Редактировать профиль" aria-label="Редактировать профиль ' + escapeHtml(p.name) + '">✎</button>' +
       '<label class="switch" onclick="event.stopPropagation()" title="Включить / выключить">' +
         '<input type="checkbox" aria-label="Включить профиль ' + escapeHtml(p.name) + '" ' + (p.enabled ? 'checked' : '') + ' onchange="profileToggle(\'' + nm + '\', this.checked)">' +
@@ -1450,6 +1546,24 @@ async function clearLog(){
   await fetch('/cgi-bin/clearlog');
   toast('Лог очищен', 'ok');
   loadLog();
+}
+
+async function loadPingLog(){
+  try {
+    const j = await (await fetch('/cgi-bin/pinglog')).json();
+    $('pinglog-box').textContent = j.lines.join('\n') || '(лог пуст)';
+    const s = $('watchdog-status');
+    if (s) {
+      s.textContent = j.watchdog === 'running' ? '● работает' : '○ остановлен';
+      s.style.color = j.watchdog === 'running' ? 'var(--ok)' : 'var(--bad)';
+    }
+  } catch(e) { $('pinglog-box').textContent = 'Ошибка'; }
+}
+async function clearPingLog(){
+  if (!confirm('Очистить лог watchdog?')) return;
+  await fetch('/cgi-bin/pinglog', { method: 'POST', body: 'action=clear' });
+  toast('Лог watchdog очищен', 'ok');
+  loadPingLog();
 }
 
 async function activate(name){
