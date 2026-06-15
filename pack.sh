@@ -12,35 +12,37 @@ rm -rf "$DEST" && mkdir -p "$DEST"
 echo "[+] Упаковываю файлы приложения..."
 # Системные файлы — всегда одни и те же
 /opt/bin/tar czf "$DEST/vpn-xor-files.tar.gz" \
-  /opt/etc/init.d/S30vpn-aim \
-  /opt/etc/init.d/S31vpn-aim-web \
-  /opt/etc/init.d/S40vpn-aim-pingcheck \
-  /opt/etc/init.d/S41vpn-aim-sched \
-  /opt/etc/init.d/S95vpn-aim-autostart \
-  /opt/etc/lighttpd/vpn-aim.conf \
-  /opt/etc/openvpn/aim-up.sh \
-  /opt/etc/openvpn/aim-down.sh \
-  /opt/sbin/aim-manager.sh \
-  /opt/share/vpn-aim/aim-lib.sh \
-  /opt/share/vpn-aim/index.html \
-  /opt/share/vpn-aim/logo.svg \
-  /opt/share/vpn-aim/cgi-bin \
+  /opt/etc/init.d/S30invnet \
+  /opt/etc/init.d/S31invnet-web \
+  /opt/etc/init.d/S40invnet-pingcheck \
+  /opt/etc/init.d/S41invnet-sched \
+  /opt/etc/init.d/S95invnet-autostart \
+  /opt/etc/lighttpd/invnet.conf \
+  /opt/etc/openvpn/invnet-up.sh \
+  /opt/etc/openvpn/invnet-down.sh \
+  /opt/etc/openvpn/invnet-fw.sh \
+  /opt/etc/ndm/netfilter.d/50-invnet.sh \
+  /opt/sbin/invnetctl \
+  /opt/share/invnet/invnet-lib.sh \
+  /opt/share/invnet/index.html \
+  /opt/share/invnet/logo.svg \
+  /opt/share/invnet/cgi-bin \
 
   2>/dev/null
 
 # ipk — все арх-варианты xor-openvpn (мультиарх: aarch64/mipsel/mips)
-if ls /opt/share/vpn-aim/ipk/*.ipk >/dev/null 2>&1; then
-  cp /opt/share/vpn-aim/ipk/*.ipk "$DEST/"
-  echo "[+] ipk-вариантов: $(ls /opt/share/vpn-aim/ipk/*.ipk | wc -l) (install.sh выберет по архитектуре)"
+if ls /opt/share/invnet/ipk/*.ipk >/dev/null 2>&1; then
+  cp /opt/share/invnet/ipk/*.ipk "$DEST/"
+  echo "[+] ipk-вариантов: $(ls /opt/share/invnet/ipk/*.ipk | wc -l) (install.sh выберет по архитектуре)"
 elif [ -f /opt/var/ovpn-xor.ipk ]; then
   cp /opt/var/ovpn-xor.ipk "$DEST/openvpn-openssl-xor.ipk"   # фолбэк на старую схему
 else
-  echo "[!] ВАЖНО: нет .ipk в /opt/share/vpn-aim/ipk/. Положи openvpn-openssl-xor_*_<arch>.ipk туда."
+  echo "[!] ВАЖНО: нет .ipk в /opt/share/invnet/ipk/. Положи openvpn-openssl-xor_*_<arch>.ipk туда."
 fi
 
 # Сам install.sh (тот же что ты запускаешь сейчас)
-cp /opt/share/vpn-aim/install.sh "$DEST/" 2>/dev/null || \
-  echo "[!] install.sh не найден в /opt/share/vpn-aim/. Скопируй вручную."
+cp /opt/share/invnet/install.sh "$DEST/" 2>/dev/null || \
+  echo "[!] install.sh не найден в /opt/share/invnet/. Скопируй вручную."
 
 # === Опционально: пользовательские данные ===
 echo
@@ -50,10 +52,10 @@ if [ "$ANS" = "y" ] || [ "$ANS" = "Y" ]; then
     /opt/etc/openvpn/profiles \
     /opt/etc/openvpn/profile-meta \
     /opt/etc/openvpn/active-profile \
-    /opt/etc/openvpn/aim-mode.conf \
-    /opt/etc/openvpn/aim-devices.conf \
-    /opt/etc/openvpn/aim-routes.conf \
-    /opt/etc/openvpn/aim-autostart.conf \
+    /opt/etc/openvpn/invnet-mode.conf \
+    /opt/etc/openvpn/invnet-devices.conf \
+    /opt/etc/openvpn/invnet-routes.conf \
+    /opt/etc/openvpn/invnet-autostart.conf \
     2>/dev/null
   echo "[+] Пользовательские данные включены (профили, маршруты, выбранные устройства)"
 fi

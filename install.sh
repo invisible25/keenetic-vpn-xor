@@ -67,14 +67,17 @@ info "Распаковка файлов VPN+XOR в /opt..."
 /opt/bin/tar xzf "$DIR/vpn-xor-files.tar.gz" -C /
 
 # Права
-chmod +x /opt/etc/init.d/S30vpn-aim 2>/dev/null
-chmod +x /opt/etc/init.d/S31vpn-aim-web 2>/dev/null
-chmod +x /opt/etc/init.d/S40vpn-aim-pingcheck 2>/dev/null
-chmod +x /opt/etc/init.d/S41vpn-aim-sched 2>/dev/null
-chmod +x /opt/etc/init.d/S95vpn-aim-autostart 2>/dev/null
-chmod +x /opt/sbin/aim-manager.sh 2>/dev/null
-chmod +x /opt/etc/openvpn/aim-up.sh /opt/etc/openvpn/aim-down.sh 2>/dev/null
-chmod +x /opt/share/vpn-aim/cgi-bin/* 2>/dev/null
+chmod +x /opt/etc/init.d/S30invnet 2>/dev/null
+chmod +x /opt/etc/init.d/S31invnet-web 2>/dev/null
+chmod +x /opt/etc/init.d/S40invnet-pingcheck 2>/dev/null
+chmod +x /opt/etc/init.d/S41invnet-sched 2>/dev/null
+chmod +x /opt/etc/init.d/S95invnet-autostart 2>/dev/null
+chmod +x /opt/sbin/invnetctl 2>/dev/null
+chmod +x /opt/etc/openvpn/invnet-up.sh /opt/etc/openvpn/invnet-down.sh 2>/dev/null
+chmod +x /opt/etc/openvpn/invnet-fw.sh 2>/dev/null
+mkdir -p /opt/etc/ndm/netfilter.d
+chmod +x /opt/etc/ndm/netfilter.d/50-invnet.sh 2>/dev/null
+chmod +x /opt/share/invnet/cgi-bin/* 2>/dev/null
 
 # === Восстановление пользовательских данных (если есть в архиве) ===
 # Распаковываем ДО создания дефолтных конфигов — guard'ы ниже их не перетрут.
@@ -87,10 +90,10 @@ fi
 
 # === Дефолтные конфиги (не перезаписываем существующие) ===
 mkdir -p /opt/etc/openvpn/profiles /opt/etc/openvpn/profile-meta /opt/var/run /opt/var/log
-[ -f /opt/etc/openvpn/aim-mode.conf ]      || echo devices > /opt/etc/openvpn/aim-mode.conf
-[ -f /opt/etc/openvpn/aim-devices.conf ]   || : > /opt/etc/openvpn/aim-devices.conf
-[ -f /opt/etc/openvpn/aim-routes.conf ]    || echo '[]' > /opt/etc/openvpn/aim-routes.conf
-[ -f /opt/etc/openvpn/aim-autostart.conf ] || echo no > /opt/etc/openvpn/aim-autostart.conf
+[ -f /opt/etc/openvpn/invnet-mode.conf ]      || echo devices > /opt/etc/openvpn/invnet-mode.conf
+[ -f /opt/etc/openvpn/invnet-devices.conf ]   || : > /opt/etc/openvpn/invnet-devices.conf
+[ -f /opt/etc/openvpn/invnet-routes.conf ]    || echo '[]' > /opt/etc/openvpn/invnet-routes.conf
+[ -f /opt/etc/openvpn/invnet-autostart.conf ] || echo no > /opt/etc/openvpn/invnet-autostart.conf
 
 # === Pubkey для dropbear (необязательно, упрощает SSH) ===
 DB_INIT=/opt/etc/init.d/S51dropbear
@@ -105,24 +108,24 @@ fi
 # а демон держит stdout открытым => установка зависает («sched: started PID=...»).
 # Поэтому глушим stdout демонов через `>/dev/null 2>&1` и выводим свой статус.
 info "Старт веб-сервера..."
-/opt/etc/init.d/S31vpn-aim-web start >/dev/null 2>&1 \
-  && ok "веб-сервер запущен" || warn "веб-сервер не стартовал (см. /opt/var/log/vpn-aim-web.err)"
+/opt/etc/init.d/S31invnet-web start >/dev/null 2>&1 \
+  && ok "веб-сервер запущен" || warn "веб-сервер не стартовал (см. /opt/var/log/invnet-web.err)"
 
 info "Старт планировщика расписаний..."
-/opt/etc/init.d/S41vpn-aim-sched start >/dev/null 2>&1 \
+/opt/etc/init.d/S41invnet-sched start >/dev/null 2>&1 \
   && ok "планировщик запущен" || warn "планировщик не стартовал"
 
 info "Старт watchdog (автопереподключение)..."
-/opt/etc/init.d/S40vpn-aim-pingcheck start >/dev/null 2>&1 \
+/opt/etc/init.d/S40invnet-pingcheck start >/dev/null 2>&1 \
   && ok "watchdog запущен" || warn "watchdog не стартовал"
 
 # === Поднять профили, помеченные enabled (мульти-профиль) ===
 # reconcile поднимает OpenVPN с XOR-хендшейком — может тянуться долго.
 # На свежей установке профилей нет (быстро). stdout глушим, чтобы фоновые
 # процессы openvpn не держали pipe; ошибки не валят установку (|| true).
-if [ -x /opt/sbin/aim-manager.sh ]; then
+if [ -x /opt/sbin/invnetctl ]; then
   info "Запуск активных профилей (reconcile)..."
-  /opt/sbin/aim-manager.sh reconcile >/dev/null 2>&1 || true
+  /opt/sbin/invnetctl reconcile >/dev/null 2>&1 || true
   ok "профили приведены в соответствие"
 fi
 
@@ -134,21 +137,21 @@ if curl -s -o /dev/null --max-time 4 http://127.0.0.1:8888/ 2>/dev/null; then
   ok "веб-панель отвечает на порту 8888"
 else
   HEALTH_OK=no
-  warn "веб-панель не отвечает. Запусти вручную:  /opt/etc/init.d/S31vpn-aim-web start"
-  warn "и загляни в лог:  /opt/var/log/vpn-aim-web.err"
+  warn "веб-панель не отвечает. Запусти вручную:  /opt/etc/init.d/S31invnet-web start"
+  warn "и загляни в лог:  /opt/var/log/invnet-web.err"
 fi
 # Планировщик расписаний.
-if /opt/etc/init.d/S41vpn-aim-sched status 2>/dev/null | grep -qi running; then
+if /opt/etc/init.d/S41invnet-sched status 2>/dev/null | grep -qi running; then
   ok "планировщик расписаний работает"
 else
   HEALTH_OK=no
-  warn "планировщик не запущен. Запусти:  /opt/etc/init.d/S41vpn-aim-sched start"
+  warn "планировщик не запущен. Запусти:  /opt/etc/init.d/S41invnet-sched start"
 fi
-if /opt/etc/init.d/S40vpn-aim-pingcheck status 2>/dev/null | grep -qi running; then
+if /opt/etc/init.d/S40invnet-pingcheck status 2>/dev/null | grep -qi running; then
   ok "watchdog переподключений работает"
 else
   HEALTH_OK=no
-  warn "watchdog не запущен. Запусти:  /opt/etc/init.d/S40vpn-aim-pingcheck start"
+  warn "watchdog не запущен. Запусти:  /opt/etc/init.d/S40invnet-pingcheck start"
 fi
 
 # === Финал ===
@@ -159,7 +162,7 @@ fi
 #   2) перебрать мосты br0/br1/… через `ip -4 addr` и взять приватный IP;
 #   3) hostname -i — первый приватный адрес;
 #   4) дефолт 192.168.1.1 (как самый частый).
-# Туннели tun_aim* и loopback исключаем.
+# Туннели tun_invnet* и loopback исключаем.
 
 # Приватный IPv4? (10.0.0.0/8, 172.16-31.0.0/12, 192.168.0.0/16)
 is_private_ip() {
@@ -195,10 +198,10 @@ if [ -z "$IP" ] && [ -x /opt/sbin/ip ]; then
   done
 fi
 
-# --- Способ 2b: любой интерфейс с приватным IP, кроме туннелей tun_aim* и lo ---
+# --- Способ 2b: любой интерфейс с приватным IP, кроме туннелей tun_invnet* и lo ---
 if [ -z "$IP" ] && [ -x /opt/sbin/ip ]; then
   CAND=$(/opt/sbin/ip -4 -o addr show 2>/dev/null \
-         | awk '$2 !~ /^(lo|tun_aim)/ {split($4,a,"/"); print a[1]}' \
+         | awk '$2 !~ /^(lo|tun_invnet)/ {split($4,a,"/"); print a[1]}' \
          | while read -r a; do
              case "$a" in
                10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) echo "$a"; break ;;
@@ -234,9 +237,9 @@ echo "  выбери в профиле физический WAN (вкладка 
 echo "  уходить мимо нужного канала, и подключение не поднимется."
 echo
 echo "Если что-то не так — проверь по SSH:"
-echo "  /opt/sbin/aim-manager.sh status              # какие профили подняты"
-echo "  /opt/etc/init.d/S31vpn-aim-web status        # веб-панель"
-echo "  /opt/etc/init.d/S40vpn-aim-pingcheck status  # watchdog переподключений
-  /opt/etc/init.d/S41vpn-aim-sched status      # планировщик"
-echo "  tail -f /opt/var/log/vpn-aim-<профиль>.log   # лог openvpn нужного профиля"
+echo "  /opt/sbin/invnetctl status              # какие профили подняты"
+echo "  /opt/etc/init.d/S31invnet-web status        # веб-панель"
+echo "  /opt/etc/init.d/S40invnet-pingcheck status  # watchdog переподключений
+  /opt/etc/init.d/S41invnet-sched status      # планировщик"
+echo "  tail -f /opt/var/log/invnet-<профиль>.log   # лог openvpn нужного профиля"
 [ "$HEALTH_OK" = no ] && warn "Часть служб не поднялась — см. подсказки выше."

@@ -34,7 +34,7 @@ wget -qO- https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/bo
 - `boot.sh` — бутстрап-установщик (этот one-liner).
 - `install.sh` — установщик (выбирает `.ipk` по архитектуре, ставит панель и сервисы).
 - `pack.sh` — пересборка переносимого архива на уже настроенном роутере.
-- `src/` — исходники панели (`index.html`, `aim-manager.sh`, `cgi-bin/`, `init.d/` и др.).
+- `src/` — исходники панели (`index.html`, `invnetctl`, `cgi-bin/`, `init.d/` и др.).
 - [Releases](../../releases) — собранные `.ipk` под 3 архитектуры + `vpn-xor-install-clean.tar.gz` + `SHA256SUMS.txt`.
 
 ## Ручная установка

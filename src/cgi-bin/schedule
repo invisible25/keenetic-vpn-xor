@@ -25,7 +25,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   [ -z "$CLEAN" ] && { echo '{"error":"bad json"}'; exit 0; }
   OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
   echo "$OLD" | jq --argjson s "$CLEAN" '. + {schedule: $s}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
-  ( /opt/sbin/aim-manager.sh schedule-sync "$PROFILE" >/dev/null 2>&1 & )
+  ( /opt/sbin/invnetctl schedule-sync "$PROFILE" >/dev/null 2>&1 & )
   echo "$CLEAN"
 else
   [ -f "$META" ] && jq -c '.schedule // {"enabled":false,"actions":[]}' "$META" 2>/dev/null \

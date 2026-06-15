@@ -12,9 +12,9 @@ echo "$NAME" > /opt/etc/openvpn/active-profile
 META=/opt/etc/openvpn/profile-meta/${NAME}.json
 if [ -f "$META" ]; then
   MODE=$(jq -r '.mode // "devices"' "$META" 2>/dev/null)
-  echo "$MODE" > /opt/etc/openvpn/aim-mode.conf
-  jq -r '.devices[]?' "$META" 2>/dev/null > /opt/etc/openvpn/aim-devices.conf
+  echo "$MODE" > /opt/etc/openvpn/invnet-mode.conf
+  jq -r '.devices[]?' "$META" 2>/dev/null > /opt/etc/openvpn/invnet-devices.conf
 fi
 
-/opt/sbin/aim-manager.sh apply >/dev/null 2>&1
+/opt/sbin/invnetctl apply >/dev/null 2>&1
 echo "активирован: $NAME"

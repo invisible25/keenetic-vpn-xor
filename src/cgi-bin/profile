@@ -13,7 +13,7 @@ DIR=/opt/etc/openvpn/profiles
 META=/opt/etc/openvpn/profile-meta/${NAME}.json
 F=$DIR/${NAME}.ovpn
 
-. /opt/share/vpn-aim/aim-lib.sh
+. /opt/share/invnet/invnet-lib.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
   [ -f "$F" ] || { echo '{"error":"not found"}'; exit 0; }
@@ -45,11 +45,11 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   fi
 
   # Если профиль запущен — рестартуем (multi-profile path)
-  PIDF="/opt/var/run/aim/${NAME}.pid"
+  PIDF="/opt/var/run/invnet/${NAME}.pid"
   if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
-    ( /opt/sbin/aim-manager.sh stop-one "$NAME" >/dev/null 2>&1
-      /opt/sbin/aim-manager.sh start-one "$NAME" >/dev/null 2>&1
-      /opt/sbin/aim-manager.sh apply      >/dev/null 2>&1 ) &
+    ( /opt/sbin/invnetctl stop-one "$NAME" >/dev/null 2>&1
+      /opt/sbin/invnetctl start-one "$NAME" >/dev/null 2>&1
+      /opt/sbin/invnetctl apply      >/dev/null 2>&1 ) &
     RESTARTED=true
   else
     RESTARTED=false

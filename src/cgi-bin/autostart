@@ -2,7 +2,7 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: text/plain\r\n\r\n"
-F=/opt/etc/openvpn/aim-autostart.conf
+F=/opt/etc/openvpn/invnet-autostart.conf
 if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 16)
   case "$BODY" in

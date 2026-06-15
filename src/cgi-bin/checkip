@@ -1,6 +1,6 @@
 #!/bin/sh
 # Проверка внешнего IP. ?profile=X — через туннель конкретного профиля,
-# иначе через первый запущенный tun_aim*.
+# иначе через первый запущенный tun_invnet*.
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
@@ -9,10 +9,10 @@ PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 
 
 DEV=""
 if [ -n "$PROFILE" ]; then
-  SLOT=$(cat /opt/var/run/aim/$PROFILE.slot 2>/dev/null)
-  [ -n "$SLOT" ] && DEV="tun_aim$SLOT"
+  SLOT=$(cat /opt/var/run/invnet/$PROFILE.slot 2>/dev/null)
+  [ -n "$SLOT" ] && DEV="tun_invnet$SLOT"
 else
-  DEV=$(ls /sys/class/net 2>/dev/null | grep '^tun_aim' | head -1)
+  DEV=$(ls /sys/class/net 2>/dev/null | grep '^tun_invnet' | head -1)
 fi
 
 [ -z "$DEV" ] && { echo '{"error":"нет активного VPN"}'; exit 0; }

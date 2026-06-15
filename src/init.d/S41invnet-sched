@@ -7,8 +7,8 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 
-PIDFILE=/opt/var/run/aim/sched.pid
-MGR=/opt/sbin/aim-manager.sh
+PIDFILE=/opt/var/run/invnet/sched.pid
+MGR=/opt/sbin/invnetctl
 
 loop() {
   "$MGR" schedule-sync >/dev/null 2>&1
@@ -21,7 +21,7 @@ loop() {
 # PID жив И это действительно наш процесс (после ребута PID могли переиспользовать)
 is_running() {
   P=$(cat "$PIDFILE" 2>/dev/null); [ -n "$P" ] || return 1
-  grep -q "S41vpn-aim-sched" "/proc/$P/cmdline" 2>/dev/null
+  grep -q "S41invnet-sched" "/proc/$P/cmdline" 2>/dev/null
 }
 
 case "$1" in
@@ -30,7 +30,7 @@ case "$1" in
       echo "sched: already running"; exit 0
     fi
     rm -f "$PIDFILE"
-    mkdir -p /opt/var/run/aim
+    mkdir -p /opt/var/run/invnet
     loop &
     echo $! > "$PIDFILE"
     echo "sched: started PID=$(cat $PIDFILE)"

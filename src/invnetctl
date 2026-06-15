@@ -1,32 +1,33 @@
 #!/bin/sh
-# aim-manager.sh — оркестратор нескольких VPN+XOR профилей одновременно.
+# invnetctl — оркестратор нескольких VPN+XOR профилей одновременно.
 #
 # Модель (Вариант А — по устройствам):
-#   • каждый ВКЛЮЧЁННЫЙ профиль = свой openvpn-процесс на tun_aim<slot> + таблица 101+slot
+#   • каждый ВКЛЮЧЁННЫЙ профиль = свой openvpn-процесс на tun_invnet<slot> + таблица 101+slot
 #   • устройства/CIDR профиля → ip rule from/to ... lookup <table>
 #   • источник истины «включён ли профиль» — ключ "enabled" в profile-meta/<name>.json
 #
 # Команды:
-#   aim-manager.sh enable  <profile>   — пометить enabled + reconcile
-#   aim-manager.sh disable <profile>   — снять enabled + reconcile
-#   aim-manager.sh reconcile           — привести факт к желаемому (старт/стоп инстансов) + правила
-#   aim-manager.sh apply               — только переразложить ip rule (devices/routesменялись)
-#   aim-manager.sh stopall             — остановить все инстансы
-#   aim-manager.sh status              — JSON со всеми профилями и их состоянием
-#   aim-manager.sh schedule-tick       — исполнить события расписаний с прошлого тика (зовёт S41)
-#   aim-manager.sh schedule-sync [p]   — привести enabled к расписанию (старт демона/правка)
+#   invnetctl enable  <profile>   — пометить enabled + reconcile
+#   invnetctl disable <profile>   — снять enabled + reconcile
+#   invnetctl reconcile           — привести факт к желаемому (старт/стоп инстансов) + правила
+#   invnetctl apply               — только переразложить ip rule (devices/routesменялись)
+#   invnetctl stopall             — остановить все инстансы
+#   invnetctl status              — JSON со всеми профилями и их состоянием
+#   invnetctl schedule-tick       — исполнить события расписаний с прошлого тика (зовёт S41)
+#   invnetctl schedule-sync [p]   — привести enabled к расписанию (старт демона/правка)
 
 export PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+. /opt/etc/openvpn/invnet-fw.sh 2>/dev/null   # общий источник iptables-правил (assert/remove)
 
 CONF=/opt/etc/openvpn
 PROFILES=$CONF/profiles
 META=$CONF/profile-meta
-ROUTES_FILE=$CONF/aim-routes.conf
-RUN=/opt/var/run/aim
+ROUTES_FILE=$CONF/invnet-routes.conf
+RUN=/opt/var/run/invnet
 LOGDIR=/opt/var/log
 BIN=/opt/sbin/openvpn
-UP=$CONF/aim-up.sh
-DOWN=$CONF/aim-down.sh
+UP=$CONF/invnet-up.sh
+DOWN=$CONF/invnet-down.sh
 MAXSLOT=7
 LANIF="br0 br1"
 
@@ -88,9 +89,9 @@ start_one() {
   is_running "$PROFILE" && return 0
 
   SLOT=$(alloc_slot "$PROFILE") || { echo "[$PROFILE] нет свободных слотов"; return 1; }
-  DEV="tun_aim$SLOT"
+  DEV="tun_invnet$SLOT"
   PIDF="$RUN/$PROFILE.pid"
-  LOGF="$LOGDIR/vpn-aim-$PROFILE.log"
+  LOGF="$LOGDIR/invnet-$PROFILE.log"
 
   # снять застрявший интерфейс этого слота
   n=0
@@ -137,12 +138,16 @@ start_one() {
     WAN_ARGS="--mark $WMARK"
   fi
 
+  # слот мог остаться от прежнего владельца (краш / kill -9 без down-хука) —
+  # снять его iptables, чтобы новый профиль не унаследовал чужой MASQUERADE/FORWARD
+  invnet_fw_remove_dev "$DEV"
+
   "$BIN" \
     --config "$CFG" \
     --dev "$DEV" --dev-type tun \
-    --setenv AIM_PROFILE "$PROFILE" \
-    --setenv AIM_SLOT "$SLOT" \
-    --daemon "vpn-aim-$PROFILE" --writepid "$PIDF" --log-append "$LOGF" \
+    --setenv INVNET_PROFILE "$PROFILE" \
+    --setenv INVNET_SLOT "$SLOT" \
+    --daemon "invnet-$PROFILE" --writepid "$PIDF" --log-append "$LOGF" \
     --script-security 2 \
     --route-nopull \
     --pull-filter ignore "redirect-gateway" \
@@ -154,7 +159,7 @@ start_one() {
     --persist-key \
     --persist-tun \
     $WAN_ARGS \
-    --up "$UP" --down "$DOWN" --route-up "$UP"
+    --up "$UP" --down "$DOWN"
   echo "[$PROFILE] start slot=$SLOT dev=$DEV"
 }
 
@@ -174,8 +179,8 @@ stop_one() {
     while ip rule del priority "$PRIOW" 2>/dev/null; do :; done
     ip route flush table "$TABLE" 2>/dev/null
     ip route flush table "$WTABLE" 2>/dev/null
-    DEV="tun_aim$SLOT"
-    iptables -t nat -D POSTROUTING -o "$DEV" -j MASQUERADE 2>/dev/null
+    DEV="tun_invnet$SLOT"
+    invnet_fw_remove_dev "$DEV"
     ip link show "$DEV" >/dev/null 2>&1 && ip link delete "$DEV" 2>/dev/null
   fi
   rm -f "$RUN/$PROFILE.slot"
@@ -186,7 +191,7 @@ stop_one() {
 apply_one() {
   PROFILE=$1
   SLOT=$(slot_of "$PROFILE"); [ -z "$SLOT" ] && return 0
-  DEV="tun_aim$SLOT"; TABLE=$((101 + SLOT))
+  DEV="tun_invnet$SLOT"; TABLE=$((101 + SLOT))
   ip link show "$DEV" >/dev/null 2>&1 || return 0
 
   # default в таблицу профиля — атомарно (replace), без flush: иначе между
@@ -250,11 +255,20 @@ reconcile() {
 }
 
 apply() {
+  # сериализуем параллельные apply: два invnet-up.sh при одновременном подъёме
+  # туннелей иначе гоняют общие правила (CIDR prio 40). mkdir — атомарный лок,
+  # busted через 30с на случай зависшего держателя.
+  LOCK="$RUN/.apply.lock"; _n=0
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    _n=$((_n+1)); [ "$_n" -ge 30 ] && { rmdir "$LOCK" 2>/dev/null; break; }
+    sleep 1
+  done
   for sf in "$RUN"/*.slot; do
     [ -f "$sf" ] || continue
     apply_one "$(basename "$sf" .slot)"
   done
   apply_routes
+  rmdir "$LOCK" 2>/dev/null
 }
 
 stopall() {
@@ -288,11 +302,11 @@ sched_apply_state() {
   cur=$(meta_get "$1" '.enabled'); [ "$cur" = "true" ] || cur=false
   if [ "$2" = "start" ] && [ "$cur" != "true" ]; then
     set_meta_enabled "$1" true
-    echo "[$(date '+%F %T')] [расписание] $1 → старт$3" >> "$LOGDIR/vpn-aim-action.log"
+    echo "[$(date '+%F %T')] [расписание] $1 → старт$3" >> "$LOGDIR/invnet-action.log"
     return 0
   elif [ "$2" = "stop" ] && [ "$cur" = "true" ]; then
     set_meta_enabled "$1" false
-    echo "[$(date '+%F %T')] [расписание] $1 → стоп$3" >> "$LOGDIR/vpn-aim-action.log"
+    echo "[$(date '+%F %T')] [расписание] $1 → стоп$3" >> "$LOGDIR/invnet-action.log"
     return 0
   fi
   return 1
@@ -372,7 +386,7 @@ _M
     slot=$(slot_of "$pr"); [ -z "$slot" ] && slot="-1"
     ip=""
     [ "$run" = true ] && [ "$slot" != "-1" ] && \
-      ip=$(ip -br -4 addr show "tun_aim$slot" 2>/dev/null | awk '{print $3}')
+      ip=$(ip -br -4 addr show "tun_invnet$slot" 2>/dev/null | awk '{print $3}')
     remote=$(grep -Em1 '^remote ' "$f" 2>/dev/null | awk '{print $2}')
 
     [ "$first" -eq 0 ] && echo ','

@@ -3,8 +3,8 @@ PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
-F=/opt/etc/openvpn/aim-routes.conf
-LOCK=/opt/var/run/aim-routes.lock
+F=/opt/etc/openvpn/invnet-routes.conf
+LOCK=/opt/var/run/invnet-routes.lock
 
 # Простой mkdir-lock (атомарен в любой fs). Ждём до 5 сек.
 i=0
@@ -22,7 +22,7 @@ is_valid_cidr() {
   echo "$1" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?$'
 }
 
-. /opt/share/vpn-aim/aim-lib.sh
+. /opt/share/invnet/invnet-lib.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 65536)
@@ -72,7 +72,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
       jq --argjson i "${IDX:-0}" '.[$i].enabled = (.[$i].enabled | not)' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
       ;;
   esac
-  /opt/sbin/aim-manager.sh apply >/dev/null 2>&1
+  /opt/sbin/invnetctl apply >/dev/null 2>&1
 fi
 
 cat "$F"

@@ -3,5 +3,5 @@ PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 # Запускаем в фоне, полностью отвязав fd — CGI возвращается мгновенно
-( /opt/etc/init.d/S30vpn-aim start >/opt/var/log/vpn-aim-action.log 2>&1 </dev/null & ) >/dev/null 2>&1
+( /opt/etc/init.d/S30invnet start >/opt/var/log/invnet-action.log 2>&1 </dev/null & ) >/dev/null 2>&1
 echo '{"ok":true,"status":"starting"}'

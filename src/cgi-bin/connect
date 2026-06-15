@@ -12,9 +12,9 @@ ON=$(echo "$QUERY_STRING" | sed -n 's/.*on=\([^&]*\).*/\1/p' | tr -cd '01')
 [ -z "$NAME" ] && { echo '{"error":"need name"}'; exit 0; }
 
 if [ "$ON" = "1" ]; then
-  ( /opt/sbin/aim-manager.sh enable "$NAME" >/opt/var/log/vpn-aim-action.log 2>&1 </dev/null & ) >/dev/null 2>&1
+  ( /opt/sbin/invnetctl enable "$NAME" >/opt/var/log/invnet-action.log 2>&1 </dev/null & ) >/dev/null 2>&1
   echo "{\"ok\":true,\"status\":\"enabling\",\"profile\":\"$NAME\"}"
 else
-  ( /opt/sbin/aim-manager.sh disable "$NAME" >/opt/var/log/vpn-aim-action.log 2>&1 </dev/null & ) >/dev/null 2>&1
+  ( /opt/sbin/invnetctl disable "$NAME" >/opt/var/log/invnet-action.log 2>&1 </dev/null & ) >/dev/null 2>&1
   echo "{\"ok\":true,\"status\":\"disabling\",\"profile\":\"$NAME\"}"
 fi

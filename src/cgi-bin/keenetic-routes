@@ -5,14 +5,14 @@ printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
 ROUTES=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/ip/route 2>/dev/null)
 IFACES=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null)
-AIM=/opt/etc/openvpn/aim-routes.conf
+CURF=/opt/etc/openvpn/invnet-routes.conf
 
 echo "$ROUTES" | jq -e . >/dev/null 2>&1 || ROUTES='[]'
 echo "$IFACES" | jq -e . >/dev/null 2>&1 || IFACES='{}'
-[ -f "$AIM" ] || echo '[]' > "$AIM"
+[ -f "$CURF" ] || echo '[]' > "$CURF"
 
-jq -n --argjson routes "$ROUTES" --argjson ifaces "$IFACES" --slurpfile aim "$AIM" '
-  ($aim[0] // []) as $current
+jq -n --argjson routes "$ROUTES" --argjson ifaces "$IFACES" --slurpfile cur "$CURF" '
+  ($cur[0] // []) as $current
   | [
       $routes[]
       | select(.proto == "static")

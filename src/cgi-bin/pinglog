@@ -3,8 +3,8 @@ PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
-LOG=/opt/var/log/vpn-aim-pingcheck.log
-PIDF=/opt/var/run/aim-pingcheck.pid
+LOG=/opt/var/log/invnet-pingcheck.log
+PIDF=/opt/var/run/invnet-pingcheck.pid
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 256)

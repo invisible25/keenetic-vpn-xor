@@ -3,12 +3,12 @@
 # Тикает каждые 30 секунд. Не делает внешних ping — только kill -0 на pid-файл.
 export PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 
-PIDF=/opt/var/run/aim-pingcheck.pid
-LOG=/opt/var/log/vpn-aim-pingcheck.log
-MGR=/opt/sbin/aim-manager.sh
+PIDF=/opt/var/run/invnet-pingcheck.pid
+LOG=/opt/var/log/invnet-pingcheck.log
+MGR=/opt/sbin/invnetctl
 META=/opt/etc/openvpn/profile-meta
 PROFILES=/opt/etc/openvpn/profiles
-RUN=/opt/var/run/aim
+RUN=/opt/var/run/invnet
 
 watchdog_loop() {
   while true; do
@@ -26,6 +26,11 @@ watchdog_loop() {
         echo "[$(date '+%F %T')] [$pr] перезапуск завершён" >> "$LOG"
       fi
     done
+    # defense-in-depth: вернуть fw/routing, если NDM перестроил netfilter между
+    # событиями. Хук netfilter.d возвращает iptables мгновенно; здесь — страховка
+    # раз в тик и для iptables, и для ip rule/маршрутов (их хук не покрывает).
+    . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_assert_all
+    "$MGR" apply >/dev/null 2>&1
     sleep 30
   done
 }
@@ -36,12 +41,12 @@ case "$1" in
     mkdir -p "$RUN"
     watchdog_loop &
     echo $! > "$PIDF"
-    echo "vpn-aim-pingcheck started (pid=$(cat "$PIDF"))"
+    echo "invnet-pingcheck started (pid=$(cat "$PIDF"))"
     ;;
   stop)
     [ -f "$PIDF" ] && kill "$(cat "$PIDF")" 2>/dev/null
     rm -f "$PIDF"
-    echo "vpn-aim-pingcheck stopped"
+    echo "invnet-pingcheck stopped"
     ;;
   restart)
     $0 stop; sleep 1; $0 start
