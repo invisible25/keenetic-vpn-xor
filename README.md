@@ -44,12 +44,6 @@ wget -qO- https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/bo
 ```sh
 cd /tmp && tar xzf vpn-xor-install-clean.tar.gz && cd vpn-xor-install && sh install.sh
 ```
-
-## Безопасность
-
-Публикуется только «чистый» дистрибутив без профилей и паролей. Свои VPN-конфиги добавляются уже в панели
-после установки и хранятся только на вашем роутере.
-
 ## OpenVPN + XOR
 
 `openvpn` 2.6.14 собран с патчем Tunnelblick **scramble** (`scramble obfuscate <key>` / `scramble xormask <key>`)
