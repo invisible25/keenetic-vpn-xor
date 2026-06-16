@@ -54,6 +54,3 @@ cd /tmp && tar xzf vpn-xor-install-clean.tar.gz && cd vpn-xor-install && sh inst
 
 `openvpn` 2.6.14 собран с патчем Tunnelblick **scramble** (`scramble obfuscate <key>` / `scramble xormask <key>`)
 для обфускации трафика и обхода DPI. Сборка — Entware buildroot, по одному `.ipk` на архитектуру.
-
----
-🤖 Сгенерировано с помощью [Claude Code](https://claude.com/claude-code)
