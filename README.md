@@ -49,6 +49,52 @@ curl -fsSL https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/b
 ```sh
 cd /tmp && tar xzf vpn-xor-install-clean.tar.gz && cd vpn-xor-install && sh install.sh
 ```
+
+## Управление сервисом
+
+По SSH (`root`, порт 222). Кроме веб-панели, всё управляется init-скриптами в `/opt/etc/init.d/`.
+
+**VPN-туннели** (`S30invnet` поднимает все профили с `enabled=true`):
+
+```sh
+/opt/etc/init.d/S30invnet start      # запустить
+/opt/etc/init.d/S30invnet stop       # остановить все туннели
+/opt/etc/init.d/S30invnet restart    # перезапустить
+/opt/etc/init.d/S30invnet status     # состояние профилей/туннелей
+/opt/etc/init.d/S30invnet apply      # переналожить ip rule / маршруты / firewall
+```
+
+**Веб-панель** (lighttpd:8888), **watchdog** и **планировщик** — `start|stop|restart|status`:
+
+```sh
+/opt/etc/init.d/S31invnet-web      restart
+/opt/etc/init.d/S40invnet-pingcheck restart
+/opt/etc/init.d/S41invnet-sched     restart
+```
+
+**Перезапустить всё разом:**
+
+```sh
+for s in S30invnet S31invnet-web S40invnet-pingcheck S41invnet-sched; do /opt/etc/init.d/$s restart; done
+```
+
+**Отдельный профиль** (менеджер `invnetctl`):
+
+```sh
+invnetctl enable  <профиль>   # включить (enabled=true) и поднять
+invnetctl disable <профиль>   # выключить и опустить туннель
+invnetctl status              # сводка по всем профилям
+invnetctl reconcile           # привести факт к желаемому состоянию
+invnetctl stopall             # остановить все туннели
+```
+
+**Логи:**
+
+```sh
+tail -f /opt/var/log/invnet-<профиль>.log   # лог OpenVPN по профилю
+tail -f /opt/var/log/invnet-web.err         # ошибки веб-панели
+```
+
 ## OpenVPN + XOR
 
 `openvpn` 2.6.14 собран с патчем Tunnelblick **scramble** (`scramble obfuscate <key>` / `scramble xormask <key>`)
