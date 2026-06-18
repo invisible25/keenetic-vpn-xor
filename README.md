@@ -9,11 +9,16 @@
 На роутере с установленным Entware (SSH, порт 222):
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/boot.sh | sh
+opkg update && opkg install curl ca-bundle
+curl -fsSL https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/boot.sh | sh
 ```
 
 Скрипт скачает последний релиз, **сам определит архитектуру** (`opkg print-architecture`),
 поставит нужный `openvpn+XOR`, зависимости и поднимет панель. После установки откройте `http://<IP-роутера>:8888/`.
+
+> **Почему не `wget`?** Встроенный в прошивку BusyBox-`wget` часто собран без HTTPS (на `https://`-ссылку
+> отвечает `wget: not an http or ftp url`). Поэтому качаем через `curl`. Если предпочитаете `wget` —
+> поставьте полный из Entware: `opkg install wget-ssl ca-bundle` и вызывайте его явно по пути `/opt/bin/wget`.
 
 ## Поддерживаемые архитектуры
 
