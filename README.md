@@ -1,4 +1,4 @@
-# keenetic-vpn-xor
+# Keenetic Routers-vpn-xor
 
 Веб-панель управления **VPN (OpenVPN + XOR/scramble, обход DPI)** для роутеров **Keenetic** поверх Entware.
 Несколько туннелей одновременно (мульти-профиль), привязка устройств/маршрутов к профилю, выбор WAN-канала,
