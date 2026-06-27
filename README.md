@@ -100,11 +100,33 @@ tail -f /opt/var/log/invnet-web.err         # ошибки веб-панели
 `openvpn` 2.6.14 собран с патчем Tunnelblick **scramble** (`scramble obfuscate <key>` / `scramble xormask <key>`)
 для обфускации трафика и обхода DPI. Сборка — Entware buildroot, по одному `.ipk` на архитектуру.
 
-## Поддержать проект
+## 💚 Поддержать проект
 
-Панель бесплатна и развивается в свободное время. Если она пригодилась — самый простой способ
-сказать спасибо это поставить репозиторию ⭐. А если хочется поддержать разработку новых функций —
-ниже реквизиты. Это сугубо по желанию и ничего не ограничивает в использовании.
+Панель бесплатна и развивается в свободное время. Самый простой способ сказать спасибо — поставить
+репозиторию ⭐. А поддержать разработку новых функций можно по желанию: отсканируйте QR или скопируйте адрес.
+
+<table>
+  <tr>
+    <td align="center" width="25%"><b>USDT</b><br><sub>BEP20 · BSC</sub></td>
+    <td align="center" width="25%"><b>ETH</b><br><sub>BEP20 · BSC</sub></td>
+    <td align="center" width="25%"><b>LTC</b><br><sub>Litecoin</sub></td>
+    <td align="center" width="25%"><b>ЮMoney</b><br><sub>карта/кошелёк</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src=".github/assets/donate/usdt-bep20.png" width="150" alt="USDT BEP20"></td>
+    <td align="center"><img src=".github/assets/donate/eth-bep20.png" width="150" alt="ETH BEP20"></td>
+    <td align="center"><img src=".github/assets/donate/ltc.png" width="150" alt="LTC"></td>
+    <td align="center"><img src=".github/assets/donate/yoomoney.png" width="150" alt="ЮMoney"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><code>0xd4a0…5591</code></sub></td>
+    <td align="center"><sub><code>0xd4a0…5591</code></sub></td>
+    <td align="center"><sub><code>LeRAW…HPdr</code></sub></td>
+    <td align="center"><sub><a href="https://yoomoney.ru/to/4100117590955780">yoomoney.ru/to/…</a></sub></td>
+  </tr>
+</table>
+
+Полные реквизиты для копирования:
 
 | Способ | Сеть | Реквизиты |
 |---|---|---|
