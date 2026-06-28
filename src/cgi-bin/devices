@@ -6,9 +6,16 @@ export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
 PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
-META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
+WAN=$(echo "$QUERY_STRING" | sed -n 's/.*[?&]\{0,1\}wan=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
 SELECTED=""
-[ -f "$META" ] && SELECTED=$(jq -r '.devices[]?' "$META" 2>/dev/null | tr '\n' ' ')
+if [ -n "$WAN" ]; then
+  # цель — физический WAN-канал: выбранные берём из invnet-wan-policy.conf
+  WANPOL=/opt/etc/openvpn/invnet-wan-policy.conf
+  [ -f "$WANPOL" ] && SELECTED=$(jq -r --arg w "$WAN" '.[]? | select(.wan==$w) | .devices[]?' "$WANPOL" 2>/dev/null | tr '\n' ' ')
+else
+  META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
+  [ -f "$META" ] && SELECTED=$(jq -r '.devices[]?' "$META" 2>/dev/null | tr '\n' ' ')
+fi
 
 HOSTLIST=$(curl -s --max-time 2 http://127.0.0.1:79/rci/show/ip/hotspot 2>/dev/null)
 

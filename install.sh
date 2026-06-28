@@ -10,6 +10,8 @@
 
 set -e
 
+INVNET_VERSION=1.3.0   # версия панели invnet (drag-drop, WAN-политика, маршруты-исключения)
+
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
 ok()    { printf "\033[1;32m[+]\033[0m %s\n" "$1"; }
@@ -30,6 +32,7 @@ run_t() {  # run_t <секунды> <команда...>
 }
 
 # === Проверки ===
+info "Установщик invnet v$INVNET_VERSION"
 info "Проверка Entware..."
 [ -x /opt/bin/opkg ] || fail "Entware не установлен. Сначала установи Entware через USB-диск (см. документацию Keenetic OPKG)."
 
@@ -93,6 +96,7 @@ mkdir -p /opt/etc/openvpn/profiles /opt/etc/openvpn/profile-meta /opt/var/run /o
 [ -f /opt/etc/openvpn/invnet-mode.conf ]      || echo devices > /opt/etc/openvpn/invnet-mode.conf
 [ -f /opt/etc/openvpn/invnet-devices.conf ]   || : > /opt/etc/openvpn/invnet-devices.conf
 [ -f /opt/etc/openvpn/invnet-routes.conf ]    || echo '[]' > /opt/etc/openvpn/invnet-routes.conf
+[ -f /opt/etc/openvpn/invnet-wan-policy.conf ] || echo '[]' > /opt/etc/openvpn/invnet-wan-policy.conf
 [ -f /opt/etc/openvpn/invnet-autostart.conf ] || echo no > /opt/etc/openvpn/invnet-autostart.conf
 
 # === Pubkey для dropbear (необязательно, упрощает SSH) ===

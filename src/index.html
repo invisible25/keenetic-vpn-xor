@@ -456,6 +456,13 @@ pre.log {
   /* карточка профиля: контролы (⏰ ✎ тумблер) не должны сжимать имя */
   .profile-card { gap: 8px; padding: 13px 12px }
   .edit-btn { width: 34px; height: 34px; font-size: 16px }
+  /* строка маршрута: на узком экране селектор направления — на отдельную строку,
+     иначе CIDR/комментарий сжимаются в нечитаемую полоску (тумблер+CIDR | строка2: × + select) */
+  .route-row { flex-wrap: wrap; row-gap: 8px }
+  .route-row > button { order: 1 }
+  .route-row > select { order: 2; flex: 1 1 100%; margin-right: 0 }
+  /* форма добавления маршрута — в столбик */
+  .route-add-grid { grid-template-columns: 1fr }
 }
 
 /* ── Sysinfo-карточка ── */
@@ -517,6 +524,17 @@ pre.log {
 :focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; border-radius: 5px }
 .tab:focus-visible, .theme-swatch:focus-visible, .opt:focus-visible, .profile-info:focus-visible { outline-offset: -2px }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0 }
+
+/* ── Зона перетаскивания .ovpn ── */
+.dropzone { position: relative; border: 1px dashed var(--line); border-radius: 10px; padding: 4px; transition: border-color .15s, background .15s }
+.dropzone.dragover { border-color: var(--gold-deep); background: color-mix(in srgb, var(--gold-deep) 9%, transparent) }
+.dropzone .textarea { border: none; background: transparent; min-height: 200px }
+.dropzone-hint { font-size: 12px; color: var(--muted); padding: 8px 8px 4px; text-align: center; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap }
+
+/* ── Маршруты: сетка добавления + акцент «прямых» маршрутов ── */
+.route-add-grid { display: grid; grid-template-columns: 2fr 3fr auto; gap: 8px; align-items: end }
+.route-direct { border-left: 3px solid var(--gold-deep); padding-left: 9px }
+.note-accent { color: var(--gold-deep); text-transform: none; letter-spacing: 0; font-weight: 500 }
 </style>
 </head>
 <body>
@@ -603,7 +621,14 @@ pre.log {
     </div>
     <div class="field">
       <label>Конфиг .ovpn</label>
-      <textarea class="textarea" id="new-content" placeholder="client&#10;dev tun&#10;proto udp&#10;remote ..."></textarea>
+      <div id="ovpn-drop" class="dropzone" ondragover="ovpnDragOver(event)" ondragleave="ovpnDragLeave(event)" ondrop="ovpnDrop(event)">
+        <textarea class="textarea" id="new-content" placeholder="client&#10;dev tun&#10;proto udp&#10;remote ..."></textarea>
+        <div class="dropzone-hint">
+          <button type="button" class="btn btn-ghost btn-small" onclick="document.getElementById('ovpn-file').click()">Выбрать файл .ovpn</button>
+          <input type="file" id="ovpn-file" accept=".ovpn,.conf,.txt" onchange="onOvpnFile(event)" class="sr-only" aria-label="Выбрать файл конфигурации .ovpn">
+          <span>или перетащите сюда</span>
+        </div>
+      </div>
     </div>
     <button class="btn btn-primary" onclick="uploadProfile()" style="width:100%">Сохранить профиль</button>
   </div>
@@ -613,10 +638,11 @@ pre.log {
   <div class="card">
     <h2><span>Кого пускать через VPN</span><span class="extra"><small id="dev-count"></small></span></h2>
     <div class="field">
-      <label>Профиль (куда направлять выбранные устройства)</label>
+      <label>Куда направлять выбранные устройства</label>
       <select class="select" id="dev-profile" onchange="onDevProfileChange()"></select>
     </div>
-    <div class="setting-hint" style="margin:10px 0 14px">Имена и сети — из админки Кинетика. Устройство можно привязать только к одному профилю.</div>
+    <div class="setting-hint" style="margin:10px 0 6px">Имена и сети — из админки Кинетика. Устройство привязывается только к одному направлению: VPN-профиль или прямой WAN-канал.</div>
+    <div class="setting-hint note-accent" id="dev-wan-note" style="display:none;margin:0 0 14px"></div>
     <div class="mode-toggle">
       <div class="opt" id="mode-devices" onclick="setMode('devices')">Выбранные</div>
       <div class="opt" id="mode-all" onclick="setMode('all')">Весь LAN</div>
@@ -632,8 +658,8 @@ pre.log {
 <div class="section" data-section="routes">
   <div class="card">
     <h2><span>Маршруты IP / подсетей</span><span class="extra"><small id="routes-count"></small></span></h2>
-    <div class="setting-hint" style="margin-bottom:14px">Указанные подсети идут через VPN независимо от выбранных устройств. Правила применяются при старте туннеля. Формат: <code class="mono">5.45.0.0/16</code> или <code class="mono">8.8.8.8</code>.</div>
-    <div style="display:grid;grid-template-columns:2fr 3fr auto;gap:8px;align-items:end">
+    <div class="setting-hint" style="margin-bottom:14px">У каждого маршрута выбирается направление: <b>Через VPN</b> — подсеть идёт в туннель; <b>↗ напрямую</b> — подсеть идёт мимо VPN через выбранный физический канал (маршрут-исключение, как в Keenetic). Прямой маршрут перебивает привязку устройства к VPN. Формат: <code class="mono">5.45.0.0/16</code> или <code class="mono">8.8.8.8</code>.</div>
+    <div class="route-add-grid">
       <div class="field" style="margin:0">
         <label>CIDR / IP</label>
         <input class="input" id="new-cidr" placeholder="5.45.0.0/16">
@@ -1206,19 +1232,50 @@ async function saveSchedule(){
 
 // ── Вкладка «Устройства» работает с выбранным в дропдауне профилем ──
 let DEV_PROFILE = '';
-function devQS(){ return DEV_PROFILE ? ('?profile=' + encodeURIComponent(DEV_PROFILE)) : ''; }
+function devIsWan(){ return DEV_PROFILE.slice(0,4) === 'wan:'; }
+function devWanIface(){ return DEV_PROFILE.slice(4); }
+function devWanInfo(){ return (WANS || []).find(w => w.iface === devWanIface()) || {}; }
+function devQS(){
+  if (!DEV_PROFILE) return '';
+  if (devIsWan()){
+    const w = devWanInfo();
+    return '?wan=' + encodeURIComponent(devWanIface())
+         + '&label=' + encodeURIComponent(w.label || '')
+         + '&ndm=' + encodeURIComponent(w.ndm || '');
+  }
+  return '?profile=' + encodeURIComponent(DEV_PROFILE);
+}
 
 function loadDevProfiles(){
   const sel = $('dev-profile');
   const prev = DEV_PROFILE;
   sel.innerHTML = '';
-  for (const p of PROFILES_CACHE) {
-    const o = document.createElement('option');
-    o.value = p.name; o.textContent = p.name + (p.running ? ' ● работает' : '');
-    sel.appendChild(o);
+  if (PROFILES_CACHE.length){
+    const g = document.createElement('optgroup'); g.label = 'VPN-профили';
+    for (const p of PROFILES_CACHE) {
+      const o = document.createElement('option');
+      o.value = p.name; o.textContent = p.name + (p.running ? ' ● работает' : '');
+      g.appendChild(o);
+    }
+    sel.appendChild(g);
   }
-  if (PROFILES_CACHE.some(p => p.name === prev)) DEV_PROFILE = prev;
-  else DEV_PROFILE = PROFILES_CACHE[0] ? PROFILES_CACHE[0].name : '';
+  const wans = (WANS || []).filter(w => w.connected && w.iface);
+  if (wans.length){
+    const g = document.createElement('optgroup'); g.label = 'Прямые WAN-каналы (без VPN)';
+    for (const w of wans){
+      const o = document.createElement('option');
+      o.value = 'wan:' + w.iface; o.textContent = '↗ ' + (w.label || w.iface);
+      g.appendChild(o);
+    }
+    sel.appendChild(g);
+  } else {
+    // подсказка о существовании фичи, когда физических каналов не нашлось
+    const g = document.createElement('optgroup'); g.label = 'Прямые WAN-каналы (без VPN)';
+    const o = document.createElement('option'); o.disabled = true; o.textContent = '— каналы не найдены —';
+    g.appendChild(o); sel.appendChild(g);
+  }
+  const vals = [...sel.options].filter(o => !o.disabled).map(o => o.value);
+  DEV_PROFILE = vals.includes(prev) ? prev : (vals[0] || '');
   sel.value = DEV_PROFILE;
 }
 async function onDevProfileChange(){
@@ -1239,13 +1296,28 @@ async function openDevicesFor(name){
 
 async function loadMode(){
   if (!DEV_PROFILE) return;
+  const mt = document.querySelector('.mode-toggle');
+  const note = $('dev-wan-note');
+  if (devIsWan()){
+    // WAN-канал: режима «весь LAN» нет, только выбранные устройства
+    if (mt) mt.style.display = 'none';
+    CURRENT_MODE = 'devices';
+    $('devices-section').classList.remove('muted-section');
+    const w = devWanInfo();
+    note.textContent = 'Трафик выбранных устройств пойдёт через «' + (w.label || devWanIface()) + '» напрямую, мимо VPN. Если канал недоступен — без интернета (автоотката нет).';
+    note.style.display = '';
+    return;
+  }
+  if (mt) mt.style.display = '';
+  note.style.display = 'none';
   CURRENT_MODE = (await (await fetch('/cgi-bin/mode' + devQS())).text()).trim();
   $('mode-devices').classList.toggle('active', CURRENT_MODE === 'devices');
   $('mode-all').classList.toggle('active', CURRENT_MODE === 'all');
   $('devices-section').classList.toggle('muted-section', CURRENT_MODE === 'all');
 }
 async function setMode(m){
-  if (!DEV_PROFILE) { toast('Сначала выбери профиль', 'error'); return }
+  if (!DEV_PROFILE) { toast('Сначала выберите цель', 'error'); return }
+  if (devIsWan()) return;   // у WAN-канала режима нет
   await fetch('/cgi-bin/mode' + devQS(), { method: 'POST', body: m });
   await loadMode();
   toast(DEV_PROFILE + ': ' + (m === 'all' ? 'весь LAN' : 'выбранные'), 'ok');
@@ -1308,13 +1380,34 @@ async function loadDevs(){
 }
 
 async function saveDevs(){
-  if (!DEV_PROFILE) { toast('Сначала выбери профиль', 'error'); return }
+  if (!DEV_PROFILE) { toast('Сначала выберите цель', 'error'); return }
   const ips = [...document.querySelectorAll('#dev-list input[type=checkbox]:checked')]
     .map(c => 'ip=' + encodeURIComponent(c.dataset.ip)).join('&');
-  const r = await fetch('/cgi-bin/save-devices' + devQS(), { method: 'POST', body: ips });
+  const ep = devIsWan() ? '/cgi-bin/save-wan-policy' : '/cgi-bin/save-devices';
+  const r = await fetch(ep + devQS(), { method: 'POST', body: ips });
   toast(await r.text(), 'ok');
   loadProfiles();
   loadDevs();
+}
+
+// Физические WAN-каналы (не VPN-типы) — кандидаты на «прямой» выход маршрута
+function isVpnWanType(t){ t=(t||'').toLowerCase(); return ['sstp','openvpn','wireguard','l2tp','pptp','ikev2','ipsec','vpn','ovpn','wg','tun'].some(k=>t.includes(k)); }
+function physicalWans(){ return (WANS||[]).filter(w => w.connected && w.iface && !isVpnWanType(w.type)); }
+function routeDirSelect(r, idx){
+  const cur = (r.direct && r.wan) ? r.wan : '';
+  let opts = '<option value="">Через VPN</option>';
+  const phys = physicalWans();
+  for (const w of phys){
+    const sel = (cur === w.iface) ? ' selected' : '';
+    opts += '<option value="' + escapeHtml(w.iface) + '"' + sel + '>↗ ' + escapeHtml(w.label || w.iface) + '</option>';
+  }
+  if (cur && !phys.some(w => w.iface === cur)) opts += '<option value="' + escapeHtml(cur) + '" selected>↗ ' + escapeHtml(cur) + ' (недоступен)</option>';
+  return '<select class="select" aria-label="Направление маршрута ' + escapeHtml(r.cidr) + '" onchange="setRouteDir(' + idx + ', this.value)" title="Направление: через VPN или напрямую через канал" style="width:auto;min-width:118px;padding:6px 8px;font-size:12px;margin-right:6px">' + opts + '</select>';
+}
+async function setRouteDir(idx, wan){
+  await fetch('/cgi-bin/routes', { method:'POST', body: 'action=setdir&index=' + idx + '&wan=' + encodeURIComponent(wan) });
+  toast(wan ? 'Маршрут → напрямую (мимо VPN)' : 'Маршрут → через VPN', 'ok');
+  loadRoutes();
 }
 
 async function loadRoutes(){
@@ -1326,15 +1419,18 @@ async function loadRoutes(){
     $('routes-count').textContent = arr.length ? arr.length + ' маршрут.' : '';
     arr.forEach((r, idx) => {
       const row = document.createElement('div');
-      row.className = 'dev-row';
       const enabled = r.enabled !== false;
-      const comment = r.comment ? '<div class="dev-meta"><span>' + escapeHtml(r.comment) + '</span></div>' : '';
+      const isDirect = r.direct === true && r.wan;
+      row.className = 'dev-row route-row' + (isDirect ? ' route-direct' : '');
+      const dirBadge = isDirect ? '<span class="iface-badge" style="color:var(--gold-deep)">напрямую</span>' : '';
+      const comment = (r.comment || isDirect) ? '<div class="dev-meta">' + (r.comment ? '<span>' + escapeHtml(r.comment) + '</span>' : '') + dirBadge + '</div>' : '';
       row.innerHTML =
-        '<label class="switch"><input type="checkbox" aria-label="Маршрут ' + escapeHtml(r.cidr) + ' через VPN" ' + (enabled ? 'checked' : '') + ' onchange="toggleRoute(' + idx + ')"><span class="switch-slider"></span></label>' +
+        '<label class="switch"><input type="checkbox" aria-label="Маршрут ' + escapeHtml(r.cidr) + ' включён" ' + (enabled ? 'checked' : '') + ' onchange="toggleRoute(' + idx + ')"><span class="switch-slider"></span></label>' +
         '<div class="dev-info" style="margin-left:6px">' +
           '<div class="dev-name mono" style="color:var(--gold-deep)">' + escapeHtml(r.cidr) + '</div>' +
           comment +
         '</div>' +
+        routeDirSelect(r, idx) +
         '<button class="btn btn-warn btn-small" onclick="deleteRoute(' + idx + ')">×</button>';
       box.appendChild(row);
     });
@@ -1577,6 +1673,29 @@ async function del(name){
   const r = await fetch('/cgi-bin/delete-profile?name=' + encodeURIComponent(name));
   toast(await r.text(), 'ok');
   loadProfiles();
+}
+
+// ── Перетаскивание / выбор файла .ovpn → заполняет форму добавления профиля ──
+function ovpnDragOver(e){ e.preventDefault(); $('ovpn-drop').classList.add('dragover'); }
+function ovpnDragLeave(e){ $('ovpn-drop').classList.remove('dragover'); }
+function ovpnDrop(e){
+  e.preventDefault(); $('ovpn-drop').classList.remove('dragover');
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) fillFromFile(f);
+}
+function onOvpnFile(e){ const f = e.target.files && e.target.files[0]; if (f) fillFromFile(f); e.target.value = ''; }
+function fillFromFile(file){
+  if (file.size > 512000) { toast('Файл слишком большой (>500 КБ) — это вряд ли .ovpn', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    $('new-content').value = reader.result;
+    if (!$('new-name').value.trim()) {
+      $('new-name').value = file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32);
+    }
+    toast('Файл загружен: ' + file.name, 'ok');
+  };
+  reader.onerror = () => toast('Не удалось прочитать файл', 'error');
+  reader.readAsText(file);
 }
 
 async function uploadProfile(){

@@ -23,6 +23,7 @@ CONF=/opt/etc/openvpn
 PROFILES=$CONF/profiles
 META=$CONF/profile-meta
 ROUTES_FILE=$CONF/invnet-routes.conf
+WANPOL=$CONF/invnet-wan-policy.conf
 RUN=/opt/var/run/invnet
 LOGDIR=/opt/var/log
 BIN=/opt/sbin/openvpn
@@ -81,6 +82,36 @@ resolve_wan() {
   ip -o -4 addr show 2>/dev/null | awk -v a="$ADDR" 'index($4,a"/")==1{print $2; exit}'
 }
 
+# ---- шлюз физического WAN-устройства (для policy-таблиц процесса и WAN-политики) ----
+# Сперва via на самом dev, затем via в table main для этого dev; для PPP/p2p
+# (PPPoE/SSTP/L2TP) шлюза нет — вызывающий тогда кладёт default dev <wan>.
+wan_gw() {
+  _w=$1
+  _gw=$(ip -4 route show dev "$_w" 2>/dev/null | sed -n 's/.*[[:space:]]via[[:space:]]\([0-9.]\{1,\}\).*/\1/p' | head -1)
+  [ -z "$_gw" ] && _gw=$(ip -4 route show table main 2>/dev/null | sed -n "s|.*via[[:space:]]\([0-9.]\{1,\}\)[[:space:]]dev[[:space:]]$_w\([[:space:]].*\)\?\$|\1|p" | head -1)
+  # Шлюз ВТОРИЧНОГО Ethernet-WAN может отсутствовать в main-таблице (default там
+  # держит основной канал). NDM знает шлюз — спросим у RCI по адресу интерфейса, но
+  # curl дорог в тике S40 → КЭШИРУЕМ результат ($RUN/gw.<wan>) и читаем кэш до curl.
+  # Для PPP/PPPoE (ADSL) шлюз не нужен (p2p, выход через сам dev) — НЕ дёргаем RCI.
+  if [ -z "$_gw" ]; then
+    case "$_w" in
+      ppp*) : ;;
+      *)
+        _cache="$RUN/gw.$_w"
+        if [ -s "$_cache" ]; then
+          _gw=$(cat "$_cache" 2>/dev/null)
+        else
+          _a=$(ip -4 -o addr show dev "$_w" 2>/dev/null | awk '{split($4,x,"/");print x[1];exit}')
+          [ -n "$_a" ] && _gw=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null \
+              | jq -r --arg a "$_a" 'to_entries[]|.value|select(.address==$a)|.gateway // empty' 2>/dev/null | head -1)
+          [ -n "$_gw" ] && { mkdir -p "$RUN" 2>/dev/null; echo "$_gw" > "$_cache"; }
+        fi
+        ;;
+    esac
+  fi
+  echo "$_gw"
+}
+
 # ---- запуск одного профиля ----
 start_one() {
   PROFILE=$1
@@ -114,8 +145,7 @@ start_one() {
 
     # Шлюз WAN: ищем ЛЮБОЙ via на интерфейсе (default может забрать Keenetic-VPN),
     # для PPP/p2p (PPPoE/SSTP/L2TP) шлюз не нужен — выход через сам dev.
-    GW=$(ip -4 route show dev "$WAN" 2>/dev/null | sed -n 's/.*[[:space:]]via[[:space:]]\([0-9.]\{1,\}\).*/\1/p' | head -1)
-    [ -z "$GW" ] && GW=$(ip -4 route show table main 2>/dev/null | sed -n "s|.*via[[:space:]]\([0-9.]\{1,\}\)[[:space:]]dev[[:space:]]$WAN\([[:space:]].*\)\?\$|\1|p" | head -1)
+    GW=$(wan_gw "$WAN")
     if [ -n "$GW" ]; then
       ip route replace default via "$GW" dev "$WAN" table "$WTABLE" 2>/dev/null
     else
@@ -216,12 +246,66 @@ apply_one() {
   fi
 }
 
-# ---- глобальные CIDR-маршруты → через primary (минимальный slot) активный профиль ----
+# ---- rp_filter: ослабить строгую reverse-path проверку на канале (1→2 loose) ----
+# При policy-routing обратный пакет приходит на «не тот по main-таблице» интерфейс и
+# строгий rp_filter (1) его дропнет. Меняем ТОЛЬКО если строгий, сохраняя оригинал
+# в $RUN/rpf.<wan> для отката. На роутерах с rp_filter=0 (off) не трогаем вовсе.
+rpf_ensure_loose() {
+  _w=$1; _p="/proc/sys/net/ipv4/conf/$_w/rp_filter"
+  [ -w "$_p" ] || return 0
+  _cur=$(cat "$_p" 2>/dev/null)
+  if [ "$_cur" = "1" ]; then
+    [ -f "$RUN/rpf.$_w" ] || echo "$_cur" > "$RUN/rpf.$_w"
+    echo 2 > "$_p" 2>/dev/null
+  fi
+}
+# Вернуть исходный rp_filter каналам, которые больше не используются ни WAN-политикой,
+# ни прямыми маршрутами.
+rpf_restore_unused() {
+  for _rf in "$RUN"/rpf.*; do
+    [ -f "$_rf" ] || continue
+    _w=$(basename "$_rf"); _w=${_w#rpf.}
+    _used=no
+    [ -f "$WANPOL" ] && jq -e --arg w "$_w" 'any(.[]?; (.enabled != false) and (.wan == $w) and ((.devices|length) > 0))' "$WANPOL" >/dev/null 2>&1 && _used=yes
+    [ -f "$ROUTES_FILE" ] && jq -e --arg w "$_w" 'any(.[]?; (.enabled != false) and (.direct == true) and (.wan == $w))' "$ROUTES_FILE" >/dev/null 2>&1 && _used=yes
+    if [ "$_used" = no ]; then
+      _p="/proc/sys/net/ipv4/conf/$_w/rp_filter"
+      [ -w "$_p" ] && cat "$_rf" > "$_p" 2>/dev/null
+      rm -f "$_rf"
+    fi
+  done
+}
+
+# ---- CIDR-маршруты: через VPN (primary активный профиль) ИЛИ напрямую (физ. WAN) ----
+# Направление маршрута: .direct==true → подсеть идёт МИМО VPN через .wan (как
+# статический маршрут-исключение в Keenetic). Прямой маршрут prio 39 перебивает
+# привязку устройства к VPN (prio 50) → исключение работает даже для VPN-устройства.
+# Иначе (.direct≠true) → подсеть В VPN через primary-профиль (prio 40).
 apply_routes() {
-  P_CIDR=40
-  while ip rule del priority "$P_CIDR" 2>/dev/null; do :; done
+  while ip rule del priority 40 2>/dev/null; do :; done
+  while ip rule del priority 39 2>/dev/null; do :; done
+  _t=230; while [ "$_t" -le 238 ]; do ip route flush table "$_t" 2>/dev/null; _t=$((_t+1)); done
   [ -f "$ROUTES_FILE" ] || return 0
-  # primary = профиль с минимальным слотом среди запущенных
+
+  # ── ПРЯМЫЕ маршруты-исключения: <cidr> через физический WAN, минуя VPN ──
+  # таблицы 230+j (j по числу разных WAN-каналов исключений), правила prio 39.
+  j=0
+  for w in $(jq -r '.[] | select(.enabled != false and .direct == true) | .wan // empty' "$ROUTES_FILE" 2>/dev/null | sort -u); do
+    [ -z "$w" ] && continue
+    ip link show "$w" >/dev/null 2>&1 || continue
+    [ "$j" -gt 8 ] && break
+    DT=$((230 + j)); j=$((j+1))
+    rpf_ensure_loose "$w"
+    GW=$(wan_gw "$w")
+    if [ -n "$GW" ]; then ip route replace default via "$GW" dev "$w" table "$DT" 2>/dev/null
+    else ip route replace default dev "$w" table "$DT" 2>/dev/null; fi
+    jq -r --arg w "$w" '.[] | select(.enabled != false and .direct == true and ((.wan // "") == $w)) | .cidr' "$ROUTES_FILE" 2>/dev/null | while read -r cidr; do
+      cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
+      ip rule add to "$cidr" lookup "$DT" priority 39 2>/dev/null
+    done
+  done
+
+  # ── маршруты ЧЕРЕЗ VPN: через primary (минимальный slot) активный профиль ──
   PRIMARY=""; MINSLOT=99
   for sf in "$RUN"/*.slot; do
     [ -f "$sf" ] || continue
@@ -231,9 +315,43 @@ apply_routes() {
   done
   [ -z "$PRIMARY" ] && return 0
   TABLE=$((101 + MINSLOT))
-  jq -r '.[] | select(.enabled != false) | .cidr' "$ROUTES_FILE" 2>/dev/null | while read -r cidr; do
+  jq -r '.[] | select(.enabled != false and ((.direct // false) != true)) | .cidr' "$ROUTES_FILE" 2>/dev/null | while read -r cidr; do
     cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
-    ip rule add to "$cidr" lookup "$TABLE" priority "$P_CIDR" 2>/dev/null
+    ip rule add to "$cidr" lookup "$TABLE" priority 40 2>/dev/null
+  done
+}
+
+# ---- WAN-политика: устройства → физический WAN-канал, минуя VPN ----
+# Аддитивно к VPN-пути. Бэнды ниже 100 и без пересечений: правила prio 60+i,
+# таблицы 240+i (i — индекс записи). Без kill-switch: канал лёг → следующее
+# правило/основной маршрут (как «использовать соединение» без failover Keenetic).
+# NAT/FORWARD ставит invnet-fw.sh (assert_wanpol), персистентность — через NDM-хук.
+apply_wan_policy() {
+  p=60
+  while [ "$p" -le 69 ]; do
+    while ip rule del priority "$p" 2>/dev/null; do :; done
+    p=$((p+1))
+  done
+  _t=240; while [ "$_t" -le 249 ]; do ip route flush table "$_t" 2>/dev/null; _t=$((_t+1)); done
+  [ -f "$WANPOL" ] || return 0
+  i=0
+  jq -c '.[] | select(.enabled != false)' "$WANPOL" 2>/dev/null | while read -r e; do
+    WIF=$(echo "$e" | jq -r '.wan // ""')
+    if [ -z "$WIF" ] || ! ip link show "$WIF" >/dev/null 2>&1; then i=$((i+1)); continue; fi
+    PRIO=$((60 + i)); [ "$PRIO" -gt 69 ] && break   # бэнд 60..69 (≤10 каналов)
+    TBL=$((240 + i))
+    rpf_ensure_loose "$WIF"   # ослабить строгий rp_filter на канале (с откатом)
+    GW=$(wan_gw "$WIF")
+    if [ -n "$GW" ]; then
+      ip route replace default via "$GW" dev "$WIF" table "$TBL" 2>/dev/null
+    else
+      ip route replace default dev "$WIF" table "$TBL" 2>/dev/null
+    fi
+    echo "$e" | jq -r '.devices[]?' | while read -r d; do
+      d=$(echo "$d" | tr -d '[:space:]'); [ -z "$d" ] && continue
+      ip rule add from "$d" lookup "$TBL" priority "$PRIO" 2>/dev/null
+    done
+    i=$((i+1))
   done
 }
 
@@ -268,6 +386,10 @@ apply() {
     apply_one "$(basename "$sf" .slot)"
   done
   apply_routes
+  apply_wan_policy
+  invnet_fw_assert_wanpol 2>/dev/null         # NAT/FORWARD для LAN→WAN-канал
+  invnet_fw_assert_directroutes 2>/dev/null   # NAT/FORWARD для прямых маршрутов-исключений
+  rpf_restore_unused                          # вернуть rp_filter неиспользуемым каналам
   rmdir "$LOCK" 2>/dev/null
 }
 

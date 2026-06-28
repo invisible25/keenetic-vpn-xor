@@ -1,0 +1,73 @@
+#!/bin/sh
+# Сохранить привязку устройств к физическому WAN-каналу (минуя VPN).
+#   ?wan=<iface>[&label=<подпись>&ndm=<id>]  + POST body ip=...&ip=...
+# GET ?wan=<iface> — вернуть список IP, привязанных к этому каналу.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+
+. /opt/share/invnet/invnet-lib.sh
+
+WAN=$(echo "$QUERY_STRING" | sed -n 's/.*[?&]\{0,1\}wan=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+[ -z "$WAN" ] && { echo "нужен ?wan="; exit 0; }
+LABEL=$(echo "$QUERY_STRING" | sed -n 's/.*[?&]label=\([^&]*\).*/\1/p')
+LABEL=$(urldecode "$LABEL" | tr -d '"' | head -c 40)
+NDM=$(echo "$QUERY_STRING" | sed -n 's/.*[?&]ndm=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+
+WANPOL=/opt/etc/openvpn/invnet-wan-policy.conf
+LOCK=/opt/var/run/invnet-wanpol.lock
+TMP=""
+mkdir -p /opt/etc/openvpn /opt/var/run
+
+# mkdir-lock (атомарен), ждём до ~5с
+i=0
+while ! mkdir "$LOCK" 2>/dev/null; do
+  i=$((i+1)); [ "$i" -ge 50 ] && break; sleep 0.1 2>/dev/null || sleep 1
+done
+trap 'rm -f "$TMP" "$WANPOL.tmp"; rmdir "$LOCK" 2>/dev/null' EXIT
+
+# гарантируем валидную базу
+jq -e '.' "$WANPOL" >/dev/null 2>&1 || echo '[]' > "$WANPOL"
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  BODY=$(head -c 8192)
+  TMP=$(mktemp)
+  # строгая валидация IPv4 (якоря ^$) — мусор/инъекц-паттерны не попадут в конфиг
+  echo "$BODY" | tr '&' '\n' | while read -r line; do
+    ip=${line#ip=}
+    echo "$ip" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' && echo "$ip" >> "$TMP"
+  done
+  DEVICES_JSON=$(awk 'BEGIN{printf "["} {if(NR>1)printf ","; printf "\"%s\"", $0} END{printf "]"}' "$TMP")
+
+  # снять старые iptables-правила WAN-политики ДО перезаписи конфига
+  . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_remove_wanpol 2>/dev/null
+
+  # апсерт записи по ключу .wan
+  jq --arg w "$WAN" --arg l "$LABEL" --arg n "$NDM" --argjson d "$DEVICES_JSON" '
+    (map(.wan) | index($w)) as $i
+    | if $i == null
+      then . + [{wan:$w, label:$l, ndm:$n, devices:$d, enabled:true}]
+      else .[$i] |= (.devices=$d
+                     | .label=(if $l=="" then (.label // "") else $l end)
+                     | .ndm=(if $n=="" then (.ndm // "") else $n end)
+                     | .enabled=true)
+      end
+  ' "$WANPOL" > "$WANPOL.tmp" 2>/dev/null && jq -e '.' "$WANPOL.tmp" >/dev/null 2>&1 && mv "$WANPOL.tmp" "$WANPOL" || rm -f "$WANPOL.tmp"
+
+  # одно устройство — одна цель: убрать эти IP из devices[] VPN-профилей,
+  # иначе VPN-правило (prio 50) перебьёт WAN-политику (prio 60) и трафик уйдёт в VPN
+  if [ "$DEVICES_JSON" != "[]" ]; then
+    for mf in /opt/etc/openvpn/profile-meta/*.json; do
+      [ -f "$mf" ] || continue
+      jq --argjson rm "$DEVICES_JSON" '.devices = ((.devices // []) - $rm)' "$mf" > "$mf.tmp" 2>/dev/null \
+        && jq -e '.' "$mf.tmp" >/dev/null 2>&1 && mv "$mf.tmp" "$mf" || rm -f "$mf.tmp"
+    done
+  fi
+
+  # СИНХРОННО (не в фоне): apply перестроит prio 50 (из обновлённой меты) и prio 60
+  # до ответа → нет окна, когда у перенесённого IP осталось старое VPN-правило (prio 50<60).
+  /opt/sbin/invnetctl apply >/dev/null 2>&1
+  echo "Канал ${LABEL:-$WAN}: $(echo "$DEVICES_JSON" | jq 'length') устр. направлено напрямую"
+else
+  [ -f "$WANPOL" ] && jq -r --arg w "$WAN" '.[]? | select(.wan==$w) | .devices[]?' "$WANPOL" 2>/dev/null
+fi

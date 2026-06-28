@@ -31,6 +31,10 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   COMMENT_RAW=$(echo "$BODY" | tr '&' '\n' | grep '^comment=' | sed 's/^comment=//')
   COMMENT=$(urldecode "$COMMENT_RAW" | tr -d '"' | head -c 80)
   IDX=$(echo "$BODY" | tr '&' '\n' | grep '^index=' | sed 's/^index=//' | tr -cd '0-9')
+  WAN_SEL=$(echo "$BODY" | tr '&' '\n' | grep '^wan=' | sed 's/^wan=//' | tr -cd 'A-Za-z0-9._-')
+
+  # снять старые точечные iptables-правила прямых маршрутов ДО перезаписи конфига
+  . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_remove_directroutes 2>/dev/null
 
   case "$ACTION" in
     add)
@@ -69,7 +73,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
       echo '[]' > "$F"
       ;;
     toggle)
-      jq --argjson i "${IDX:-0}" '.[$i].enabled = (.[$i].enabled | not)' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      jq --argjson i "${IDX:-0}" 'if ($i>=0 and $i<length) then .[$i].enabled = (.[$i].enabled | not) else . end' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      ;;
+    setdir)
+      # направление маршрута: wan пусто → через VPN; иначе → напрямую через этот WAN.
+      # Проверка границ ($i<length): иначе `.[$i] |=` создал бы null-дырки в массиве.
+      if [ -z "$WAN_SEL" ]; then
+        jq --argjson i "${IDX:-0}" 'if ($i>=0 and $i<length) then .[$i] |= (.direct=false | del(.wan)) else . end' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      else
+        jq --argjson i "${IDX:-0}" --arg w "$WAN_SEL" 'if ($i>=0 and $i<length) then .[$i] |= (.direct=true | .wan=$w) else . end' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
+      fi
       ;;
   esac
   /opt/sbin/invnetctl apply >/dev/null 2>&1

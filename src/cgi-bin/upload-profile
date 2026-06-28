@@ -7,7 +7,7 @@ if [ "$REQUEST_METHOD" != "POST" ]; then
   echo "POST only"; exit 0
 fi
 
-BODY=$(head -c 200000)
+BODY=$(head -c 512000)   # запас для .ovpn с inline <ca>/<cert>/<key>/<tls-crypt>
 DIR=/opt/etc/openvpn/profiles
 mkdir -p "$DIR"
 

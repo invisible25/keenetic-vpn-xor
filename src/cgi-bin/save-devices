@@ -13,16 +13,23 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 8192)
   TMP=$(mktemp)
   trap 'rm -f "$TMP"' EXIT
+  # строгая валидация IPv4 (якоря ^$) — мусор не попадёт в meta/правила
   echo "$BODY" | tr '&' '\n' | while read -r line; do
     ip=${line#ip=}
-    case "$ip" in
-      [0-9]*.[0-9]*.[0-9]*.[0-9]*) echo "$ip" >> "$TMP" ;;
-    esac
+    echo "$ip" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' && echo "$ip" >> "$TMP"
   done
   DEVICES_JSON=$(awk 'BEGIN{printf "["} {if(NR>1)printf ","; printf "\"%s\"", $0} END{printf "]"}' "$TMP")
   rm -f "$TMP"
   OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
   echo "$OLD" | jq --argjson d "$DEVICES_JSON" '. + {devices: $d}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
+  # одно устройство — одна цель: убрать эти IP из WAN-политики (если были там)
+  WANPOL=/opt/etc/openvpn/invnet-wan-policy.conf
+  if [ -f "$WANPOL" ] && [ "$DEVICES_JSON" != "[]" ]; then
+    # снять старые iptables-правила WAN-политики ДО перезаписи конфига (без остатка)
+    . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_remove_wanpol 2>/dev/null
+    jq --argjson rm "$DEVICES_JSON" 'map(.devices = ((.devices // []) - $rm))' "$WANPOL" > "$WANPOL.tmp" 2>/dev/null \
+      && jq -e '.' "$WANPOL.tmp" >/dev/null 2>&1 && mv "$WANPOL.tmp" "$WANPOL" || rm -f "$WANPOL.tmp"
+  fi
   ( /opt/sbin/invnetctl apply >/dev/null 2>&1 & )
   echo "Сохранено для $PROFILE: $(echo "$DEVICES_JSON" | jq 'length') устройств"
 else

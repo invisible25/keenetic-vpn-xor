@@ -55,6 +55,7 @@ if [ "$ANS" = "y" ] || [ "$ANS" = "Y" ]; then
     /opt/etc/openvpn/invnet-mode.conf \
     /opt/etc/openvpn/invnet-devices.conf \
     /opt/etc/openvpn/invnet-routes.conf \
+    /opt/etc/openvpn/invnet-wan-policy.conf \
     /opt/etc/openvpn/invnet-autostart.conf \
     2>/dev/null
   echo "[+] Пользовательские данные включены (профили, маршруты, выбранные устройства)"
