@@ -26,6 +26,8 @@ echo "[+] Упаковываю файлы приложения..."
   /opt/share/invnet/invnet-lib.sh \
   /opt/share/invnet/index.html \
   /opt/share/invnet/logo.svg \
+  /opt/share/invnet/logo-mark.svg \
+  /opt/share/invnet/fonts \
   /opt/share/invnet/cgi-bin \
 
   2>/dev/null

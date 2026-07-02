@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.3.0   # версия панели invnet (drag-drop, WAN-политика, маршруты-исключения)
+INVNET_VERSION=1.4.0   # редизайн UI: фирстиль (Playfair+Inter self-host), SVG-иконки, тема Noir
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
@@ -42,6 +42,17 @@ case "$ARCH" in
   aarch64-3.10|mipsel-3.4|mips-3.4) : ;;
   *) fail "Неподдерживаемая архитектура: '$ARCH'. Поддерживаются: aarch64-3.10 (ARM: MT7981/86/88), mipsel-3.4 (MIPS LE: MT7621/7628), mips-3.4 (MIPS BE: EcoNet EN751x)." ;;
 esac
+
+# === Режим: свежая установка или обновление? ===
+# Идемпотентность: повторный запуск = обновление приложения. Пользовательские
+# данные (профили, привязки устройств, маршруты, WAN-политика, автозапуск) НЕ
+# трогаются — обновляются только код и файлы панели. Определяем режим ДО распаковки.
+if [ -f /opt/share/invnet/index.html ] || [ -x /opt/sbin/invnetctl ]; then
+  MODE=update
+  info "Найдена существующая установка → режим ОБНОВЛЕНИЯ (данные сохраняются)."
+else
+  MODE=fresh
+fi
 
 # === Файлы пакета — должны лежать рядом ===
 DIR=$(dirname "$0")
@@ -84,11 +95,18 @@ chmod +x /opt/share/invnet/cgi-bin/* 2>/dev/null
 
 # === Восстановление пользовательских данных (если есть в архиве) ===
 # Распаковываем ДО создания дефолтных конфигов — guard'ы ниже их не перетрут.
+# Идемпотентность: если на роутере УЖЕ есть профили — архив с профилями НЕ
+# распаковываем, иначе повторный запуск with-profiles-архива затёр бы текущие
+# данные более старым снимком. Восстанавливаем только на пустой роутер.
 if [ -f "$DIR/vpn-xor-userdata.tar.gz" ]; then
-  info "Восстановление профилей и настроек из vpn-xor-userdata.tar.gz..."
-  /opt/bin/tar xzf "$DIR/vpn-xor-userdata.tar.gz" -C /
-  chmod 600 /opt/etc/openvpn/profiles/*.ovpn 2>/dev/null || true
-  ok "Профили и настройки восстановлены"
+  if ls /opt/etc/openvpn/profiles/*.ovpn >/dev/null 2>&1; then
+    warn "Профили уже есть на роутере — архив с профилями пропущен (текущие данные не тронуты)."
+  else
+    info "Восстановление профилей и настроек из vpn-xor-userdata.tar.gz..."
+    /opt/bin/tar xzf "$DIR/vpn-xor-userdata.tar.gz" -C /
+    chmod 600 /opt/etc/openvpn/profiles/*.ovpn 2>/dev/null || true
+    ok "Профили и настройки восстановлены"
+  fi
 fi
 
 # === Дефолтные конфиги (не перезаписываем существующие) ===
@@ -111,17 +129,20 @@ fi
 # наследуют stdout. Нельзя пускать их через pipe `| head` — head ждёт EOF,
 # а демон держит stdout открытым => установка зависает («sched: started PID=...»).
 # Поэтому глушим stdout демонов через `>/dev/null 2>&1` и выводим свой статус.
-info "Старт веб-сервера..."
-/opt/etc/init.d/S31invnet-web start >/dev/null 2>&1 \
-  && ok "веб-сервер запущен" || warn "веб-сервер не стартовал (см. /opt/var/log/invnet-web.err)"
+# Идемпотентность: restart (а не start) — чтобы при ОБНОВЛЕНИИ демоны перечитали
+# новый код и конфиг: lighttpd — новый invnet.conf (mimetype woff2/svg), sched и
+# watchdog — новый invnetctl. На свежей установке restart = stop(процесса нет)+start.
+info "(Пере)запуск веб-сервера..."
+/opt/etc/init.d/S31invnet-web restart >/dev/null 2>&1 \
+  && ok "веб-сервер работает" || warn "веб-сервер не стартовал (см. /opt/var/log/invnet-web.err)"
 
-info "Старт планировщика расписаний..."
-/opt/etc/init.d/S41invnet-sched start >/dev/null 2>&1 \
-  && ok "планировщик запущен" || warn "планировщик не стартовал"
+info "(Пере)запуск планировщика расписаний..."
+/opt/etc/init.d/S41invnet-sched restart >/dev/null 2>&1 \
+  && ok "планировщик работает" || warn "планировщик не стартовал"
 
-info "Старт watchdog (автопереподключение)..."
-/opt/etc/init.d/S40invnet-pingcheck start >/dev/null 2>&1 \
-  && ok "watchdog запущен" || warn "watchdog не стартовал"
+info "(Пере)запуск watchdog (автопереподключение)..."
+/opt/etc/init.d/S40invnet-pingcheck restart >/dev/null 2>&1 \
+  && ok "watchdog работает" || warn "watchdog не стартовал"
 
 # === Поднять профили, помеченные enabled (мульти-профиль) ===
 # reconcile поднимает OpenVPN с XOR-хендшейком — может тянуться долго.
@@ -131,6 +152,13 @@ if [ -x /opt/sbin/invnetctl ]; then
   info "Запуск активных профилей (reconcile)..."
   /opt/sbin/invnetctl reconcile >/dev/null 2>&1 || true
   ok "профили приведены в соответствие"
+fi
+
+# При обновлении уже работающие туннели продолжают на старом бинарнике openvpn
+# (замена файла не трогает запущенный процесс). Новый openvpn применяется после
+# перезапуска профиля тумблером или ребута — reconcile здоровые туннели не рвёт.
+if [ "$MODE" = update ]; then
+  warn "Работающие туннели используют новый openvpn после перезапуска профиля или ребута."
 fi
 
 # === Проверяем, что службы реально поднялись ===
@@ -226,7 +254,7 @@ fi
 
 echo
 ok "=========================================="
-ok "  VPN+XOR установлен"
+if [ "$MODE" = update ]; then ok "  VPN+XOR обновлён до v$INVNET_VERSION"; else ok "  VPN+XOR установлен (v$INVNET_VERSION)"; fi
 ok "  Открой:  http://$IP:8888/"
 ok "=========================================="
 echo

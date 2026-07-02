@@ -1,2 +1,4 @@
 * text=auto eol=lf
 *.svg text eol=lf
+*.woff2 binary
+*.woff binary

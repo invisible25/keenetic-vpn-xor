@@ -5,8 +5,30 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OPENVPN+XOR · Invisible Net Control</title>
 <meta name="theme-color" content="#f6f3ea">
-<link rel="icon" href="/logo.svg">
+<link rel="icon" href="/logo-mark.svg">
 <style>
+/* ── Фирменные шрифты: self-host (работает офлайн), сабсеты latin+cyrillic ── */
+/* Inter — вариативный, один файл покрывает веса 400–600 */
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('/fonts/inter-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('/fonts/inter-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+/* Playfair Display 600 — заголовки и «герои» статуса */
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:600;font-display:swap;
+  src:url('/fonts/playfair-600-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:600;font-display:swap;
+  src:url('/fonts/playfair-600-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+/* Playfair Display italic 500 — золотые акцент-слова */
+@font-face{font-family:'Playfair Display';font-style:italic;font-weight:500;font-display:swap;
+  src:url('/fonts/playfair-italic-500-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Playfair Display';font-style:italic;font-weight:500;font-display:swap;
+  src:url('/fonts/playfair-italic-500-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 :root {
   --bg: #f6f3ea;
   --bg-alt: #fffdf7;
@@ -22,15 +44,17 @@
   --on-charcoal: #f6f3ea;
   --on-gold: #1c1b18;
   --ok: #4a7c4a;
+  --live: #1f9d57;
   --bad: #b14d4d;
-  --warn: #a3742a;
+  --warn: #8a6018;
   --info: #5d7a8b;
+  --ic-duo: color-mix(in srgb, var(--gold) 22%, transparent);
   --shadow-rgb: 31, 31, 31;
   --radius: 14px;
   --radius-sm: 10px;
   --radius-inner: 8px;
-  --serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 }
 [data-theme="dark"] {
   --bg: #16140f;
@@ -47,9 +71,32 @@
   --on-charcoal: #1c1b18;
   --on-gold: #1c1b18;
   --ok: #6ba66b;
+  --live: #36c977;
   --bad: #d97070;
   --warn: #c89548;
   --info: #8aaec4;
+  --shadow-rgb: 0, 0, 0;
+}
+/* ── Noir — фирменная тёмная (charcoal + gold), warn разведён с золотом ── */
+[data-theme="noir"] {
+  --bg: #191919;
+  --bg-alt: #202020;
+  --surface: #272727;
+  --ink: #f2efe7;
+  --ink-2: #c4bfb2;
+  --muted: #8f897c;
+  --gold: #d4b06a;
+  --gold-deep: #d4b06a;
+  --gold-soft: #332d20;
+  --line: #383838;
+  --charcoal: #d4b06a;
+  --on-charcoal: #191919;
+  --on-gold: #191919;
+  --ok: #5fbf7a;
+  --live: #34d27e;
+  --bad: #e07a6a;
+  --warn: #e89030;
+  --info: #79b8d6;
   --shadow-rgb: 0, 0, 0;
 }
 /* ── Доп. тёмные темы (подсмотрено в AWG-Manager) ── */
@@ -97,7 +144,10 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
-code, .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace }
+code, .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-variant-numeric: tabular-nums }
+
+/* ── Единый набор иконок: SVG-спрайт, currentColor, штрих 1.6 на каждом symbol ── */
+.ic { width: 1.15em; height: 1.15em; display: inline-block; vertical-align: -0.18em; flex-shrink: 0 }
 
 .wrap { max-width: 760px; margin: 0 auto; padding: 30px 18px 60px }
 
@@ -105,9 +155,15 @@ header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line);
 }
-.logo { display: flex; align-items: center; gap: 12px }
-.logo img { height: 42px; width: auto }
-.logo-text { font-family: var(--sans); font-weight: 600; font-size: 22px; letter-spacing: 0 }
+.logo { display: flex; align-items: center; gap: 13px }
+.logo-mark { height: 44px; width: auto; display: block }
+.brand-eyebrow {
+  font-family: var(--sans); font-size: 10px; font-weight: 600;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold-deep);
+  display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+}
+.brand-eyebrow::before { content: ""; width: 16px; height: 1px; background: var(--gold) }
+.logo-text { font-family: var(--sans); font-weight: 600; font-size: 20px; letter-spacing: 0; line-height: 1.05 }
 .logo-text em { font-style: normal; color: var(--gold-deep); font-weight: 600 }
 
 .eyebrow {
@@ -200,8 +256,8 @@ header {
   letter-spacing: 1.6px; font-weight: 600;
 }
 .stat-value {
-  font-family: var(--serif); font-size: 24px; font-weight: 600;
-  margin-top: 4px; letter-spacing: -0.5px;
+  font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: 24px; font-weight: 600;
+  margin-top: 4px; letter-spacing: -0.2px;
 }
 
 .checkip-box {
@@ -216,7 +272,7 @@ header {
   letter-spacing: 1.4px; font-weight: 600;
 }
 .checkip-row .value {
-  font-family: var(--serif); font-size: 16px; font-weight: 600;
+  font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600;
   margin-top: 3px; color: var(--ink); word-break: break-word;
 }
 
@@ -249,7 +305,8 @@ header {
   display: flex; align-items: center; gap: 10px; color: var(--ink);
 }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0 }
-.dot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok) }
+.dot.live { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 24%, transparent) }
+.dot.pending { background: transparent; border: 2px solid var(--warn); width: 9px; height: 9px }
 /* Карандаш-кнопка редактирования — крупная зона нажатия */
 .edit-btn {
   flex-shrink: 0; width: 40px; height: 40px; border-radius: 9px;
@@ -387,6 +444,30 @@ pre.log {
 
 .muted-section { opacity: 0.5; pointer-events: none }
 
+/* ── Спиннер для async-операций (>300мс) ── */
+.spinner {
+  width: 1em; height: 1em; border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor; border-radius: 50%; display: inline-block;
+  vertical-align: -0.15em; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+
+/* ── Пустые состояния: приглашение, а не сухое «нет» ── */
+.empty {
+  text-align: center; padding: 26px 16px; color: var(--muted);
+}
+.empty .ic { width: 30px; height: 30px; color: var(--gold); opacity: .8; margin-bottom: 8px }
+.empty b { display: block; color: var(--ink-2); font-weight: 600; font-size: 14px; margin-bottom: 3px }
+.empty small { font-size: 12.5px }
+
+/* ── Доступность: уважение к prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; scroll-behavior: auto !important;
+  }
+}
+
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: var(--charcoal); border: 1px solid var(--gold);
@@ -473,6 +554,12 @@ pre.log {
 
 /* ── Выбор темы ── */
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px }
+.theme-group-label {
+  grid-column: 1 / -1; font-size: 10px; font-weight: 600; letter-spacing: 1.6px;
+  text-transform: uppercase; color: var(--gold-deep); margin: 4px 0 -2px;
+  display: flex; align-items: center; gap: 9px;
+}
+.theme-group-label::after { content: ""; flex: 1; height: 1px; background: var(--line) }
 .theme-swatch {
   border: 1px solid var(--line); border-radius: 10px; padding: 8px; cursor: pointer;
   font-size: 12px; font-weight: 600; color: var(--ink-2); text-align: center; transition: all .15s;
@@ -538,32 +625,53 @@ pre.log {
 </style>
 </head>
 <body>
+<svg id="icons" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="ic-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5V9H15"/></symbol>
+  <symbol id="ic-add" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="ic-import" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v9M8 10l4 4 4-4"/><path d="M5 16.5v2a1.2 1.2 0 0 0 1.2 1.2h11.6a1.2 1.2 0 0 0 1.2-1.2v-2"/></symbol>
+  <symbol id="ic-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-9M8 9l4-4 4 4"/><path d="M5 16.5v2a1.2 1.2 0 0 0 1.2 1.2h11.6a1.2 1.2 0 0 0 1.2-1.2v-2"/></symbol>
+  <symbol id="ic-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l.9-3.4L15.5 6a2 2 0 0 1 2.8 2.8L7.4 19.1 4 20z"/><path d="M13.4 8.1l2.5 2.5"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"/><path d="M9.5 7V5.4a1.2 1.2 0 0 1 1.2-1.2h2.6a1.2 1.2 0 0 1 1.2 1.2V7"/><path d="M6.6 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.8-12"/><path d="M10 10.5v6M14 10.5v6"/></symbol>
+  <symbol id="ic-schedule" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5v4.8l3.2 1.9"/></symbol>
+  <symbol id="ic-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
+  <symbol id="ic-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></symbol>
+  <symbol id="ic-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></symbol>
+  <symbol id="ic-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8.7 15H3.3z"/><path d="M12 9.5v4.3M12 16.6h.01"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5l-4.7-4.7"/></symbol>
+  <symbol id="ic-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4c3.2 2.6 3.2 13.4 0 16M12 4c-3.2 2.6-3.2 13.4 0 16"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l6.5 2.6v4.9c0 4.5-2.8 7.2-6.5 8.5-3.7-1.3-6.5-4-6.5-8.5V5.6z" fill="var(--ic-duo)"/><path d="M9 11.8l2.2 2.2 4-4.3"/></symbol>
+  <symbol id="ic-kill" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l6.5 2.6v4.9c0 4.5-2.8 7.2-6.5 8.5-3.7-1.3-6.5-4-6.5-8.5V5.6z"/><rect x="9.2" y="11" width="5.6" height="4.6" rx="1"/><path d="M10.4 11V9.8a1.6 1.6 0 0 1 3.2 0V11"/></symbol>
+  <symbol id="ic-xor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l6.5 2.6v4.9c0 4.5-2.8 7.2-6.5 8.5-3.7-1.3-6.5-4-6.5-8.5V5.6z"/><path d="M8.6 12.6l2.6-2.6M9.7 14.7l4.6-4.6M12.2 15.1l2.6-2.6"/></symbol>
+  <symbol id="ic-wan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16.5V20.5"/><circle cx="12" cy="14.8" r="1.1" fill="currentColor"/><path d="M8.7 12.1a4.6 4.6 0 0 1 6.6 0"/><path d="M6.2 9.4a8.2 8.2 0 0 1 11.6 0"/></symbol>
+  <symbol id="ic-via" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l5.5 2.2v4.1c0 3.8-2.4 6.1-5.5 7.2-3.1-1.1-5.5-3.4-5.5-7.2V5.7z" fill="var(--ic-duo)"/><path d="M6.5 12h11M14.5 9l3 3-3 3"/></symbol>
+  <symbol id="ic-watchdog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5h3.6l1.9-5.5 3.4 11 2-5.5h6.1"/></symbol>
+  <symbol id="ic-device" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="9" rx="1.4"/><rect x="17.5" y="9" width="3.5" height="9" rx="1.1"/><path d="M7 17h6"/></symbol>
+  <symbol id="ic-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 9l6.5 6.5L18.5 9"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="ic-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5V11"/><path d="M7 6.8a7 7 0 1 0 10 0"/></symbol>
+</defs></svg>
 <div class="wrap">
 <h1 class="sr-only">Панель управления OpenVPN+XOR для Keenetic</h1>
 
 <header>
   <a href="/" class="logo" style="text-decoration:none;color:inherit">
-    <img src="/logo.svg" alt="">
-    <div class="logo-text">OPENVPN<em>+XOR</em></div>
+    <img src="/logo-mark.svg" alt="" class="logo-mark">
+    <div>
+      <div class="brand-eyebrow">Invisible Net</div>
+      <div class="logo-text">OPENVPN<em>+XOR</em></div>
+    </div>
   </a>
   <div style="display:flex;align-items:center;gap:10px">
     <div style="position:relative">
-      <button id="theme-btn" class="btn btn-ghost btn-icon" onclick="toggleThemePicker()" title="Выбрать тему" style="padding:9px 11px">
-        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <circle cx="8.5" cy="8.5" r="3"/>
-          <circle cx="8.5" cy="1.5" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="1.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="3.6" cy="3.6" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="13.4" cy="13.4" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="13.4" cy="3.6" r="1" fill="currentColor" stroke="none"/>
-          <circle cx="3.6" cy="13.4" r="1" fill="currentColor" stroke="none"/>
-        </svg>
+      <button id="theme-btn" class="btn btn-ghost btn-icon" onclick="toggleThemePicker()" title="Выбрать тему" aria-label="Выбрать тему оформления" style="padding:9px 11px">
+        <svg class="ic" style="font-size:17px"><use href="#ic-theme"/></svg>
       </button>
       <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="Выбор темы">
         <button class="theme-picker-dot" data-theme="light"      title="Gold светлая" aria-label="Тема: Gold светлая" style="--tp-bg:#f6f3ea;--tp-fg:#c9a876" onclick="setTheme('light');closeThemePicker()"></button>
         <button class="theme-picker-dot" data-theme="dark"       title="Gold тёмная"  aria-label="Тема: Gold тёмная"  style="--tp-bg:#16140f;--tp-fg:#d4b585" onclick="setTheme('dark');closeThemePicker()"></button>
+        <button class="theme-picker-dot" data-theme="noir"       title="Noir"         aria-label="Тема: Noir"         style="--tp-bg:#191919;--tp-fg:#d4b06a" onclick="setTheme('noir');closeThemePicker()"></button>
+        <span aria-hidden="true" style="width:1px;height:22px;background:var(--line);margin:0 2px"></span>
         <button class="theme-picker-dot" data-theme="tokyonight" title="Tokyo Night"  aria-label="Тема: Tokyo Night"  style="--tp-bg:#1a1b26;--tp-fg:#7aa2f7" onclick="setTheme('tokyonight');closeThemePicker()"></button>
         <button class="theme-picker-dot" data-theme="neo"        title="Cyber"        aria-label="Тема: Cyber"        style="--tp-bg:#0a0a0a;--tp-fg:#e8a020" onclick="setTheme('neo');closeThemePicker()"></button>
         <button class="theme-picker-dot" data-theme="mint"       title="Mint"         aria-label="Тема: Mint"         style="--tp-bg:#1e2530;--tp-fg:#7fd4c8" onclick="setTheme('mint');closeThemePicker()"></button>
@@ -582,13 +690,13 @@ pre.log {
   </div>
   <div class="power-buttons">
     <select class="select" id="checkip-profile" style="flex:0 1 auto;max-width:200px;height:42px"></select>
-    <button class="btn btn-gold" onclick="checkIp()">Проверить IP</button>
-    <button class="btn btn-ghost btn-icon" onclick="loadAll()" title="Обновить">↻</button>
+    <button class="btn btn-gold" onclick="checkIp()"><svg class="ic" aria-hidden="true"><use href="#ic-globe"/></svg>Проверить IP</button>
+    <button class="btn btn-ghost btn-icon" onclick="loadAll()" title="Обновить" aria-label="Обновить статус"><svg class="ic" style="font-size:16px"><use href="#ic-refresh"/></svg></button>
   </div>
   <div class="setting-hint" style="margin-top:8px">Вкл/выкл — тумблером на профиле во вкладке «Профили». «Проверить IP» — выход выбранного туннеля.</div>
   <div class="stats-row">
-    <div class="stat-box"><div class="stat-label">↓ Получено</div><div class="stat-value" id="rx">0 B</div></div>
-    <div class="stat-box"><div class="stat-label">↑ Отправлено</div><div class="stat-value" id="tx">0 B</div></div>
+    <div class="stat-box"><div class="stat-label"><svg class="ic" aria-hidden="true" style="font-size:12px"><use href="#ic-down"/></svg> Получено</div><div class="stat-value" id="rx">0 B</div></div>
+    <div class="stat-box"><div class="stat-label"><svg class="ic" aria-hidden="true" style="font-size:12px"><use href="#ic-up"/></svg> Отправлено</div><div class="stat-value" id="tx">0 B</div></div>
   </div>
   <div id="checkip-box" class="checkip-box">
     <div class="checkip-row">
@@ -610,7 +718,7 @@ pre.log {
 
 <div class="section active" data-section="profiles">
   <div class="card">
-    <h2><span>Профили VPN</span><span class="extra"><small id="profiles-hint">клик по карточке — выбрать · ✎ — редактировать · тумблер — вкл/выкл</small></span></h2>
+    <h2><span>Профили VPN</span><span class="extra"><small id="profiles-hint">клик по карточке — выбрать · <svg class="ic" aria-hidden="true" style="font-size:12px"><use href="#ic-edit"/></svg> — редактировать · тумблер — вкл/выкл</small></span></h2>
     <div id="profile-list"></div>
   </div>
   <div class="card">
@@ -668,10 +776,10 @@ pre.log {
         <label>Комментарий</label>
         <input class="input" id="new-comment" placeholder="например, какой сервис">
       </div>
-      <button class="btn btn-gold" onclick="addRoute()" style="height:42px">＋ Добавить</button>
+      <button class="btn btn-gold" onclick="addRoute()" style="height:42px"><svg class="ic" aria-hidden="true"><use href="#ic-add"/></svg>Добавить</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-      <button class="btn btn-ghost" onclick="loadKeeneticRoutes()">↧ Импорт из Keenetic</button>
+      <button class="btn btn-ghost" onclick="loadKeeneticRoutes()"><svg class="ic" aria-hidden="true"><use href="#ic-import"/></svg>Импорт из Keenetic</button>
     </div>
     <div id="keenetic-routes-import" style="display:none;margin-top:14px"></div>
     <div id="routes-list" style="margin-top:18px"></div>
@@ -694,13 +802,16 @@ pre.log {
   <div class="card">
     <h2>Тема оформления</h2>
     <div class="theme-grid">
+      <div class="theme-group-label">Бренд</div>
       <div class="theme-swatch" data-theme="light" onclick="setTheme('light')" style="--sw-bg:#f6f3ea;--sw-fg:#c9a876;--sw-ink:#1c1b18"><span class="sw-prev"></span>Gold светлая</div>
       <div class="theme-swatch" data-theme="dark" onclick="setTheme('dark')" style="--sw-bg:#16140f;--sw-fg:#d4b585;--sw-ink:#f0ece1"><span class="sw-prev"></span>Gold тёмная</div>
+      <div class="theme-swatch" data-theme="noir" onclick="setTheme('noir')" style="--sw-bg:#191919;--sw-fg:#d4b06a;--sw-ink:#f2efe7"><span class="sw-prev"></span>Noir</div>
+      <div class="theme-swatch" data-theme="custom" onclick="$('custom-row').style.display='flex'" style="--sw-bg:#15131c;--sw-fg:#7c5cff;--sw-ink:#e8e6f0"><span class="sw-prev"></span>Custom</div>
+      <div class="theme-group-label">Акцентные</div>
       <div class="theme-swatch" data-theme="tokyonight" onclick="setTheme('tokyonight')" style="--sw-bg:#1a1b26;--sw-fg:#7aa2f7;--sw-ink:#c0caf5"><span class="sw-prev"></span>Tokyo Night</div>
       <div class="theme-swatch" data-theme="neo" onclick="setTheme('neo')" style="--sw-bg:#0a0a0a;--sw-fg:#e8a020;--sw-ink:#f5f5dc"><span class="sw-prev"></span>Cyber</div>
       <div class="theme-swatch" data-theme="mint" onclick="setTheme('mint')" style="--sw-bg:#1e2530;--sw-fg:#7fd4c8;--sw-ink:#dbe6e4"><span class="sw-prev"></span>Mint</div>
       <div class="theme-swatch" data-theme="catppuccin" onclick="setTheme('catppuccin')" style="--sw-bg:#24273a;--sw-fg:#8aadf4;--sw-ink:#cad3f5"><span class="sw-prev"></span>Catppuccin</div>
-      <div class="theme-swatch" data-theme="custom" onclick="$('custom-row').style.display='flex'" style="--sw-bg:#15131c;--sw-fg:#7c5cff;--sw-ink:#e8e6f0"><span class="sw-prev"></span>Custom</div>
     </div>
     <div class="custom-row" id="custom-row">
       <label>Акцент<input type="color" id="cu-accent" value="#7c5cff"></label>
@@ -752,7 +863,7 @@ pre.log {
   <div class="modal">
     <h3>
       <span>Редактирование профиля</span>
-      <button class="close" onclick="closeProfileEdit()">×</button>
+      <button class="close" onclick="closeProfileEdit()" aria-label="Закрыть"><svg class="ic" style="font-size:16px"><use href="#ic-x"/></svg></button>
     </h3>
     <div class="meta-grid">
       <div>Remote<b id="m-remote">—</b></div>
@@ -788,7 +899,7 @@ pre.log {
 const $ = id => document.getElementById(id);
 
 // ── Темы: пресеты (light/dark/tokyonight/neo/mint) + Custom (3 цвета → color-mix) ──
-const THEME_BG = {light:'#f6f3ea', dark:'#16140f', tokyonight:'#1a1b26', neo:'#0a0a0a', mint:'#1e2530', catppuccin:'#24273a'};
+const THEME_BG = {light:'#f6f3ea', dark:'#16140f', noir:'#191919', tokyonight:'#1a1b26', neo:'#0a0a0a', mint:'#1e2530', catppuccin:'#24273a'};
 const CUSTOM_VARS = ['--bg','--bg-alt','--surface','--ink','--ink-2','--muted','--gold','--gold-deep','--gold-soft','--line','--charcoal','--on-charcoal','--on-gold','--shadow-rgb'];
 function _lum(hex){
   const m = (hex||'').replace('#','').match(/.{2}/g); if (!m) return 0.5;
@@ -954,19 +1065,19 @@ function fillCheckipProfiles(){
 async function checkIp(){
   const prof = $('checkip-profile') ? $('checkip-profile').value : '';
   $('checkip-box').classList.add('show');
-  $('ci-ip').textContent = 'загрузка…';
+  $('ci-ip').innerHTML = '<span class="spinner" style="color:var(--gold-deep)"></span> загрузка…';
   $('ci-country').textContent = '—';
   $('ci-city').textContent = '—';
   $('ci-org').textContent = '—';
   try {
     const url = '/cgi-bin/checkip' + (prof ? '?profile=' + encodeURIComponent(prof) : '');
     const j = await (await fetch(url)).json();
-    if (j.error) { $('ci-ip').textContent = '⚠ ' + j.error; return }
+    if (j.error) { $('ci-ip').innerHTML = '<svg class="ic" aria-hidden="true" style="font-size:14px;color:var(--bad)"><use href="#ic-alert"/></svg> ' + escapeHtml(j.error); return }
     $('ci-ip').textContent = j.ip || '—';
     $('ci-country').textContent = j.country || '—';
     $('ci-city').textContent = j.city || '—';
     $('ci-org').textContent = j.org || '—';
-  } catch(e) { $('ci-ip').textContent = '⚠ ошибка' }
+  } catch(e) { $('ci-ip').innerHTML = '<svg class="ic" aria-hidden="true" style="font-size:14px;color:var(--bad)"><use href="#ic-alert"/></svg> ошибка' }
 }
 
 let PROFILES_CACHE = [];
@@ -982,7 +1093,7 @@ async function loadProfiles(){
   }
   if (SCHED_OPEN && !arr.some(p => p.name === SCHED_OPEN)) SCHED_OPEN = '';
   const box = $('profile-list');
-  box.innerHTML = arr.length ? '' : '<small style="color:var(--muted)">Профилей нет. Добавь ниже.</small>';
+  box.innerHTML = arr.length ? '' : '<div class="empty"><svg class="ic"><use href="#ic-shield"/></svg><b>Пока нет профилей</b><small>Добавьте первый .ovpn ниже — перетащите файл или вставьте конфиг.</small></div>';
   for (const p of arr) {
     const card = document.createElement('div');
     card.className = 'profile-card' + (p.running ? ' is-active' : '');
@@ -995,11 +1106,11 @@ async function loadProfiles(){
     } else {
       policyBadge = '<span class="iface-badge" style="margin-left:8px;color:var(--muted)">нет устр.</span>';
     }
-    if (p.sched) policyBadge += '<span class="iface-badge" style="margin-left:8px" title="Управляется расписанием"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" style="vertical-align:-1px"><circle cx="6" cy="6" r="4.5"/><polyline points="6,3 6,6 8,7.5"/></svg> расписание</span>';
+    if (p.sched) policyBadge += '<span class="iface-badge" style="margin-left:8px" title="Управляется расписанием"><svg class="ic" aria-hidden="true" style="font-size:11px"><use href="#ic-schedule"/></svg> расписание</span>';
     // Тумблер отражает enabled; зелёная точка — реально поднят (running)
-    const dotLive = p.running ? 'live' : '';
+    const dotLive = p.running ? 'live' : (p.enabled ? 'pending' : '');
     let stateLabel;
-    if (p.running) stateLabel = '<span style="color:var(--ok);font-weight:600">● подключено</span>';
+    if (p.running) stateLabel = '<span style="color:var(--ok);font-weight:600">подключено</span>';
     else if (p.enabled) stateLabel = '<span style="color:var(--warn)">запуск…</span>';
     else stateLabel = '<span style="color:var(--muted)">выключен</span>';
     const nm = p.name.replace(/'/g, "\\'");
@@ -1008,8 +1119,8 @@ async function loadProfiles(){
         '<div class="profile-name"><span class="dot ' + dotLive + '"></span>' + escapeHtml(p.name) + '</div>' +
         '<div class="profile-meta">' + stateLabel + wanText + policyBadge + '</div>' +
       '</div>' +
-      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы" aria-label="Расписание профиля ' + escapeHtml(p.name) + '"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><polyline points="7,3.5 7,7 9.5,8.8"/></svg></button>' +
-      '<button class="edit-btn" onclick="event.stopPropagation();editProfile(\'' + nm + '\')" title="Редактировать профиль" aria-label="Редактировать профиль ' + escapeHtml(p.name) + '">✎</button>' +
+      '<button class="edit-btn' + (SCHED_OPEN === p.name ? ' sched-open' : (p.sched ? ' sched-on' : '')) + '" onclick="event.stopPropagation();toggleSchedule(\'' + nm + '\')" title="Расписание работы" aria-label="Расписание профиля ' + escapeHtml(p.name) + '"><svg class="ic" style="font-size:15px"><use href="#ic-schedule"/></svg></button>' +
+      '<button class="edit-btn" onclick="event.stopPropagation();editProfile(\'' + nm + '\')" title="Редактировать профиль" aria-label="Редактировать профиль ' + escapeHtml(p.name) + '"><svg class="ic" style="font-size:16px"><use href="#ic-edit"/></svg></button>' +
       '<label class="switch" onclick="event.stopPropagation()" title="Включить / выключить">' +
         '<input type="checkbox" aria-label="Включить профиль ' + escapeHtml(p.name) + '" ' + (p.enabled ? 'checked' : '') + ' onchange="profileToggle(\'' + nm + '\', this.checked)">' +
         '<span class="switch-slider"></span>' +
@@ -1325,7 +1436,7 @@ async function setMode(m){
 
 function renderDevs(devs){
   const box = $('dev-list');
-  box.innerHTML = devs.length ? '' : '<small style="color:var(--muted)">Устройств нет</small>';
+  box.innerHTML = devs.length ? '' : '<div class="empty"><svg class="ic"><use href="#ic-device"/></svg><b>Устройств не найдено</b><small>Список берётся из админки Keenetic — подключите устройство к сети.</small></div>';
   for (const d of devs) {
     const row = document.createElement('label');
     row.className = 'dev-row';
@@ -1415,7 +1526,7 @@ async function loadRoutes(){
     const arr = await (await fetch('/cgi-bin/routes')).json();
     CURRENT_ROUTES = arr;
     const box = $('routes-list');
-    box.innerHTML = arr.length ? '' : '<small style="color:var(--muted)">Маршрутов нет.</small>';
+    box.innerHTML = arr.length ? '' : '<div class="empty"><svg class="ic"><use href="#ic-via"/></svg><b>Маршрутов нет</b><small>Добавьте CIDR выше или импортируйте из Keenetic.</small></div>';
     $('routes-count').textContent = arr.length ? arr.length + ' маршрут.' : '';
     arr.forEach((r, idx) => {
       const row = document.createElement('div');
@@ -1431,7 +1542,7 @@ async function loadRoutes(){
           comment +
         '</div>' +
         routeDirSelect(r, idx) +
-        '<button class="btn btn-warn btn-small" onclick="deleteRoute(' + idx + ')">×</button>';
+        '<button class="btn btn-warn btn-small" onclick="deleteRoute(' + idx + ')" aria-label="Удалить маршрут" title="Удалить"><svg class="ic" style="font-size:15px"><use href="#ic-x"/></svg></button>';
       box.appendChild(row);
     });
   } catch(e) { $('routes-list').innerHTML = '<small style="color:var(--bad)">Ошибка</small>' }
@@ -1561,7 +1672,7 @@ async function editProfile(name){
     $('m-mode').textContent = j.mode === 'all' ? 'весь LAN' : 'выбранные';
     $('m-devcount').textContent = j.devices_count + ' устр.';
     const pc = PROFILES_CACHE.find(x => x.name === j.name);
-    $('m-state').textContent = (pc && pc.running) ? '● подключено' : ((pc && pc.enabled) ? 'запуск…' : 'выключен');
+    $('m-state').textContent = (pc && pc.running) ? 'подключено' : ((pc && pc.enabled) ? 'запуск…' : 'выключен');
     fillModalWanSelect(j.wan);
     $('profile-modal').classList.add('show');
   } catch(e) { toast('Не удалось открыть', 'error') }
@@ -1618,7 +1729,7 @@ async function profileToggle(name, on){
   if (TOGGLE_BUSY[name]) return;
   TOGGLE_BUSY[name] = true;
   clearCheckIp();
-  $('big-status').innerHTML = '<em style="color:var(--muted)">' + (on ? 'запуск' : 'остановка') + ' · ' + escapeHtml(name) + '…</em>';
+  $('big-status').innerHTML = '<span class="spinner" style="color:var(--gold-deep);font-size:.6em;vertical-align:0.1em"></span> <em style="color:var(--muted)">' + (on ? 'запуск' : 'остановка') + ' · ' + escapeHtml(name) + '…</em>';
   await fetch('/cgi-bin/connect?name=' + encodeURIComponent(name) + '&on=' + (on ? '1' : '0'));
   let tries = 0;
   const poll = async () => {
@@ -1650,8 +1761,9 @@ async function loadPingLog(){
     $('pinglog-box').textContent = j.lines.join('\n') || '(лог пуст)';
     const s = $('watchdog-status');
     if (s) {
-      s.textContent = j.watchdog === 'running' ? '● работает' : '○ остановлен';
-      s.style.color = j.watchdog === 'running' ? 'var(--ok)' : 'var(--bad)';
+      const wdRun = j.watchdog === 'running';
+      s.innerHTML = '<span class="dot' + (wdRun ? ' live' : '') + '" style="display:inline-block;vertical-align:middle;margin-right:5px"></span>' + (wdRun ? 'работает' : 'остановлен');
+      s.style.color = wdRun ? 'var(--ok)' : 'var(--bad)';
     }
   } catch(e) { $('pinglog-box').textContent = 'Ошибка'; }
 }
