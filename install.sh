@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.4.0   # редизайн UI: фирстиль (Playfair+Inter self-host), SVG-иконки, тема Noir
+INVNET_VERSION=1.4.1   # автоматическая ротация логов (watchdog) + preflight-проверка места на /opt
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
@@ -36,11 +36,26 @@ info "Установщик invnet v$INVNET_VERSION"
 info "Проверка Entware..."
 [ -x /opt/bin/opkg ] || fail "Entware не установлен. Сначала установи Entware через USB-диск (см. документацию Keenetic OPKG)."
 
+# === Место на диске ===
+# Забитый под ноль Entware-раздел валит opkg на самой первой команде (не может
+# создать даже временный каталог) — итог выглядит как "неподдерживаемая архитектура",
+# хотя причина в диске. Проверяем до вычисления ARCH, чтобы ошибка была понятной.
+USE_PCT=$(df -P /opt 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')
+if [ -n "$USE_PCT" ] && [ "$USE_PCT" -ge 95 ] 2>/dev/null; then
+  fail "USB-диск Entware заполнен на ${USE_PCT}% — свободного места почти нет. Освободи место (проверь размеры /opt/var/log/*: \`du -sk /opt/var/log/* | sort -rn | head\`; самый большой лог можно обнулить: \`: > /opt/var/log/<файл>\`), потом запусти установку заново."
+fi
+
 ARCH=$(/opt/bin/opkg print-architecture 2>/dev/null | grep '_kn' | awk '{print $2}' | sed 's/_kn.*//' | head -1)
 ok "Архитектура: $ARCH"
 case "$ARCH" in
   aarch64-3.10|mipsel-3.4|mips-3.4) : ;;
-  *) fail "Неподдерживаемая архитектура: '$ARCH'. Поддерживаются: aarch64-3.10 (ARM: MT7981/86/88), mipsel-3.4 (MIPS LE: MT7621/7628), mips-3.4 (MIPS BE: EcoNet EN751x)." ;;
+  *)
+    warn "Не удалось определить архитектуру через opkg. Диагностика:"
+    df -h /opt 2>&1
+    echo "--- /opt/etc/opkg.conf ---"; cat /opt/etc/opkg.conf 2>/dev/null || echo "(нет файла)"
+    echo "--- /opt/etc/opkg/*.conf ---"; cat /opt/etc/opkg/*.conf 2>/dev/null || echo "(нет файлов)"
+    fail "Неподдерживаемая архитектура: '$ARCH'. Поддерживаются: aarch64-3.10 (ARM: MT7981/86/88), mipsel-3.4 (MIPS LE: MT7621/7628), mips-3.4 (MIPS BE: EcoNet EN751x)."
+    ;;
 esac
 
 # === Режим: свежая установка или обновление? ===

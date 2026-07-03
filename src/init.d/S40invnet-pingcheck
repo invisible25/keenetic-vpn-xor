@@ -10,8 +10,30 @@ META=/opt/etc/openvpn/profile-meta
 PROFILES=/opt/etc/openvpn/profiles
 RUN=/opt/var/run/invnet
 
+rotate_if_big() {  # rotate_if_big <file> [max_bytes] [keep_bytes]
+  f="$1"; max="${2:-1048576}"; keep="${3:-262144}"
+  [ -f "$f" ] || return 0
+  sz=$(wc -c < "$f" 2>/dev/null) || return 0
+  [ "$sz" -gt "$max" ] 2>/dev/null || return 0
+  tail -c "$keep" "$f" > "$f.tmp" 2>/dev/null && cat "$f.tmp" > "$f" && rm -f "$f.tmp"
+}
+
+rotate_logs() {
+  # Без ограничения размера лог openvpn (--log-append) может залить весь USB-диск,
+  # если туннель зависнет в цикле ошибок (напр. "tun fd in bad state" без паузы между
+  # попытками) — так один раз забился весь раздел Entware и упала вся панель.
+  for sf in "$RUN"/*.slot; do
+    [ -f "$sf" ] || continue
+    rotate_if_big "/opt/var/log/invnet-$(basename "$sf" .slot).log"
+  done
+  rotate_if_big "$LOG"
+  rotate_if_big "/opt/var/log/invnet-action.log"
+  rotate_if_big "/opt/var/log/invnet-web.err"
+}
+
 watchdog_loop() {
   while true; do
+    rotate_logs
     for meta in "$META"/*.json; do
       [ -f "$meta" ] || continue
       pr=$(basename "$meta" .json)
