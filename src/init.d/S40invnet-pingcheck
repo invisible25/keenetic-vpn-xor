@@ -22,12 +22,11 @@ rotate_logs() {
   # Без ограничения размера лог openvpn (--log-append) может залить весь USB-диск,
   # если туннель зависнет в цикле ошибок (напр. "tun fd in bad state" без паузы между
   # попытками) — так один раз забился весь раздел Entware и упала вся панель.
-  for sf in "$RUN"/*.slot; do
-    [ -f "$sf" ] || continue
-    rotate_if_big "/opt/var/log/invnet-$(basename "$sf" .slot).log"
+  # Глобом по /opt/var/log/invnet-*.log (а не только по текущим slot-файлам), чтобы
+  # ловить и логи ОСТАНОВЛЕННЫХ/удалённых профилей — они тоже копятся годами без ротации.
+  for f in /opt/var/log/invnet-*.log; do
+    rotate_if_big "$f"
   done
-  rotate_if_big "$LOG"
-  rotate_if_big "/opt/var/log/invnet-action.log"
   rotate_if_big "/opt/var/log/invnet-web.err"
 }
 
