@@ -133,6 +133,42 @@
   --shadow-rgb: 0, 0, 0;
 }
 /* custom — переменные ставит JS инлайн на documentElement через color-mix() */
+
+/* ═══ Производный слой токенов (semantic) ═══
+   Вычисляется через color-mix() из ~20 входных переменных темы выше.
+   НЕ переопределяется в темах: пересчитывается автоматически для всех
+   пресетов и custom-движка. Новые компоненты читают ТОЛЬКО этот слой. */
+:root {
+  /* поверхности и глубина */
+  --surface-2: color-mix(in srgb, var(--surface), var(--ink) 3%);
+  --surface-raised: color-mix(in srgb, var(--surface), var(--bg-alt) 40%);
+  --overlay: rgba(var(--shadow-rgb), .55);
+  --elev-1: 0 1px 2px rgba(var(--shadow-rgb), .05), 0 2px 10px rgba(var(--shadow-rgb), .04);
+  --elev-2: 0 2px 6px rgba(var(--shadow-rgb), .08), 0 12px 30px rgba(var(--shadow-rgb), .10);
+  --elev-3: 0 6px 16px rgba(var(--shadow-rgb), .13), 0 24px 60px rgba(var(--shadow-rgb), .20);
+  /* семантические алиасы акцента (золото = украшение, не краска) */
+  --accent: var(--gold);
+  --accent-strong: var(--gold-deep);
+  --accent-tint: var(--gold-soft);
+  --accent-08: color-mix(in srgb, var(--gold) 8%, transparent);
+  --accent-14: color-mix(in srgb, var(--gold) 14%, transparent);
+  --hairline-gold: color-mix(in srgb, var(--gold) 30%, transparent);
+  /* шкалы */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 44px;
+  --text-xs: 10px; --text-sm: 12px; --text-base: 14px;
+  --text-lg: 18px; --text-xl: 24px; --text-2xl: clamp(30px, 4.6vw, 40px);
+  --dur-1: .15s; --dur-2: .25s; --dur-3: .5s;
+  --ease-out: cubic-bezier(.2,.7,.3,1);
+  --ease-spring: cubic-bezier(.34,1.56,.5,1);
+}
+/* Цвета серий графика — data-цвета, НЕ брендовые (валидированы: CVD ΔE≥60,
+   chroma/lightness band, контраст ≥3:1 на светлой и тёмной поверхности) */
+:root { --chart-rx: #9c6b1a; --chart-tx: #1f6fb5 }
+[data-theme="dark"], [data-theme="noir"], [data-theme="tokyonight"],
+[data-theme="neo"], [data-theme="catppuccin"], [data-theme="mint"] {
+  --chart-rx: #b08427; --chart-tx: #3d8fc9;
+}
 html { transition: background-color .25s; background: var(--bg) }
 * { box-sizing: border-box; margin: 0; padding: 0 }
 body {
@@ -149,13 +185,30 @@ code, .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-varia
 /* ── Единый набор иконок: SVG-спрайт, currentColor, штрих 1.6 на каждом symbol ── */
 .ic { width: 1.15em; height: 1.15em; display: inline-block; vertical-align: -0.18em; flex-shrink: 0 }
 
-.wrap { max-width: 760px; margin: 0 auto; padding: 30px 18px 60px }
-
-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--line);
+/* ═══ App shell: сайдбар (десктоп) / нижний таб-бар (мобайл) ═══ */
+.app { display: flex; min-height: 100vh; min-height: 100dvh }
+.side {
+  width: 224px; flex-shrink: 0; position: sticky; top: 0;
+  height: 100vh; height: 100dvh; z-index: 90;
+  display: flex; flex-direction: column; gap: 26px;
+  padding: 26px 14px 16px;
+  background: var(--bg-alt); border-right: 1px solid var(--line);
 }
-.logo { display: flex; align-items: center; gap: 13px }
+.side-brand { padding: 0 8px }
+.side-foot {
+  margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--line);
+  font-size: var(--text-xs); color: var(--muted); letter-spacing: .6px;
+}
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 22px 0;
+}
+.logo.topbar-brand { display: none }
+.topbar-tools { display: flex; align-items: center; gap: 10px; margin-left: auto }
+.wrap { width: 100%; max-width: 1060px; margin: 0 auto; padding: 14px 22px 60px }
+
+.logo { display: flex; align-items: center; gap: 13px; text-decoration: none; color: inherit }
 .logo-mark { height: 44px; width: auto; display: block }
 .brand-eyebrow {
   font-family: var(--sans); font-size: 10px; font-weight: 600;
@@ -185,10 +238,8 @@ header {
 
 .card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 24px; margin-bottom: 16px;
-  transition: box-shadow .2s, border-color .2s;
+  padding: 24px; margin-bottom: 16px; box-shadow: var(--elev-1);
 }
-.card:hover { box-shadow: 0 8px 28px rgba(31,31,31,0.05) }
 .card h2 {
   font-family: var(--sans); font-size: 11px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 2px; color: var(--gold-deep);
@@ -276,17 +327,28 @@ header {
   margin-top: 3px; color: var(--ink); word-break: break-word;
 }
 
-.tabs {
-  display: flex; gap: 4px; margin-bottom: 18px;
-  background: var(--surface); padding: 5px; border-radius: 11px; border: 1px solid var(--line);
-}
+/* ═══ Навигация: один <nav>, сайдбар ≥960px / нижний бар <960px ═══ */
+.nav { display: flex; flex-direction: column; gap: 2px }
 .tab {
-  flex: 1; padding: 9px 4px; text-align: center;
-  border-radius: 7px; cursor: pointer; font-weight: 500; font-size: 13px; color: var(--ink-2);
-  transition: all .15s;
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px; border-radius: 9px; position: relative;
+  cursor: pointer; font-weight: 500; font-size: 13.5px; color: var(--ink-2);
+  transition: background var(--dur-1), color var(--dur-1);
 }
-.tab.active { background: var(--charcoal); color: var(--bg); font-weight: 600 }
-.tab:hover:not(.active) { background: var(--bg-alt); color: var(--ink) }
+.tab .ic { width: 18px; height: 18px; opacity: .8 }
+.tab:hover:not(.active) { background: var(--accent-08); color: var(--ink) }
+.tab.active { background: var(--accent-tint); color: var(--ink); font-weight: 600 }
+.tab.active .ic { opacity: 1; color: var(--accent-strong) }
+/* золотая нить активного пункта */
+.tab.active::before {
+  content: ""; position: absolute; left: -14px; top: 22%; bottom: 22%;
+  width: 2px; border-radius: 2px; background: var(--gold);
+}
+.nav-badge {
+  margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--warn); color: var(--surface);
+  font-size: 10px; font-weight: 700; line-height: 18px; text-align: center;
+}
 
 .section { display: none }
 .section.active { display: block }
@@ -297,7 +359,11 @@ header {
   transition: border-color .2s, box-shadow .2s;
 }
 .profile-card:hover { border-color: var(--gold) }
-.profile-card.is-active { border-color: var(--gold); background: var(--gold-soft); box-shadow: 0 8px 24px color-mix(in srgb, var(--gold) 25%, transparent) }
+.profile-card.is-active {
+  border-color: var(--hairline-gold);
+  background: color-mix(in srgb, var(--gold-soft) 45%, var(--bg-alt));
+  box-shadow: inset 2px 0 0 var(--gold), var(--elev-1);   /* золотая нить по левой кромке */
+}
 .profile-info { flex: 1; min-width: 0; cursor: pointer; user-select: none }
 .profile-info:active { opacity: .8 }
 .profile-name {
@@ -419,7 +485,7 @@ header {
 .switch-slider:before {
   position: absolute; content: ""; height: 19px; width: 19px;
   left: 3px; top: 3px; background: white; border-radius: 50%;
-  transition: .2s; box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  transition: transform .28s var(--ease-spring); box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
 .switch input:checked + .switch-slider { background: var(--gold) }
 .switch input:checked + .switch-slider:before { transform: translateX(21px) }
@@ -468,16 +534,23 @@ pre.log {
   }
 }
 
-.toast {
+.toast-stack {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: var(--charcoal); border: 1px solid var(--gold);
-  color: var(--bg); padding: 12px 22px; border-radius: 10px; font-size: 14px;
-  box-shadow: 0 12px 36px rgba(31,31,31,0.25); z-index: 100; opacity: 0;
-  transition: opacity .2s; max-width: 90%;
+  display: flex; flex-direction: column-reverse; gap: 8px; align-items: center;
+  z-index: 300; max-width: min(92vw, 480px); pointer-events: none;
 }
-.toast.show { opacity: 1 }
+.toast {
+  background: var(--charcoal); border: 1px solid var(--gold);
+  color: var(--on-charcoal); padding: 11px 20px; border-radius: 10px; font-size: 13.5px;
+  box-shadow: var(--elev-3); opacity: 0; transform: translateY(8px);
+  transition: opacity var(--dur-2), transform var(--dur-2) var(--ease-out); max-width: 100%;
+}
+.toast.show { opacity: 1; transform: none }
 .toast.error { border-color: var(--bad) }
 .toast.ok { border-color: var(--ok) }
+@media (max-width: 959px) {
+  .toast-stack { bottom: calc(76px + env(safe-area-inset-bottom)) }
+}
 
 .searchbox {
   background: var(--surface); border: 1px solid var(--line); color: var(--ink);
@@ -622,6 +695,156 @@ pre.log {
 .route-add-grid { display: grid; grid-template-columns: 2fr 3fr auto; gap: 8px; align-items: end }
 .route-direct { border-left: 3px solid var(--gold-deep); padding-left: 9px }
 .note-accent { color: var(--gold-deep); text-transform: none; letter-spacing: 0; font-weight: 500 }
+
+/* ═══ Обзор: hero-статус ═══ */
+.hero { position: relative; padding: 24px 4px 20px; margin-bottom: 18px }
+.hero::before {
+  content: ""; position: absolute; inset: -26px -12px 0; pointer-events: none;
+  background: radial-gradient(560px 170px at 18% 0%, var(--accent-08), transparent 70%);
+}
+/* золотая нить под hero */
+.hero::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px;
+  background: linear-gradient(90deg, var(--gold) 0%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 50%, transparent 88%);
+}
+.hero .eyebrow { margin-bottom: 12px }
+.hero .big-status { font-size: var(--text-2xl); letter-spacing: -0.6px }
+
+/* ═══ Обзор: плитки туннелей ═══ */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 10px; margin-bottom: 16px }
+.tile {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 13px 15px; cursor: pointer;
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1), border-color var(--dur-1);
+}
+.tile:hover { transform: translateY(-2px); box-shadow: var(--elev-2); border-color: var(--gold) }
+.tile.live { border-color: var(--hairline-gold) }
+.tile.live::before {
+  content: ""; position: absolute; left: -1px; top: 11px; bottom: 11px;
+  width: 2px; border-radius: 2px; background: var(--gold);
+}
+.tile-head { display: flex; align-items: center; gap: 9px }
+.tile-name { font-family: var(--serif); font-weight: 600; font-size: 16px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tile-head .switch { width: 40px; height: 22px }
+.tile-head .switch-slider:before { height: 16px; width: 16px }
+.tile-head .switch input:checked + .switch-slider:before { transform: translateX(18px) }
+.tile-route {
+  display: flex; align-items: center; gap: 8px; margin: 11px 0 7px;
+  font-size: 11px; font-family: ui-monospace, monospace; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.tile-route .thread { flex: 1; height: 0; border-top: 1.5px solid var(--gold); min-width: 14px }
+.tile.off .tile-route .thread { border-top-style: dashed; border-top-color: var(--line) }
+.tile.off .tile-route { color: var(--muted) }
+.tile-meta { font-size: 11.5px; color: var(--muted) }
+.tile-meta b { color: var(--ink-2); font-weight: 500 }
+
+/* ═══ Обзор: сетка график+checkip ═══ */
+.ov-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start }
+.ov-grid .card { margin-bottom: 16px }
+
+/* ═══ График трафика ═══ */
+.chart-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12.5px; color: var(--ink-2) }
+.chart-legend .leg { display: inline-flex; align-items: center; gap: 7px }
+.chart-legend .leg b { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600 }
+.leg-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0 }
+.chart-wrap { position: relative; height: 130px; touch-action: pan-y }
+.chart-wrap svg { position: absolute; inset: 0; width: 100%; height: 100% }
+.chart-max {
+  position: absolute; top: 0; right: 0; font-size: 10px; color: var(--muted);
+  font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 0 4px; border-radius: 4px;
+}
+.chart-tip {
+  position: absolute; top: 4px; pointer-events: none; display: none;
+  background: var(--charcoal); color: var(--on-charcoal);
+  font-size: 11px; padding: 5px 9px; border-radius: 7px; white-space: nowrap;
+  font-variant-numeric: tabular-nums; box-shadow: var(--elev-2); z-index: 5;
+}
+.chart-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 12.5px; text-align: center; padding: 0 14px;
+}
+.chart-totals {
+  display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--line); font-size: 12px; color: var(--muted);
+}
+.chart-totals b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 5px }
+
+/* ═══ Обзор: лента watchdog ═══ */
+.wd-row { display: flex; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12.5px }
+.wd-row:last-child { border: none }
+.wd-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11px; flex-shrink: 0; width: 88px }
+.wd-prof { font-weight: 600; color: var(--ink); flex-shrink: 0 }
+.wd-msg { color: var(--ink-2); min-width: 0 }
+
+/* ═══ Живая точка: дыхание ═══ */
+@keyframes dot-breathe {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 24%, transparent) }
+  50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--live) 12%, transparent) }
+}
+.dot.live { animation: dot-breathe 2.6s ease-in-out infinite }
+
+/* ═══ Появление дашборда (один оркестрованный момент) ═══ */
+@keyframes rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.section.active .hero { animation: rise var(--dur-3) var(--ease-out) both }
+.section.active .tile { animation: rise var(--dur-3) var(--ease-out) both }
+.tile:nth-child(2) { animation-delay: .04s } .tile:nth-child(3) { animation-delay: .08s }
+.tile:nth-child(4) { animation-delay: .12s } .tile:nth-child(5) { animation-delay: .16s }
+.tile:nth-child(n+6) { animation-delay: .2s }
+
+/* ═══ Скелетоны (нет данных / CGI недоступен) ═══ */
+@keyframes shimmer { from { background-position: -200px 0 } to { background-position: 200px 0 } }
+.skel {
+  border-radius: 8px; min-height: 14px;
+  background: linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--line) 45%, var(--surface)) 50%, var(--line) 75%);
+  background-size: 400px 100%; animation: shimmer 1.4s linear infinite;
+}
+
+/* Форма добавления маршрута — в столбик на узких экранах.
+   (Дубль правила из блока 540px: базовое правило .route-add-grid идёт в файле
+   ПОЗЖЕ того медиа-блока и перебивало его — здесь порядок уже правильный.) */
+@media (max-width: 600px) {
+  .route-add-grid { grid-template-columns: 1fr }
+}
+
+/* ═══ Модалка → нижняя шторка на узких экранах ═══ */
+@keyframes sheet-up { from { transform: translateY(44px); opacity: .5 } to { transform: none; opacity: 1 } }
+@media (max-width: 600px) {
+  .modal-overlay { align-items: flex-end; padding: 0 }
+  .modal {
+    max-width: none; border-radius: 18px 18px 0 0; max-height: 92dvh;
+    padding: 20px 18px calc(24px + env(safe-area-inset-bottom));
+    border-left: none; border-right: none; border-bottom: none;
+  }
+  .modal-overlay.show .modal { animation: sheet-up .28s var(--ease-out) }
+}
+
+/* ═══ Адаптив shell: <960px — нижний таб-бар ═══ */
+@media (max-width: 959px) {
+  .side {
+    position: fixed; top: auto; bottom: 0; left: 0; right: 0;
+    width: auto; height: auto; flex-direction: row; gap: 0;
+    padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    border-right: none; border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg-alt) 88%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .side-brand, .side-foot { display: none }
+  .nav { flex-direction: row; width: 100%; gap: 2px }
+  .tab { flex: 1; flex-direction: column; gap: 3px; padding: 7px 2px; font-size: 10px; border-radius: 8px }
+  .tab .ic { width: 20px; height: 20px }
+  .tab.active::before { left: 26%; right: 26%; top: -7px; bottom: auto; width: auto; height: 2px }
+  .nav-badge { position: absolute; top: 2px; right: 14%; margin: 0 }
+  .logo.topbar-brand { display: flex }
+  .topbar-brand .logo-mark { height: 34px }
+  .topbar-brand .logo-text { font-size: 16px }
+  .topbar-brand .brand-eyebrow { display: none }   /* не влезает рядом с инструментами */
+  .topbar { padding: 12px 14px 0 }
+  .wrap { padding: 10px 14px 96px }   /* просвет под таб-бар */
+  .ov-grid { grid-template-columns: 1fr }
+}
 </style>
 </head>
 <body>
@@ -650,19 +873,41 @@ pre.log {
   <symbol id="ic-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 9l6.5 6.5L18.5 9"/></symbol>
   <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
   <symbol id="ic-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5V11"/><path d="M7 6.8a7 7 0 1 0 10 0"/></symbol>
+  <symbol id="ic-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="9" rx="1.4" fill="var(--ic-duo)"/><rect x="4" y="16.2" width="7" height="3.8" rx="1.2"/><rect x="14" y="4" width="6" height="3.8" rx="1.2"/><rect x="14" y="11" width="6" height="9" rx="1.4"/></symbol>
+  <symbol id="ic-journal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5h12a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5"/></symbol>
+  <symbol id="ic-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M12 3.6l1 2.2a6.6 6.6 0 0 1 2.4 1l2.3-.8 1.7 2.9-1.7 1.7a6.8 6.8 0 0 1 0 2.8l1.7 1.7-1.7 2.9-2.3-.8a6.6 6.6 0 0 1-2.4 1l-1 2.2h-.1l-1-2.2a6.6 6.6 0 0 1-2.4-1l-2.3.8-1.7-2.9 1.7-1.7a6.8 6.8 0 0 1 0-2.8L4.6 8.9l1.7-2.9 2.3.8a6.6 6.6 0 0 1 2.4-1l1-2.2z"/></symbol>
 </defs></svg>
-<div class="wrap">
-<h1 class="sr-only">Панель управления OpenVPN+XOR для Keenetic</h1>
-
-<header>
-  <a href="/" class="logo" style="text-decoration:none;color:inherit">
+<div class="app">
+<aside class="side">
+  <a href="/" class="logo side-brand">
     <img src="/logo-mark.svg" alt="" class="logo-mark">
     <div>
       <div class="brand-eyebrow">Invisible Net</div>
       <div class="logo-text">OPENVPN<em>+XOR</em></div>
     </div>
   </a>
-  <div style="display:flex;align-items:center;gap:10px">
+  <nav class="nav" role="tablist" aria-label="Разделы панели">
+    <div class="tab active" data-tab="overview" role="tab" tabindex="0" aria-selected="true"><svg class="ic" aria-hidden="true"><use href="#ic-dash"/></svg><span>Обзор</span></div>
+    <div class="tab" data-tab="profiles" role="tab" tabindex="0" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#ic-shield"/></svg><span>Профили</span></div>
+    <div class="tab" data-tab="devices" role="tab" tabindex="0" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#ic-device"/></svg><span>Устройства</span></div>
+    <div class="tab" data-tab="routes" role="tab" tabindex="0" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#ic-via"/></svg><span>Маршруты</span></div>
+    <div class="tab" data-tab="log" role="tab" tabindex="0" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#ic-journal"/></svg><span>Журнал</span><span class="nav-badge" id="nav-log-badge" hidden>0</span></div>
+    <div class="tab" data-tab="settings" role="tab" tabindex="0" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#ic-gear"/></svg><span>Настройки</span></div>
+  </nav>
+  <div class="side-foot">Invisible Net · v1.5.0</div>
+</aside>
+
+<div class="main">
+<header class="topbar">
+  <a href="/" class="logo topbar-brand">
+    <img src="/logo-mark.svg" alt="" class="logo-mark">
+    <div>
+      <div class="brand-eyebrow">Invisible Net</div>
+      <div class="logo-text">OPENVPN<em>+XOR</em></div>
+    </div>
+  </a>
+  <div class="topbar-tools">
+    <button class="btn btn-ghost btn-icon" onclick="loadAll()" title="Обновить" aria-label="Обновить данные" style="padding:9px 11px"><svg class="ic" style="font-size:16px"><use href="#ic-refresh"/></svg></button>
     <div style="position:relative">
       <button id="theme-btn" class="btn btn-ghost btn-icon" onclick="toggleThemePicker()" title="Выбрать тему" aria-label="Выбрать тему оформления" style="padding:9px 11px">
         <svg class="ic" style="font-size:17px"><use href="#ic-theme"/></svg>
@@ -682,41 +927,62 @@ pre.log {
   </div>
 </header>
 
-<div class="card">
-  <div class="eyebrow" style="margin-bottom:14px">Status</div>
-  <div>
+<main class="wrap">
+<h1 class="sr-only">Панель управления OpenVPN+XOR для Keenetic</h1>
+
+<div class="section active" data-section="overview">
+  <div class="hero">
+    <div class="eyebrow">Обзор</div>
     <div id="big-status" class="big-status">…</div>
     <div class="active-profile">Активные профили: <b id="active-profile">—</b></div>
   </div>
-  <div class="power-buttons">
-    <select class="select" id="checkip-profile" style="flex:0 1 auto;max-width:200px;height:42px"></select>
-    <button class="btn btn-gold" onclick="checkIp()"><svg class="ic" aria-hidden="true"><use href="#ic-globe"/></svg>Проверить IP</button>
-    <button class="btn btn-ghost btn-icon" onclick="loadAll()" title="Обновить" aria-label="Обновить статус"><svg class="ic" style="font-size:16px"><use href="#ic-refresh"/></svg></button>
-  </div>
-  <div class="setting-hint" style="margin-top:8px">Вкл/выкл — тумблером на профиле во вкладке «Профили». «Проверить IP» — выход выбранного туннеля.</div>
-  <div class="stats-row">
-    <div class="stat-box"><div class="stat-label"><svg class="ic" aria-hidden="true" style="font-size:12px"><use href="#ic-down"/></svg> Получено</div><div class="stat-value" id="rx">0 B</div></div>
-    <div class="stat-box"><div class="stat-label"><svg class="ic" aria-hidden="true" style="font-size:12px"><use href="#ic-up"/></svg> Отправлено</div><div class="stat-value" id="tx">0 B</div></div>
-  </div>
-  <div id="checkip-box" class="checkip-box">
-    <div class="checkip-row">
-      <div><div class="label">IP</div><div class="value" id="ci-ip">—</div></div>
-      <div><div class="label">Страна</div><div class="value" id="ci-country">—</div></div>
-      <div><div class="label">Город</div><div class="value" id="ci-city">—</div></div>
-      <div><div class="label">Провайдер</div><div class="value" id="ci-org">—</div></div>
+
+  <div id="tiles" class="tiles"></div>
+
+  <div class="ov-grid">
+    <div class="card">
+      <h2><span>Трафик</span><span class="extra"><small>окно ~10 минут · все туннели</small></span></h2>
+      <div class="chart-legend">
+        <span class="leg"><i class="leg-dot" style="background:var(--chart-rx)"></i>Получено <b id="rx-rate">—</b></span>
+        <span class="leg"><i class="leg-dot" style="background:var(--chart-tx)"></i>Отправлено <b id="tx-rate">—</b></span>
+      </div>
+      <div class="chart-wrap" id="chart-wrap">
+        <svg id="traffic-chart" viewBox="0 0 600 130" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <span class="chart-max" id="chart-max"></span>
+        <div class="chart-tip" id="chart-tip"></div>
+        <div class="chart-empty" id="chart-empty">собираю данные…</div>
+      </div>
+      <div class="chart-totals">
+        <span>Всего получено<b id="rx">0 B</b></span>
+        <span>Всего отправлено<b id="tx">0 B</b></span>
+      </div>
     </div>
+
+    <div class="card">
+      <h2>Проверка выхода</h2>
+      <div class="setting-hint" style="margin-bottom:12px">Каким IP и из какой страны виден выбранный туннель.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="select" id="checkip-profile" style="flex:1 1 120px;height:42px"></select>
+        <button class="btn btn-gold" onclick="checkIp()"><svg class="ic" aria-hidden="true"><use href="#ic-globe"/></svg>Проверить IP</button>
+      </div>
+      <div id="checkip-box" class="checkip-box">
+        <div class="checkip-row">
+          <div><div class="label">IP</div><div class="value" id="ci-ip">—</div></div>
+          <div><div class="label">Страна</div><div class="value" id="ci-country">—</div></div>
+          <div><div class="label">Город</div><div class="value" id="ci-city">—</div></div>
+          <div><div class="label">Провайдер</div><div class="value" id="ci-org">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span>Watchdog</span><span class="extra"><small><a href="#/log" style="color:var(--gold-deep);text-decoration:none" onclick="document.querySelector('.tab[data-tab=\'log\']')?.click();return false">весь журнал →</a></small></span></h2>
+    <div id="wd-feed"><div class="empty"><small>событий пока нет</small></div></div>
   </div>
 </div>
 
-<nav class="tabs" role="tablist" aria-label="Разделы панели">
-  <div class="tab active" data-tab="profiles" role="tab" tabindex="0" aria-selected="true">Профили</div>
-  <div class="tab" data-tab="devices" role="tab" tabindex="0" aria-selected="false">Устройства</div>
-  <div class="tab" data-tab="routes" role="tab" tabindex="0" aria-selected="false">Маршруты</div>
-  <div class="tab" data-tab="settings" role="tab" tabindex="0" aria-selected="false">Настройки</div>
-  <div class="tab" data-tab="log" role="tab" tabindex="0" aria-selected="false">Лог</div>
-</nav>
-
-<div class="section active" data-section="profiles">
+<div class="section" data-section="profiles">
   <div class="card">
     <h2><span>Профили VPN</span><span class="extra"><small id="profiles-hint">клик по карточке — выбрать · <svg class="ic" aria-hidden="true" style="font-size:12px"><use href="#ic-edit"/></svg> — редактировать · тумблер — вкл/выкл</small></span></h2>
     <div id="profile-list"></div>
@@ -855,9 +1121,11 @@ pre.log {
   </div>
 </div>
 
+</main>
+</div>
 </div>
 
-<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="toast" class="toast-stack" role="status" aria-live="polite"></div>
 
 <div id="profile-modal" class="modal-overlay" onclick="if(event.target===this)closeProfileEdit()">
   <div class="modal">
@@ -898,9 +1166,75 @@ pre.log {
 <script>
 const $ = id => document.getElementById(id);
 
+// ── Demo-режим (?demo=1): подмена fetch фикстурами — локальное превью без CGI ──
+(function demoMode(){
+  if (!new URLSearchParams(location.search).has('demo')) return;
+  const t0 = Date.now();
+  let rx = 4.2e9, tx = 1.1e9;
+  const P = [
+    {name:'XOR', enabled:true, running:true, slot:2, ip:'172.21.140.16/23', remote:'176.67.83.20', wan:'eth3', mode:'devices', devices_count:2, sched:true},
+    {name:'Claude', enabled:true, running:true, slot:1, ip:'172.21.142.26/23', remote:'176.67.83.20', wan:'eth3', mode:'devices', devices_count:1, sched:false},
+    {name:'PureV1', enabled:false, running:false, slot:-1, ip:'', remote:'5.254.106.14', wan:'eth3', mode:'devices', devices_count:1, sched:true},
+    {name:'Privado', enabled:false, running:false, slot:-1, ip:'', remote:'91.148.247.236', wan:'', mode:'all', devices_count:0, sched:false}
+  ];
+  const DEVS = [
+    {ip:'192.168.7.10', mac:'AA:BB:CC:11:22:33', name:'MacBook Pro', iface:'Home', selected:true},
+    {ip:'192.168.7.21', mac:'AA:BB:CC:44:55:66', name:'iPhone', iface:'Home', selected:true},
+    {ip:'192.168.7.33', mac:'AA:BB:CC:77:88:99', name:'Телевизор', iface:'Home', selected:false},
+    {ip:'192.168.7.45', mac:'AA:BB:CC:AA:BB:CC', name:'', iface:'Guest', selected:false}
+  ];
+  const ROUTES = [
+    {cidr:'95.85.96.0/19', comment:'Turkmentelecom', enabled:true},
+    {cidr:'216.250.8.0/21', comment:'Turkmentelecom', enabled:true},
+    {cidr:'8.8.8.8', comment:'Google DNS напрямую', enabled:true, direct:true, wan:'eth3'}
+  ];
+  const pingLines = [
+    '[2026-07-09 03:12:44] [XOR] процесс мёртв — перезапуск',
+    '[2026-07-09 03:12:52] [XOR] перезапуск завершён'
+  ];
+  // через 25с появляется свежий рестарт — проверка тоста/бейджа watchdog
+  setTimeout(() => {
+    const d = new Date(), pad = n => String(n).padStart(2,'0');
+    const ts = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    pingLines.push('['+ts+'] [Claude] процесс мёртв — перезапуск', '['+ts+'] [Claude] перезапуск завершён');
+  }, 25000);
+  const J = o => Promise.resolve(new Response(JSON.stringify(o), {headers:{'Content-Type':'application/json'}}));
+  const T = s => Promise.resolve(new Response(s));
+  window.fetch = (url) => {
+    url = String(url);
+    const q = url.split('?')[0];
+    if (q.endsWith('/status')) return T('ACTIVE\ncount=2\nrunning=XOR Claude');
+    if (q.endsWith('/stats')) { const dt = (Date.now()-t0)/1000; rx += 90000+70000*Math.sin(dt/25)+40000*Math.random(); tx += 26000+18000*Math.sin(dt/40)+9000*Math.random(); return J({rx:Math.round(rx), tx:Math.round(tx), up:true}); }
+    if (q.endsWith('/profiles')) return J(P);
+    if (q.endsWith('/profile')) {
+      const u = new URL(url, location.origin), nm = u.searchParams.get('name') || 'XOR';
+      const p = P.find(x => x.name === nm) || P[0];
+      return J({name: p.name, remote: p.remote, mode: p.mode, devices_count: p.devices_count, wan: p.wan, content: 'client\ndev tun\nproto udp\nremote ' + p.remote + ' 1194\nscramble obfuscate demo\n<ca>…</ca>'});
+    }
+    if (q.endsWith('/wans')) return J([{iface:'eth3', label:'Turkmentelecom', type:'ethernet', connected:true, default:true, ip:'95.85.100.20'},{iface:'eth2', label:'KWRT', type:'ethernet', connected:true, ip:'192.168.10.2'}]);
+    if (q.endsWith('/devices')) return J(DEVS);
+    if (q.endsWith('/routes')) return J(ROUTES);
+    if (q.endsWith('/keenetic-routes')) return J([]);
+    if (q.endsWith('/autostart')) return T('yes');
+    if (q.endsWith('/mode')) return T('devices');
+    if (q.endsWith('/schedule')) return J({enabled:true, actions:[{do:'start',hh:8,mm:0,dow:[1,2,3,4,5]},{do:'stop',hh:23,mm:0,dow:[1,2,3,4,5]}]});
+    if (q.endsWith('/sysinfo')) return J({arch:'aarch64', model:'Keenetic Giga (KN-1012)', os_title:'KeeneticOS', os_release:'4.3.6', cpu:'MT7981 @ 1.3 GHz', cputemp:52, cpuload:7, memtotal:262144, memused:131072, uptime:864000, loadavg:'0.12 0.08 0.05'});
+    if (q.endsWith('/checkip')) return J({ip:'176.67.83.20', country:'Finland', city:'Helsinki', org:'DataCenter Oy', dev:'tun_invnet2'});
+    if (q.endsWith('/log')) return T('2026-07-10 12:00:01 Initialization Sequence Completed\n2026-07-10 12:00:00 net_route_v4_add: 10.8.0.0/24\n2026-07-10 11:59:58 TUN/TAP device tun_invnet2 opened');
+    if (q.endsWith('/pinglog')) return J({watchdog:'running', lines: pingLines.slice()});
+    if (q.endsWith('/connect')) {
+      const u = new URL(url, location.origin), nm = u.searchParams.get('name'), on = u.searchParams.get('on');
+      const p = P.find(x => x.name === nm);
+      if (p) { p.enabled = on === '1'; setTimeout(() => { p.running = p.enabled; p.slot = p.enabled ? 3 : -1; }, 2500); }
+      return T('ok');
+    }
+    return T('ok');
+  };
+})();
+
 // ── Темы: пресеты (light/dark/tokyonight/neo/mint) + Custom (3 цвета → color-mix) ──
 const THEME_BG = {light:'#f6f3ea', dark:'#16140f', noir:'#191919', tokyonight:'#1a1b26', neo:'#0a0a0a', mint:'#1e2530', catppuccin:'#24273a'};
-const CUSTOM_VARS = ['--bg','--bg-alt','--surface','--ink','--ink-2','--muted','--gold','--gold-deep','--gold-soft','--line','--charcoal','--on-charcoal','--on-gold','--shadow-rgb'];
+const CUSTOM_VARS = ['--bg','--bg-alt','--surface','--ink','--ink-2','--muted','--gold','--gold-deep','--gold-soft','--line','--charcoal','--on-charcoal','--on-gold','--shadow-rgb','--chart-rx','--chart-tx'];
 function _lum(hex){
   const m = (hex||'').replace('#','').match(/.{2}/g); if (!m) return 0.5;
   const [r,g,b] = m.map(x => parseInt(x,16)/255); return 0.2126*r + 0.7152*g + 0.0722*b;
@@ -920,6 +1254,9 @@ function applyCustom(accent, bg, text){
   s('--charcoal', accent); s('--on-charcoal', bg);
   s('--on-gold', bg);
   s('--shadow-rgb', dark ? '0, 0, 0' : '31, 31, 31');
+  // data-цвета графика: валидированные пары под тёмную/светлую поверхность
+  s('--chart-rx', dark ? '#b08427' : '#9c6b1a');
+  s('--chart-tx', dark ? '#3d8fc9' : '#1f6fb5');
 }
 function clearCustom(){ CUSTOM_VARS.forEach(k => document.documentElement.style.removeProperty(k)); }
 function applyTheme(theme, custom){
@@ -967,11 +1304,15 @@ function fmt(b){
   return b.toFixed(b < 10 ? 2 : (b < 100 ? 1 : 0)) + ' ' + u[i];
 }
 
+// Стековая очередь тостов: несколько сообщений видны одновременно (статус + watchdog)
 function toast(msg, kind){
-  const t = $('toast');
+  const stack = $('toast');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind || '');
   t.textContent = msg;
-  t.className = 'toast show ' + (kind || '');
-  setTimeout(() => t.classList.remove('show'), 2800);
+  stack.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, 2800);
 }
 
 function escapeHtml(s){
@@ -985,19 +1326,31 @@ let ALL_DEVS = [];
 let CURRENT_ROUTES = [];
 let LOG_AUTO = true;
 let LOG_TIMER = null;
-let CURRENT_TAB = 'profiles';
+let CURRENT_TAB = 'overview';
 let CURRENT_EDIT = null;
 
-document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
-  document.querySelectorAll('.tab').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
-  document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
-  t.classList.add('active'); t.setAttribute('aria-selected','true');
-  document.querySelector('.section[data-section="' + t.dataset.tab + '"]').classList.add('active');
-  CURRENT_TAB = t.dataset.tab;
-  if (CURRENT_TAB === 'log') { startLogAuto(); loadPingLog(); }
+// ── Навигация: один механизм для сайдбара и нижнего бара + hash-синк вида ──
+const VALID_TABS = [...document.querySelectorAll('.tab')].map(t => t.dataset.tab);
+function switchTab(name){
+  if (!VALID_TABS.includes(name)) name = 'overview';
+  document.querySelectorAll('.tab').forEach(x => {
+    const on = x.dataset.tab === name;
+    x.classList.toggle('active', on); x.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.section').forEach(x => x.classList.toggle('active', x.dataset.section === name));
+  CURRENT_TAB = name;
+  if (location.hash !== '#/' + name) history.replaceState(null, '', '#/' + name);
+  if (name === 'log') { startLogAuto(); loadPingLog(); wdClearBadge(); }
   else stopLogAuto();
-  if (CURRENT_TAB === 'settings') loadSysinfo();
+  if (name === 'settings') loadSysinfo();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+window.addEventListener('hashchange', () => {
+  const m = location.hash.match(/^#\/([a-z]+)/);
+  if (m && m[1] !== CURRENT_TAB) switchTab(m[1]);
 });
+// восстановить вид из hash при загрузке (перезагрузка сохраняет открытый раздел)
+{ const m = location.hash.match(/^#\/([a-z]+)/); if (m && m[1] !== 'overview') switchTab(m[1]); }
 
 // Доступность: активация div-интерактива с клавиатуры (Enter/Space) + стрелки по вкладкам
 document.addEventListener('keydown', e => {
@@ -1038,7 +1391,8 @@ async function loadStats(){
     const j = await (await fetch('/cgi-bin/stats')).json();
     $('rx').textContent = fmt(j.rx);
     $('tx').textContent = fmt(j.tx);
-  } catch(e) {}
+    pushStats(+j.rx || 0, +j.tx || 0, j.up);
+  } catch(e) { renderChart(); }
 }
 
 // Заполнить выпадающий список «через какой туннель проверять» работающими профилями
@@ -1082,8 +1436,20 @@ async function checkIp(){
 
 let PROFILES_CACHE = [];
 async function loadProfiles(){
-  const arr = await (await fetch('/cgi-bin/profiles')).json();
+  // идёт оптимистичное переключение тумблера — не перерисовываем списки,
+  // иначе 5с-полл вернёт чекбокс в старое состояние до завершения коннекта
+  if (Object.keys(TOGGLE_BUSY).some(k => TOGGLE_BUSY[k])) return;
+  let arr;
+  try { arr = await (await fetch('/cgi-bin/profiles')).json(); }
+  catch(e){
+    // CGI недоступен: на Обзоре — скелетоны вместо пустоты, списки не трогаем
+    const box = $('tiles');
+    if (box && !box.children.length)
+      box.innerHTML = '<div class="tile off"><div class="skel" style="width:55%;height:18px;margin-bottom:12px"></div><div class="skel" style="width:90%"></div></div>'.repeat(3);
+    return;
+  }
   PROFILES_CACHE = arr;
+  renderTiles(arr);
   // открыт редактор расписания ИМЕННО этого профиля — не перерисовываем список
   // (иначе 5-секундный автообновлятор сбросит рисование по сетке)
   const openBox = document.querySelector('.sched-box');
@@ -1826,10 +2192,203 @@ async function uploadProfile(){
   }
 }
 
+// ═══ Обзор: плитки туннелей (рендер из PROFILES_CACHE, один data path с loadProfiles) ═══
+function renderTiles(arr){
+  const box = $('tiles');
+  if (!box) return;
+  if (!arr.length){
+    box.innerHTML = '<div class="card" style="grid-column:1/-1;margin:0"><div class="empty"><svg class="ic"><use href="#ic-shield"/></svg><b>Пока нет профилей</b><small>Добавьте первый .ovpn во вкладке «Профили».</small></div></div>';
+    return;
+  }
+  box.innerHTML = '';
+  for (const p of arr){
+    const t = document.createElement('div');
+    t.className = 'tile ' + (p.running ? 'live' : 'off');
+    const dot = p.running ? 'live' : (p.enabled ? 'pending' : '');
+    const meta = [];
+    meta.push(p.running ? 'работает' : (p.enabled ? 'запуск…' : 'выключен'));
+    meta.push(p.mode === 'all' ? '<b>весь LAN</b>' : '<b>' + p.devices_count + '</b> устр.');
+    if (p.sched) meta.push('расписание');
+    t.innerHTML =
+      '<div class="tile-head">' +
+        '<span class="dot ' + dot + '"></span>' +
+        '<span class="tile-name">' + escapeHtml(p.name) + '</span>' +
+        '<label class="switch" title="Включить / выключить">' +
+          '<input type="checkbox" aria-label="Включить профиль ' + escapeHtml(p.name) + '"' + (p.enabled ? ' checked' : '') + '>' +
+          '<span class="switch-slider"></span></label>' +
+      '</div>' +
+      '<div class="tile-route">' +
+        '<span>' + escapeHtml(p.wan || 'auto') + '</span><i class="thread" aria-hidden="true"></i><span>' + escapeHtml(p.remote || '—') + '</span>' +
+      '</div>' +
+      '<div class="tile-meta">' + meta.join(' · ') + '</div>';
+    t.querySelector('.switch').onclick = e => e.stopPropagation();
+    t.querySelector('input').onchange = function(){ profileToggle(p.name, this.checked); };
+    t.onclick = e => { if (e.target.closest('.switch')) return; openDevicesFor(p.name); };
+    t.setAttribute('role', 'button'); t.setAttribute('tabindex', '0');
+    t.setAttribute('aria-label', 'Профиль ' + p.name + ' — настроить устройства');
+    t.onkeydown = e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openDevicesFor(p.name); } };
+    box.appendChild(t);
+  }
+}
+
+// ═══ График трафика: ring buffer 120 точек (~10 мин при 5с полле) + inline SVG ═══
+const BUF_MAX = 120;
+let STATS_BUF = [];
+let STATS_PREV = null;
+try {
+  const s = JSON.parse(sessionStorage.getItem('invnet-stats-buf') || '[]');
+  const cutoff = Date.now() - BUF_MAX * 5000 * 1.5;
+  if (Array.isArray(s)) STATS_BUF = s.filter(x => x && x.t > cutoff);
+} catch(e){}
+
+function pushStats(rx, tx, up){
+  const now = Date.now();
+  if (STATS_PREV){
+    const dt = (now - STATS_PREV.t) / 1000;
+    if (dt > 0.5 && dt < 60){
+      // кламп отрицательных дельт: счётчики /sys/class/net падают при рестарте туннеля
+      const rr = Math.max(0, rx - STATS_PREV.rx) / dt;
+      const tr = Math.max(0, tx - STATS_PREV.tx) / dt;
+      STATS_BUF.push({ t: now, rr: Math.round(rr), tr: Math.round(tr) });
+      if (STATS_BUF.length > BUF_MAX) STATS_BUF = STATS_BUF.slice(-BUF_MAX);
+      try { sessionStorage.setItem('invnet-stats-buf', JSON.stringify(STATS_BUF)); } catch(e){}
+    }
+  }
+  STATS_PREV = { t: now, rx: rx, tx: tx };
+  renderChart(up);
+}
+
+function niceMax(v){
+  // «красивый» потолок шкалы: степень двойки от КБ/с
+  return Math.pow(2, Math.max(0, Math.ceil(Math.log2(v / 1024)))) * 1024;
+}
+
+function renderChart(up){
+  const svg = $('traffic-chart');
+  if (!svg) return;
+  const empty = $('chart-empty');
+  const last = STATS_BUF[STATS_BUF.length - 1];
+  const rr = $('rx-rate'), tr = $('tx-rate');
+  if (rr) rr.textContent = last ? fmt(last.rr) + '/с' : '—';
+  if (tr) tr.textContent = last ? fmt(last.tr) + '/с' : '—';
+  if (STATS_BUF.length < 2){
+    if (empty){ empty.style.display = 'flex'; empty.textContent = up === false ? 'Туннели не активны — трафика нет.' : 'Собираю данные — первая точка через несколько секунд…'; }
+    svg.innerHTML = ''; const cm = $('chart-max'); if (cm) cm.textContent = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  const W = 600, H = 130, PAD = 4;
+  const peak = Math.max(1024, ...STATS_BUF.map(p => Math.max(p.rr, p.tr)));
+  const top = niceMax(peak);
+  const n = STATS_BUF.length;
+  const X = i => PAD + (W - 2 * PAD) * i / (n - 1);
+  const Y = v => H - PAD - (H - 2 * PAD) * Math.min(1, v / top);
+  const line = key => STATS_BUF.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p[key]).toFixed(1)).join('');
+  const rxPath = line('rr'), txPath = line('tr');
+  const rxArea = rxPath + 'L' + X(n - 1).toFixed(1) + ' ' + (H - PAD) + 'L' + X(0).toFixed(1) + ' ' + (H - PAD) + 'Z';
+  let grid = '';
+  for (let g = 1; g <= 3; g++){
+    const y = (PAD + (H - 2 * PAD) * g / 4).toFixed(1);
+    grid += '<line x1="0" x2="' + W + '" y1="' + y + '" y2="' + y + '" stroke="var(--line)" stroke-width="0.7" vector-effect="non-scaling-stroke"/>';
+  }
+  svg.innerHTML = grid +
+    '<path d="' + rxArea + '" fill="var(--chart-rx)" opacity="0.10"/>' +
+    '<path d="' + rxPath + '" fill="none" stroke="var(--chart-rx)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+    '<path d="' + txPath + '" fill="none" stroke="var(--chart-tx)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+    '<line id="chart-cross" x1="-10" x2="-10" y1="0" y2="' + H + '" stroke="var(--muted)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"/>';
+  const cm = $('chart-max'); if (cm) cm.textContent = 'до ' + fmt(top) + '/с';
+}
+
+// hover/тач по графику: перекрестие + значение ближайшей точки
+(function chartHover(){
+  const wrap = $('chart-wrap');
+  if (!wrap) return;
+  const tip = $('chart-tip');
+  wrap.addEventListener('pointermove', e => {
+    if (STATS_BUF.length < 2) return;
+    const r = wrap.getBoundingClientRect();
+    const i = Math.max(0, Math.min(STATS_BUF.length - 1, Math.round((e.clientX - r.left) / r.width * (STATS_BUF.length - 1))));
+    const p = STATS_BUF[i];
+    if (!p) return;
+    const d = new Date(p.t), pad = x => String(x).padStart(2, '0');
+    tip.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' · ↓ ' + fmt(p.rr) + '/с · ↑ ' + fmt(p.tr) + '/с';
+    tip.style.display = 'block';
+    tip.style.left = Math.min(Math.max(0, e.clientX - r.left - 70), Math.max(0, r.width - 190)) + 'px';
+    const cross = document.getElementById('chart-cross');
+    if (cross){ const cx = (4 + (600 - 8) * i / (STATS_BUF.length - 1)).toFixed(1); cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); }
+  });
+  wrap.addEventListener('pointerleave', () => {
+    tip.style.display = 'none';
+    const c = document.getElementById('chart-cross');
+    if (c){ c.setAttribute('x1', -10); c.setAttribute('x2', -10); }
+  });
+})();
+
+// ═══ Watchdog: полл раз в 30с — тосты о новых перезапусках, бейдж на «Журнале», лента ═══
+let WD_EVENTS = [];
+const WD_LINE = /^\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\]\s*\[([^\]]+)\]\s*(.+)$/;
+function wdParse(lines){
+  const evs = [];
+  for (const ln of lines){
+    const m = ln.match(WD_LINE);
+    if (m) evs.push({ raw: ln, date: m[1], time: m[2], prof: m[3], msg: m[4] });
+  }
+  return evs;
+}
+function wdClearBadge(){
+  const b = $('nav-log-badge');
+  if (b){ b.hidden = true; b.textContent = '0'; }
+}
+function wdWhen(e){
+  const today = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const iso = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+  return e.date === iso ? 'сегодня ' + e.time.slice(0, 5) : e.date.slice(5) + ' ' + e.time.slice(0, 5);
+}
+function renderWdFeed(){
+  const box = $('wd-feed');
+  if (!box) return;
+  const restarts = WD_EVENTS.filter(e => e.msg.indexOf('перезапуск') !== -1 && e.msg.indexOf('мёртв') !== -1).slice(-5).reverse();
+  if (!restarts.length){
+    box.innerHTML = '<div class="empty"><small>Перезапусков не было — туннели стабильны.</small></div>';
+    return;
+  }
+  box.innerHTML = restarts.map(e =>
+    '<div class="wd-row"><span class="wd-time">' + escapeHtml(wdWhen(e)) + '</span>' +
+    '<span class="wd-prof">' + escapeHtml(e.prof) + '</span>' +
+    '<span class="wd-msg">перезапущен вотчдогом</span></div>').join('');
+}
+async function pollWatchdog(){
+  let j = null;
+  try { j = await (await fetch('/cgi-bin/pinglog')).json(); } catch(e){ return; }
+  if (!j || !Array.isArray(j.lines)) return;
+  WD_EVENTS = wdParse(j.lines);
+  renderWdFeed();
+  // дедуп через watermark: помним последнюю обработанную строку лога
+  const KEY = 'invnet-wd-seen';
+  const lines = j.lines;
+  const newest = lines.length ? lines[lines.length - 1] : '';
+  let seen = null;
+  try { seen = localStorage.getItem(KEY); } catch(e){}
+  try { localStorage.setItem(KEY, newest); } catch(e){}
+  if (seen === null || seen === newest) return;          // первый запуск — тихо; или ничего нового
+  let idx = -1;
+  for (let i = lines.length - 1; i >= 0; i--){ if (lines[i] === seen){ idx = i; break; } }
+  if (idx === -1) return;                                 // лог очищен/ротирован — без реплей-шторма
+  const fresh = wdParse(lines.slice(idx + 1)).filter(e => e.msg.indexOf('мёртв') !== -1);
+  if (!fresh.length) return;
+  if (fresh.length > 3) toast('Watchdog: перезапусков туннелей — ' + fresh.length, 'error');
+  else for (const e of fresh) toast('Watchdog: перезапуск «' + e.prof + '»', 'error');
+  if (CURRENT_TAB !== 'log'){
+    const b = $('nav-log-badge');
+    if (b){ b.textContent = String(Math.min(99, (+b.textContent || 0) + fresh.length)); b.hidden = false; }
+  }
+}
+
 async function loadAll(){
   await loadWans();
   await loadStatus();
-  await loadProfiles();          // заполняет PROFILES_CACHE
+  await loadProfiles();          // заполняет PROFILES_CACHE (+ плитки Обзора)
   loadDevProfiles();             // дропдаун профилей во вкладке «Устройства»
   await Promise.all([
     loadStats(), loadAutostart(), loadRoutes()
@@ -1839,7 +2398,10 @@ async function loadAll(){
 }
 
 loadAll();
+renderChart();                    // буфер из sessionStorage виден сразу, до первого полла
+pollWatchdog();
 setInterval(() => { loadStatus(); loadStats(); loadProfiles(); }, 5000);
+setInterval(pollWatchdog, 30000);
 </script>
 </body>
 </html>
