@@ -789,7 +789,9 @@ pre.log {
 /* ═══ Появление дашборда (один оркестрованный момент) ═══ */
 @keyframes rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .section.active .hero { animation: rise var(--dur-3) var(--ease-out) both }
-.section.active .tile { animation: rise var(--dur-3) var(--ease-out) both }
+/* плитки анимируются ТОЛЬКО при первом рендере (.ready ставит renderTiles);
+   иначе 5с-полл перепроигрывал появление — плитки «моргали» */
+.tiles:not(.ready) .tile { animation: rise var(--dur-3) var(--ease-out) both }
 .tile:nth-child(2) { animation-delay: .04s } .tile:nth-child(3) { animation-delay: .08s }
 .tile:nth-child(4) { animation-delay: .12s } .tile:nth-child(5) { animation-delay: .16s }
 .tile:nth-child(n+6) { animation-delay: .2s }
@@ -1435,6 +1437,7 @@ async function checkIp(){
 }
 
 let PROFILES_CACHE = [];
+let PROFILES_SIG = '';        // сигнатура последнего отрисованного состояния
 async function loadProfiles(){
   // идёт оптимистичное переключение тумблера — не перерисовываем списки,
   // иначе 5с-полл вернёт чекбокс в старое состояние до завершения коннекта
@@ -1449,6 +1452,11 @@ async function loadProfiles(){
     return;
   }
   PROFILES_CACHE = arr;
+  // ничего не изменилось — не перерисовываем вообще (иначе плитки и карточки
+  // «моргают» каждые 5с: рестарт анимаций появления и дыхания точек)
+  const sig = JSON.stringify(arr) + '|' + SCHED_OPEN;
+  if (sig === PROFILES_SIG) { fillCheckipProfiles(); return; }
+  PROFILES_SIG = sig;
   renderTiles(arr);
   // открыт редактор расписания ИМЕННО этого профиля — не перерисовываем список
   // (иначе 5-секундный автообновлятор сбросит рисование по сетке)
@@ -2229,6 +2237,9 @@ function renderTiles(arr){
     t.onkeydown = e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openDevicesFor(p.name); } };
     box.appendChild(t);
   }
+  // появление проигрывается один раз; дальше обновления без анимации
+  if (!box.classList.contains('ready'))
+    setTimeout(() => box.classList.add('ready'), 700);
 }
 
 // ═══ График трафика: ring buffer 120 точек (~10 мин при 5с полле) + inline SVG ═══
