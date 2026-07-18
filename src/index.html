@@ -343,6 +343,53 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .scell.on{background:var(--accent)}
 #sched-next{font:500 var(--t-xs) var(--f-mono);color:var(--muted);margin-bottom:10px}
 
+/* ════════════════════════════ УСТРОЙСТВА ════════════════════════════ */
+.seg{display:inline-flex;border:1px solid var(--hairline-hi);border-radius:var(--r-sm);overflow:hidden}
+.seg button{padding:9px 15px;font-weight:700;font-size:var(--t-sm);color:var(--muted);
+  transition:all var(--dur-1);min-height:38px}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.warn-note{display:none;gap:8px;align-items:flex-start;padding:10px 13px;border-radius:var(--r-sm);
+  border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);
+  font-size:var(--t-sm);margin-bottom:12px}
+.warn-note.show{display:flex}
+.warn-note svg{width:15px;height:15px;flex:none;margin-top:1px}
+.muted-section{opacity:.45;pointer-events:none}
+.dev-tools{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.dev-tools .search{position:relative;flex:1;min-width:180px}
+.dev-tools .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);
+  width:15px;height:15px;color:var(--muted);pointer-events:none}
+.dev-tools .search input{padding-left:34px}
+.dlist{display:flex;flex-direction:column;gap:8px}
+.drow{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:var(--r-md);
+  border:1px solid var(--hairline);background:var(--glass-soft);cursor:pointer;
+  transition:border-color var(--dur-1)}
+.drow:hover{border-color:var(--hairline-hi)}
+.drow input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);flex:none;cursor:pointer}
+.drow .dinfo{flex:1;min-width:0}
+.drow .dname{font-weight:700;font-size:var(--t-md);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .dsub{font:500 .68rem var(--f-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow .ib{font:600 .58rem var(--f-mono);padding:3px 8px;border-radius:6px;flex:none;
+  border:1px solid var(--hairline);color:var(--muted)}
+/* ════════════════════════════ МАРШРУТЫ ════════════════════════════ */
+.raddf{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.raddf .input{flex:1;min-width:150px;width:auto}
+.rrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:var(--r-md);
+  border:1px solid var(--hairline);background:var(--glass-soft)}
+.rrow.offr .rcidr{opacity:.45;text-decoration:line-through}
+.rrow .rcidr{font:600 .78rem var(--f-mono);flex:none}
+.rrow .rcomm{flex:1;min-width:0;font-size:var(--t-sm);color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow select{padding:7px 9px;border-radius:var(--r-sm);background:var(--glass-soft);
+  border:1px solid var(--hairline-hi);color:var(--ink);font-size:.72rem;max-width:170px}
+.kimport{margin-top:14px;display:none}
+.kimport.show{display:block}
+.krow{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);
+  border:1px solid var(--hairline);margin-bottom:7px;font-size:var(--t-sm)}
+.krow input{width:16px;height:16px;accent-color:var(--accent);flex:none}
+.krow .kc{font:600 .74rem var(--f-mono)}
+.krow .kl{flex:1;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.krow .kex{font:600 .58rem var(--f-mono);color:var(--ok)}
+
 /* ════════════════════════════ МОБИЛЬНЫЙ ТАБ-БАР ════════════════════════════ */
 @media(max-width:959px){
   .app{grid-template-columns:1fr;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -516,16 +563,42 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 
     <!-- ════════════════ ВИД: УСТРОЙСТВА ════════════════ -->
     <section class="view" data-view="devices">
+      <div class="vhead"><h2>Устройства</h2><span class="count" id="dev-count"></span></div>
       <div class="card glass">
-        <div class="empty"><svg><use href="#ic-device"/></svg><b>Устройства</b><span>этап 3.3 редизайна</span></div>
+        <div class="dev-tools">
+          <select class="input" id="dev-profile" style="max-width:280px" aria-label="Цель привязки устройств"></select>
+          <div class="seg" id="mode-seg" role="group" aria-label="Режим профиля">
+            <button id="mode-devices" class="on">Выбранные</button>
+            <button id="mode-all">Весь LAN</button>
+          </div>
+        </div>
+        <div class="warn-note" id="dev-wan-note"><svg><use href="#ic-alert"/></svg>
+          <span>Цель — физический канал: устройства пойдут в интернет <b>напрямую, минуя VPN</b>. Автоотката при падении канала нет.</span></div>
+        <div id="devices-section">
+          <div class="dev-tools">
+            <div class="search"><svg><use href="#ic-search"/></svg>
+              <input class="input" id="dev-search" placeholder="имя, IP, MAC, интерфейс…" autocomplete="off"></div>
+            <button class="btn primary" id="dev-save"><svg><use href="#ic-check"/></svg>Сохранить выбор</button>
+          </div>
+          <div class="dlist" id="dev-list"><div class="skel"></div><div class="skel"></div></div>
+        </div>
       </div>
     </section>
 
     <!-- ════════════════ ВИД: МАРШРУТЫ ════════════════ -->
     <section class="view" data-view="routes">
-      <div class="card glass">
-        <div class="empty"><svg><use href="#ic-via"/></svg><b>Маршруты</b><span>этап 3.3 редизайна</span></div>
+      <div class="vhead"><h2>Маршруты</h2><span class="count" id="routes-count"></span></div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Добавить CIDR-маршрут в VPN</h3>
+        <div class="raddf">
+          <input class="input" id="new-cidr" placeholder="10.0.0.0/8 или 8.8.8.8" autocomplete="off">
+          <input class="input" id="new-comment" placeholder="комментарий" maxlength="80" autocomplete="off">
+          <button class="btn primary" id="route-add"><svg><use href="#ic-add"/></svg>Добавить</button>
+          <button class="btn" id="route-import-btn"><svg><use href="#ic-import"/></svg>Импорт из Keenetic</button>
+        </div>
+        <div class="kimport" id="keenetic-routes-import"></div>
       </div>
+      <div class="dlist" id="routes-list"><div class="skel"></div></div>
     </section>
 
     <!-- ════════════════ ВИД: ЖУРНАЛ ════════════════ -->
@@ -670,10 +743,22 @@ function fmtRate(bps){ bps=+bps||0;
         return T((PROFILES.find(p=>p.name===q.profile)||{}).mode||'devices');
       case 'routes':
         if(opt&&opt.method==='POST'){
-          if(body.includes('action=add')) ROUTES.push({cidr:decodeURIComponent((body.match(/cidr=([^&]*)/)||[])[1]||''),comment:decodeURIComponent((body.match(/comment=([^&]*)/)||[])[1]||'').replace(/\+/g,' '),enabled:true});
-          if(body.includes('action=delete')&&!body.includes('deleteall')) ROUTES.splice(+((body.match(/index=(\d+)/)||[])[1]||0),1);
-          if(body.includes('action=toggle')){ const i=+((body.match(/index=(\d+)/)||[])[1]||0); if(ROUTES[i])ROUTES[i].enabled=!ROUTES[i].enabled; }
-          return J({ok:true,routes:ROUTES});
+          const act=((body.match(/action=([a-z]+)/)||[])[1]||'');
+          const idx=+((body.match(/index=(\d+)/)||[])[1]||0);
+          const wan=decodeURIComponent((body.match(/wan=([^&]*)/)||[])[1]||'');
+          if(act==='add') ROUTES.push({cidr:decodeURIComponent((body.match(/cidr=([^&]*)/)||[])[1]||''),
+            comment:decodeURIComponent(((body.match(/comment=([^&]*)/)||[])[1]||'').replace(/\+/g,' ')),enabled:true});
+          if(act==='import'){ try{
+            JSON.parse(decodeURIComponent(((body.match(/data=([^&]*)/)||[])[1]||'%5B%5D').replace(/\+/g,' ')))
+              .forEach(r=>{ if(r.cidr&&!ROUTES.some(x=>x.cidr===r.cidr))
+                ROUTES.push({cidr:r.cidr,comment:r.comment||'Keenetic',enabled:true}); });
+          }catch(e){} }
+          if(act==='delete') ROUTES.splice(idx,1);
+          if(act==='deleteall') ROUTES=[];
+          if(act==='toggle'&&ROUTES[idx]) ROUTES[idx].enabled=!ROUTES[idx].enabled;
+          if(act==='setdir'&&ROUTES[idx]){
+            if(wan){ ROUTES[idx].direct=true; ROUTES[idx].wan=wan; }
+            else{ ROUTES[idx].direct=false; delete ROUTES[idx].wan; } }
         }
         return J(ROUTES);
       case 'keenetic-routes': return J(KEEN);
@@ -827,7 +912,14 @@ async function loadProfiles(){
   renderAllOverview();
   ensureXorFlags();
 }
-function renderAllOverview(){ renderHero(); renderTiles(); renderTopo(); fillCheckipSelect(); renderProfilesView(); }
+function renderAllOverview(){
+  renderHero(); renderTiles(); renderTopo(); fillCheckipSelect(); renderProfilesView();
+  // вкладка «Устройства» могла открыться из hash раньше, чем загрузились профили/WAN
+  const dsel=$('#dev-profile');
+  if(CUR_TAB==='devices'&&dsel&&!dsel.options.length&&STATE.profiles.length){
+    fillDevTargets(); loadDevs();
+  }
+}
 
 /* герой-статус */
 function renderHero(){
@@ -1344,6 +1436,185 @@ async function toggleSchedule(name,card){
   const box=card.querySelector('[data-sched-box]');
   renderSchedBox(box); box.classList.add('open');
 }
+
+/* ════════════════════════════ УСТРОЙСТВА ════════════════════════════ */
+let DEVS=[], DEV_MODE='devices';
+function devTarget(){
+  const v=$('#dev-profile').value;
+  if(v.startsWith('wan:')){
+    const iface=v.slice(4), w=STATE.wans.find(x=>x.iface===iface)||{};
+    return {wan:iface,label:w.label||'',ndm:w.ndm||''};
+  }
+  return {profile:v};
+}
+function fillDevTargets(){
+  const sel=$('#dev-profile'), cur=sel.value;
+  sel.innerHTML=
+    '<optgroup label="VPN-профили">'+
+      STATE.profiles.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>').join('')+
+    '</optgroup>'+
+    '<optgroup label="Прямые WAN-каналы (мимо VPN)">'+
+      STATE.wans.map(w=>'<option value="wan:'+esc(w.iface)+'">↗ '+esc(w.label||w.iface)+'</option>').join('')+
+    '</optgroup>';
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+function renderDevs(){
+  const q=$('#dev-search').value.trim().toLowerCase();
+  const list=DEVS.filter(d=>!q||[d.name,d.ip,d.mac,d.iface].join(' ').toLowerCase().includes(q));
+  $('#dev-count').textContent=DEVS.length?DEVS.length+' '+plural(DEVS.length,['устройство','устройства','устройств']):'';
+  $('#dev-list').innerHTML=list.length?list.map(d=>{
+    const i=DEVS.indexOf(d);
+    return '<label class="drow"><input type="checkbox" data-i="'+i+'"'+(d.selected?' checked':'')+'>'+
+      '<div class="dinfo"><div class="dname">'+esc(d.name||d.ip)+'</div>'+
+      '<div class="dsub">'+esc(d.ip)+' · '+esc(d.mac||'—')+'</div></div>'+
+      (d.iface?'<span class="ib">'+esc(d.iface)+'</span>':'')+'</label>';
+  }).join('')
+  : '<div class="empty"><svg><use href="#ic-device"/></svg><b>'+
+    (q?'Ничего не найдено':'Устройств не видно')+'</b><span>'+
+    (q?'уточните запрос':'hotspot Кинетика не вернул активных устройств')+'</span></div>';
+}
+async function loadDevs(){
+  const t=devTarget();
+  $('#dev-wan-note').classList.toggle('show',!!t.wan);
+  $('#mode-seg').style.display=t.wan?'none':'';
+  $('#dev-list').innerHTML='<div class="skel"></div><div class="skel"></div>';
+  if(t.profile){
+    try{
+      DEV_MODE=(await API.text('mode',{profile:t.profile})).trim()==='all'?'all':'devices';
+    }catch(e){ DEV_MODE='devices'; }
+    $('#mode-devices').classList.toggle('on',DEV_MODE==='devices');
+    $('#mode-all').classList.toggle('on',DEV_MODE==='all');
+    $('#devices-section').classList.toggle('muted-section',DEV_MODE==='all');
+  } else $('#devices-section').classList.remove('muted-section');
+  try{ DEVS=await API.json('devices',t); }
+  catch(e){ DEVS=[]; }
+  renderDevs();
+}
+async function setMode(m){
+  const t=devTarget(); if(!t.profile) return;
+  try{
+    await API.post('mode',{profile:t.profile},m);
+    DEV_MODE=m;
+    $('#mode-devices').classList.toggle('on',m==='devices');
+    $('#mode-all').classList.toggle('on',m==='all');
+    $('#devices-section').classList.toggle('muted-section',m==='all');
+    toast(m==='all'?'Через VPN пойдёт весь LAN':'Через VPN — только выбранные устройства','ok');
+    PROFILES_SIG=''; loadProfiles();
+  }catch(e){ toast('Ошибка смены режима','error'); }
+}
+$('#mode-devices').addEventListener('click',()=>setMode('devices'));
+$('#mode-all').addEventListener('click',()=>setMode('all'));
+$('#dev-profile').addEventListener('change',loadDevs);
+$('#dev-search').addEventListener('input',renderDevs);
+$('#dev-list').addEventListener('change',e=>{
+  const cb=e.target.closest('input[type=checkbox]'); if(!cb) return;
+  DEVS[+cb.dataset.i].selected=cb.checked;
+});
+$('#dev-save').addEventListener('click',async()=>{
+  const t=devTarget();
+  const body=DEVS.filter(d=>d.selected).map(d=>'ip='+encodeURIComponent(d.ip)).join('&');
+  const btn=$('#dev-save'); btn.disabled=true;
+  try{
+    const r=t.profile
+      ? await API.post('save-devices',{profile:t.profile},body).then(x=>x.text())
+      : await API.post('save-wan-policy',{wan:t.wan,label:t.label,ndm:t.ndm},body).then(x=>x.text());
+    toast(r.trim()||'Сохранено','ok');
+    PROFILES_SIG=''; loadProfiles();
+  }catch(e){ toast('Ошибка сохранения','error'); }
+  finally{ btn.disabled=false; }
+});
+ON_ENTER.devices=()=>{
+  fillDevTargets();
+  if(window.DEV_TARGET){
+    const sel=$('#dev-profile');
+    if([...sel.options].some(o=>o.value===window.DEV_TARGET)) sel.value=window.DEV_TARGET;
+    window.DEV_TARGET=null;
+  }
+  loadDevs();
+};
+
+/* ════════════════════════════ МАРШРУТЫ ════════════════════════════ */
+let ROUTES_ARR=[];
+const cidrOk=s=>/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(s);
+function renderRoutes(){
+  $('#routes-count').textContent=ROUTES_ARR.length
+    ? ROUTES_ARR.length+' '+plural(ROUTES_ARR.length,['маршрут','маршрута','маршрутов']) : '';
+  $('#routes-list').innerHTML=ROUTES_ARR.length?ROUTES_ARR.map((r,i)=>{
+    const dir='<select data-dir="'+i+'" aria-label="Направление маршрута">'+
+      '<option value=""'+(!r.direct?' selected':'')+'>Через VPN</option>'+
+      STATE.wans.map(w=>'<option value="'+esc(w.iface)+'"'+(r.direct&&r.wan===w.iface?' selected':'')+'>↗ напрямую '+esc(w.label||w.iface)+'</option>').join('')+
+      '</select>';
+    return '<div class="rrow'+(r.enabled?'':' offr')+'">'+
+      '<button class="tgl'+(r.enabled?' on':'')+'" data-rtgl="'+i+'" aria-label="Маршрут '+esc(r.cidr)+' '+(r.enabled?'включён':'выключен')+'"></button>'+
+      '<span class="rcidr">'+esc(r.cidr)+'</span>'+
+      '<span class="rcomm">'+esc(r.comment||'')+'</span>'+dir+
+      '<button class="icobtn" data-rdel="'+i+'" title="Удалить" aria-label="Удалить '+esc(r.cidr)+'"><svg><use href="#ic-trash"/></svg></button>'+
+    '</div>';
+  }).join('')
+  : '<div class="card glass"><div class="empty"><svg><use href="#ic-via"/></svg>'+
+    '<b>Маршрутов нет</b><span>добавьте CIDR или импортируйте из Keenetic</span></div></div>';
+}
+async function routesPost(body){
+  try{
+    ROUTES_ARR=await API.post('routes',null,body).then(x=>x.json());
+    if(!Array.isArray(ROUTES_ARR)) throw new Error((ROUTES_ARR||{}).error||'bad response');
+    renderRoutes(); return true;
+  }catch(e){ toast('Маршруты: '+(e.message||'ошибка'),'error'); return false; }
+}
+async function loadRoutes(){
+  try{ ROUTES_ARR=await API.json('routes'); renderRoutes(); }
+  catch(e){ $('#routes-list').innerHTML='<div class="card glass"><div class="empty">'+
+    '<svg><use href="#ic-alert"/></svg><b>Не удалось загрузить</b><span>обновите страницу</span></div></div>'; }
+}
+$('#route-add').addEventListener('click',async()=>{
+  const cidr=$('#new-cidr').value.trim(), comm=$('#new-comment').value.trim();
+  if(!cidrOk(cidr)) return toast('Некорректный CIDR/IP','error');
+  if(await routesPost('action=add&cidr='+encodeURIComponent(cidr)+'&comment='+encodeURIComponent(comm))){
+    $('#new-cidr').value=''; $('#new-comment').value='';
+    toast('Маршрут '+cidr+' добавлен','ok');
+  }
+});
+$('#routes-list').addEventListener('click',e=>{
+  const tgl=e.target.closest('[data-rtgl]');
+  if(tgl){ routesPost('action=toggle&index='+tgl.dataset.rtgl); return; }
+  const del=e.target.closest('[data-rdel]');
+  if(del){
+    const r=ROUTES_ARR[+del.dataset.rdel];
+    if(confirm('Удалить маршрут '+r.cidr+'?')) routesPost('action=delete&index='+del.dataset.rdel);
+  }
+});
+$('#routes-list').addEventListener('change',e=>{
+  const s=e.target.closest('[data-dir]'); if(!s) return;
+  routesPost('action=setdir&index='+s.dataset.dir+'&wan='+encodeURIComponent(s.value));
+});
+$('#route-import-btn').addEventListener('click',async()=>{
+  const box=$('#keenetic-routes-import');
+  if(box.classList.contains('show')){ box.classList.remove('show'); box.innerHTML=''; return; }
+  box.innerHTML='<div class="hint"><span class="spinner"></span> читаю статические маршруты Кинетика…</div>';
+  box.classList.add('show');
+  let arr;
+  try{ arr=await API.json('keenetic-routes'); }
+  catch(e){ box.innerHTML='<div class="hint">не удалось получить маршруты (NDM RCI недоступен)</div>'; return; }
+  if(!Array.isArray(arr)||!arr.length){ box.innerHTML='<div class="hint">статических маршрутов в Кинетике нет</div>'; return; }
+  box.innerHTML=arr.map((k,i)=>
+    '<label class="krow"><input type="checkbox" class="keenetic-route-check" data-i="'+i+'"'+
+    (k.existing?' disabled':' checked')+'>'+
+    '<span class="kc">'+esc(k.cidr)+'</span>'+
+    '<span class="kl">'+esc([k.interface_label||k.interface,k.comment].filter(Boolean).join(' · '))+'</span>'+
+    (k.existing?'<span class="kex">уже есть</span>':'')+'</label>').join('')+
+    '<div class="mfoot"><span class="grow"></span>'+
+    '<button class="btn primary" id="kimport-go"><svg><use href="#ic-import"/></svg>Импортировать выбранные</button></div>';
+  $('#kimport-go').addEventListener('click',async()=>{
+    const picked=[...box.querySelectorAll('.keenetic-route-check:checked')]
+      .map(c=>arr[+c.dataset.i]).map(k=>({cidr:k.cidr,comment:k.comment||k.interface_label||'Keenetic'}));
+    if(!picked.length) return toast('Ничего не выбрано','error');
+    if(await routesPost('action=import&data='+encodeURIComponent(JSON.stringify(picked)))){
+      toast('Импортировано маршрутов: '+picked.length,'ok');
+      box.classList.remove('show'); box.innerHTML='';
+    }
+  });
+});
+ON_ENTER.routes=loadRoutes;
 
 /* регистрация в главном цикле 5с */
 LOADERS.push(loadProfiles, loadStats);
