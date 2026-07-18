@@ -50,6 +50,71 @@
   --scheme:light;
 }
 
+/* Портированные пресеты прежней панели (входной слой, тот же контракт переменных) */
+[data-theme="gold-light"]{
+  --bg:#F2EDE3; --blob1:#E7C873; --blob2:#F3E3B8; --blob3:#D9B45B;
+  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --hairline:rgba(90,70,20,.14); --hairline-hi:rgba(90,70,20,.28);
+  --ink:#2A2013; --ink2:#54452C; --muted:#7E6E4F;
+  --accent:#A16207; --accent-2:#C9A227; --on-accent:#FFF8E6;
+  --ok:#15803D; --bad:#DC2626; --warn:#B45309; --info:#4338CA;
+  --rx:#0369A1; --tx:#BE123C; --shadow:rgba(140,110,50,.25); --scheme:light;
+}
+[data-theme="gold-dark"]{
+  --bg:#181410; --blob1:#8A6D1F; --blob2:#5C4A15; --blob3:#C9A227;
+  --glass:rgba(255,220,150,.055); --glass-strong:rgba(255,220,150,.10);
+  --hairline:rgba(255,225,170,.15); --hairline-hi:rgba(255,225,170,.32);
+  --ink:#F5EEDC; --ink2:#D9CCAA; --muted:#A2947A;
+  --accent:#D9AE3E; --accent-2:#B98A2C; --on-accent:#241A05;
+  --ok:#4ADE80; --bad:#F87171; --warn:#FB923C; --info:#818CF8;
+  --rx:#38BDF8; --tx:#F472B6; --shadow:rgba(15,10,2,.6); --scheme:dark;
+}
+[data-theme="noir"]{
+  --bg:#121110; --blob1:#3A342B; --blob2:#C9A227; --blob3:#26221C;
+  --glass:rgba(255,240,210,.045); --glass-strong:rgba(255,240,210,.09);
+  --hairline:rgba(240,230,210,.13); --hairline-hi:rgba(240,230,210,.3);
+  --ink:#EDE9E1; --ink2:#C9C2B4; --muted:#8F887A;
+  --accent:#C9A227; --accent-2:#E0BE55; --on-accent:#1C1605;
+  --ok:#4ADE80; --bad:#F87171; --warn:#FB923C; --info:#93A6F7;
+  --rx:#7DD3FC; --tx:#F9A8D4; --shadow:rgba(0,0,0,.65); --scheme:dark;
+}
+[data-theme="tokyonight"]{
+  --bg:#1A1B26; --blob1:#3D59A1; --blob2:#BB9AF7; --blob3:#2AC3DE;
+  --glass:rgba(160,180,255,.06); --glass-strong:rgba(160,180,255,.11);
+  --hairline:rgba(180,195,255,.15); --hairline-hi:rgba(180,195,255,.32);
+  --ink:#C0CAF5; --ink2:#9AA5CE; --muted:#737AA2;
+  --accent:#7AA2F7; --accent-2:#BB9AF7; --on-accent:#10121C;
+  --ok:#9ECE6A; --bad:#F7768E; --warn:#E0AF68; --info:#7DCFFF;
+  --rx:#7DCFFF; --tx:#FF9E64; --shadow:rgba(5,6,15,.6); --scheme:dark;
+}
+[data-theme="neo"]{
+  --bg:#070C10; --blob1:#00B8D4; --blob2:#123B4F; --blob3:#7C4DFF;
+  --glass:rgba(0,229,255,.05); --glass-strong:rgba(0,229,255,.1);
+  --hairline:rgba(120,240,255,.16); --hairline-hi:rgba(120,240,255,.34);
+  --ink:#E6FBFF; --ink2:#A9D9E4; --muted:#6E93A0;
+  --accent:#00E5FF; --accent-2:#7C4DFF; --on-accent:#002229;
+  --ok:#34D399; --bad:#FB7185; --warn:#FBBF24; --info:#818CF8;
+  --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(0,10,15,.65); --scheme:dark;
+}
+[data-theme="mint"]{
+  --bg:#E8F4EC; --blob1:#6EE7B7; --blob2:#99F6E4; --blob3:#A7F3D0;
+  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --hairline:rgba(10,70,45,.14); --hairline-hi:rgba(10,70,45,.28);
+  --ink:#0E2E22; --ink2:#2C5044; --muted:#55786A;
+  --accent:#0D9488; --accent-2:#059669; --on-accent:#F0FFFA;
+  --ok:#047857; --bad:#E11D48; --warn:#A16207; --info:#4338CA;
+  --rx:#2563EB; --tx:#B45309; --shadow:rgba(60,110,90,.25); --scheme:light;
+}
+[data-theme="catppuccin"]{
+  --bg:#1E1E2E; --blob1:#89B4FA; --blob2:#CBA6F7; --blob3:#F5C2E7;
+  --glass:rgba(200,190,255,.06); --glass-strong:rgba(200,190,255,.11);
+  --hairline:rgba(205,214,244,.15); --hairline-hi:rgba(205,214,244,.3);
+  --ink:#CDD6F4; --ink2:#A6ADC8; --muted:#7F849C;
+  --accent:#89B4FA; --accent-2:#CBA6F7; --on-accent:#11111B;
+  --ok:#A6E3A1; --bad:#F38BA8; --warn:#F9E2AF; --info:#74C7EC;
+  --rx:#74C7EC; --tx:#FAB387; --shadow:rgba(8,8,18,.6); --scheme:dark;
+}
+
 /* ════════════════════════════ ТОКЕНЫ: ПРОИЗВОДНЫЙ СЛОЙ ════════════════════════════ */
 /* НЕ переопределяется в темах — вычисляется из входного. */
 :root{
@@ -390,6 +455,49 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .krow .kl{flex:1;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .krow .kex{font:600 .58rem var(--f-mono);color:var(--ok)}
 
+/* ════════════════════════════ ЖУРНАЛ ════════════════════════════ */
+.logtools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.logtools .chk{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-sm);
+  color:var(--ink2);cursor:pointer;user-select:none}
+.logtools .chk input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.logpre{font:400 .66rem/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-all;
+  max-height:340px;overflow:auto;padding:12px;border-radius:var(--r-md);
+  border:1px solid var(--hairline);background:color-mix(in srgb,var(--bg) 55%,transparent);
+  color:var(--ink2)}
+.daemon{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--ink2)}
+/* ════════════════════════════ НАСТРОЙКИ ════════════════════════════ */
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+.tsw{display:flex;flex-direction:column;gap:7px;padding:10px;border-radius:var(--r-md);
+  border:1px solid var(--hairline);cursor:pointer;background:var(--glass-soft);
+  transition:all var(--dur-1)}
+.tsw:hover{border-color:var(--hairline-hi)}
+.tsw.act{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tsw .prev{height:34px;border-radius:8px;position:relative;overflow:hidden;border:1px solid var(--hairline)}
+.tsw .prev i{position:absolute;right:7px;top:7px;width:12px;height:12px;border-radius:50%}
+.tsw span{font-size:var(--t-xs);font-weight:700;color:var(--ink2);text-align:center}
+.custom-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.custom-row .field{min-width:90px}
+.custom-row input[type=color]{width:100%;height:38px;padding:2px;border-radius:var(--r-sm);
+  border:1px solid var(--hairline-hi);background:var(--glass-soft);cursor:pointer}
+.setrow{display:flex;align-items:center;gap:12px}
+.setrow .stext{flex:1;min-width:0}
+.setrow .stext b{display:block;font-size:var(--t-md)}
+.setrow .stext span{font-size:var(--t-sm);color:var(--muted)}
+.sysgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sysgrid .mi{padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);border:1px solid var(--hairline)}
+.sysgrid .mi small{display:block;font:600 .58rem var(--f-text);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.sysgrid .mi b{font:500 .74rem var(--f-mono);color:var(--ink);word-break:break-word}
+/* поповер выбора темы в топбаре */
+.tpick{position:absolute;right:0;top:calc(100% + 8px);z-index:95;display:none;
+  padding:10px;gap:8px;grid-template-columns:repeat(5,28px)}
+.tpick.open{display:grid}
+.tpick button{width:28px;height:28px;border-radius:50%;border:2px solid var(--hairline-hi);
+  cursor:pointer;transition:transform var(--dur-1)}
+.tpick button:hover{transform:scale(1.12)}
+.tpick button.act{border-color:var(--accent)}
+.tbwrap{position:relative}
+
 /* ════════════════════════════ МОБИЛЬНЫЙ ТАБ-БАР ════════════════════════════ */
 @media(max-width:959px){
   .app{grid-template-columns:1fr;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -468,7 +576,10 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <h1 id="page-title">Обзор</h1>
       <span class="pill" id="header-pill"><span class="dot"></span><span id="header-pill-text">…</span></span>
       <button class="icobtn" id="refresh-btn" title="Обновить данные" aria-label="Обновить данные"><svg><use href="#ic-refresh"/></svg></button>
-      <button class="icobtn" id="theme-btn" title="Тема оформления" aria-label="Тема оформления"><svg><use href="#ic-theme"/></svg></button>
+      <span class="tbwrap">
+        <button class="icobtn" id="theme-btn" title="Тема оформления" aria-label="Тема оформления" aria-haspopup="true"><svg><use href="#ic-theme"/></svg></button>
+        <div class="tpick glass" id="theme-picker" role="menu" aria-label="Выбор темы"></div>
+      </span>
     </header>
 
     <!-- ════════════════ ВИД: ОБЗОР ════════════════ -->
@@ -603,15 +714,59 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 
     <!-- ════════════════ ВИД: ЖУРНАЛ ════════════════ -->
     <section class="view" data-view="log">
+      <div class="vhead"><h2>Журнал</h2></div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Лог OpenVPN</h3>
+        <div class="logtools">
+          <label class="chk"><input type="checkbox" id="log-auto" checked>автообновление (3 с)</label>
+          <span class="grow" style="flex:1"></span>
+          <button class="btn" id="log-refresh"><svg><use href="#ic-refresh"/></svg>Обновить</button>
+          <button class="btn danger" id="log-clear"><svg><use href="#ic-trash"/></svg>Очистить лог</button>
+        </div>
+        <pre class="logpre" id="log-box">загрузка…</pre>
+      </div>
       <div class="card glass">
-        <div class="empty"><svg><use href="#ic-journal"/></svg><b>Журнал</b><span>этап 3.4 редизайна</span></div>
+        <h3>Watchdog · переподключения</h3>
+        <div class="logtools">
+          <span class="daemon" id="watchdog-status"><span class="dot"></span>—</span>
+          <span class="grow" style="flex:1"></span>
+          <button class="btn" id="pinglog-refresh"><svg><use href="#ic-refresh"/></svg>Обновить</button>
+          <button class="btn danger" id="pinglog-clear"><svg><use href="#ic-trash"/></svg>Очистить</button>
+        </div>
+        <pre class="logpre" id="pinglog-box">загрузка…</pre>
       </div>
     </section>
 
     <!-- ════════════════ ВИД: НАСТРОЙКИ ════════════════ -->
     <section class="view" data-view="settings">
-      <div class="card glass">
-        <div class="empty"><svg><use href="#ic-gear"/></svg><b>Настройки</b><span>этап 3.4 редизайна</span></div>
+      <div class="vhead"><h2>Настройки</h2></div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Тема оформления</h3>
+        <div class="theme-grid" id="theme-grid"></div>
+        <div class="custom-row" id="custom-row">
+          <div class="field"><label for="cu-accent">Акцент</label><input type="color" id="cu-accent" value="#38BDF8"></div>
+          <div class="field"><label for="cu-bg">Фон</label><input type="color" id="cu-bg" value="#04141A"></div>
+          <div class="field"><label for="cu-text">Текст</label><input type="color" id="cu-text" value="#E7F9F5"></div>
+          <button class="btn" id="custom-apply"><svg><use href="#ic-check"/></svg>Применить свою</button>
+        </div>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
+        <div class="setrow">
+          <div class="stext"><b>Автозапуск VPN при загрузке роутера</b>
+            <span>enabled-профили поднимутся сами после перезагрузки</span></div>
+          <button class="tgl" id="autostart-toggle" aria-label="Автозапуск VPN"></button>
+        </div>
+      </div>
+      <div class="card glass" id="sysinfo">
+        <h3>Система <span style="float:right;font-family:var(--f-mono);text-transform:none" id="sys-arch"></span></h3>
+        <div class="sysgrid">
+          <div class="mi"><small>Модель</small><b id="sys-model">—</b></div>
+          <div class="mi"><small>ОС</small><b id="sys-os">—</b></div>
+          <div class="mi"><small>Процессор</small><b id="sys-cpu">—</b></div>
+          <div class="mi"><small>Память</small><b id="sys-mem">—</b></div>
+          <div class="mi"><small>Аптайм</small><b id="sys-uptime">—</b></div>
+          <div class="mi"><small>Load average</small><b id="sys-load">—</b></div>
+        </div>
       </div>
     </section>
   </main>
@@ -791,25 +946,118 @@ const API={
   post:(ep,params,body)=>fetch('cgi-bin/'+ep+(params?'?'+new URLSearchParams(params):''),{method:'POST',body:body||''}),
 };
 
-/* ════════════════════════════ ТЕМЫ ════════════════════════════ */
-/* Пресеты + custom-движок портируются полностью на этапе 3.4; каркас: тёмная/светлая. */
-const THEME_BG={'abyss-dark':'#04141A','abyss-light':'#E7F2F0'};
+/* ════════════════════════════ ТЕМЫ (пресеты + custom-движок) ════════════════════════════ */
+const THEMES={
+  'abyss-dark':  {label:'Глубина',        bg:'#04141A',accent:'#38BDF8',dark:1},
+  'abyss-light': {label:'Глубина светлая',bg:'#E7F2F0',accent:'#0284C7',dark:0},
+  'gold-light':  {label:'Gold светлая',   bg:'#F2EDE3',accent:'#A16207',dark:0},
+  'gold-dark':   {label:'Gold тёмная',    bg:'#181410',accent:'#D9AE3E',dark:1},
+  'noir':        {label:'Noir',           bg:'#121110',accent:'#C9A227',dark:1},
+  'tokyonight':  {label:'Tokyo Night',    bg:'#1A1B26',accent:'#7AA2F7',dark:1},
+  'neo':         {label:'Cyber',          bg:'#070C10',accent:'#00E5FF',dark:1},
+  'mint':        {label:'Mint',           bg:'#E8F4EC',accent:'#0D9488',dark:0},
+  'catppuccin':  {label:'Catppuccin',     bg:'#1E1E2E',accent:'#89B4FA',dark:1}
+};
 const THEME_KEY='invnet-theme-v3';
-function applyTheme(id){
-  if(!THEME_BG[id]) id='abyss-dark';
-  document.documentElement.dataset.theme=id;
-  document.querySelector('meta[name=theme-color]').setAttribute('content',THEME_BG[id]);
-  try{ localStorage.setItem(THEME_KEY,JSON.stringify({theme:id})); }catch(e){}
+let CUR_THEME='abyss-dark';
+let CUSTOM={accent:'#38BDF8',bg:'#04141A',text:'#E7F9F5'};
+function _lum(hex){ const c=(hex||'#000').replace('#','');
+  const [r,g,b]=[0,2,4].map(i=>parseInt(c.substr(i,2),16)/255);
+  return .2126*r+.7152*g+.0722*b; }
+/* custom: 3 цвета → полный набор входных переменных через color-mix */
+const CUSTOM_VARS=['--bg','--blob1','--blob2','--blob3','--glass','--glass-strong',
+  '--hairline','--hairline-hi','--ink','--ink2','--muted','--accent','--accent-2',
+  '--on-accent','--ok','--bad','--warn','--info','--rx','--tx','--shadow','--scheme'];
+function applyCustomVars(c){
+  const st=document.documentElement.style, dark=_lum(c.bg)<.45;
+  const mix=(a,p,b)=>'color-mix(in srgb, '+a+' '+p+'%, '+b+')';
+  st.setProperty('--bg',c.bg);
+  st.setProperty('--blob1',c.accent);
+  st.setProperty('--blob2',mix(c.accent,40,c.bg));
+  st.setProperty('--blob3',mix(c.text,25,c.bg));
+  st.setProperty('--glass',dark?'rgba(255,255,255,.06)':'rgba(255,255,255,.55)');
+  st.setProperty('--glass-strong',dark?'rgba(255,255,255,.11)':'rgba(255,255,255,.78)');
+  st.setProperty('--hairline',mix(c.text,15,'transparent'));
+  st.setProperty('--hairline-hi',mix(c.text,32,'transparent'));
+  st.setProperty('--ink',c.text);
+  st.setProperty('--ink2',mix(c.text,78,c.bg));
+  st.setProperty('--muted',mix(c.text,55,c.bg));
+  st.setProperty('--accent',c.accent);
+  st.setProperty('--accent-2',mix(c.accent,70,c.text));
+  st.setProperty('--on-accent',_lum(c.accent)>.5?'#10151a':'#f4fbff');
+  st.setProperty('--ok',dark?'#34D399':'#047857');
+  st.setProperty('--bad',dark?'#FB7185':'#E11D48');
+  st.setProperty('--warn',dark?'#FBBF24':'#A16207');
+  st.setProperty('--info',dark?'#818CF8':'#4338CA');
+  st.setProperty('--rx',dark?'#60A5FA':'#2563EB');
+  st.setProperty('--tx',dark?'#F472B6':'#BE123C');
+  st.setProperty('--shadow',dark?'rgba(0,0,0,.55)':'rgba(110,110,110,.25)');
+  st.setProperty('--scheme',dark?'dark':'light');
+}
+function clearCustomVars(){ const st=document.documentElement.style;
+  CUSTOM_VARS.forEach(v=>st.removeProperty(v)); }
+function applyTheme(id,custom){
+  if(id==='custom'){
+    if(custom) CUSTOM=custom;
+    applyCustomVars(CUSTOM);
+    document.documentElement.dataset.theme='custom';
+    document.querySelector('meta[name=theme-color]').setAttribute('content',CUSTOM.bg);
+  } else {
+    if(!THEMES[id]) id='abyss-dark';
+    clearCustomVars();
+    document.documentElement.dataset.theme=id;
+    document.querySelector('meta[name=theme-color]').setAttribute('content',THEMES[id].bg);
+  }
+  CUR_THEME=id;
+  try{ localStorage.setItem(THEME_KEY,JSON.stringify({theme:id,custom:CUSTOM})); }catch(e){}
+  renderThemePicker(); renderThemeGrid();
 }
 function initTheme(){
-  let id=null;
-  try{ id=(JSON.parse(localStorage.getItem(THEME_KEY)||'null')||{}).theme; }catch(e){}
-  if(!id) id=matchMedia('(prefers-color-scheme: light)').matches?'abyss-light':'abyss-dark';
+  let saved=null;
+  try{ saved=JSON.parse(localStorage.getItem(THEME_KEY)||'null'); }catch(e){}
+  if(!saved){ // миграция со старой панели (ключ v2: light/dark/noir/…)
+    try{
+      const old=JSON.parse(localStorage.getItem('vpn-xor-theme-v2')||'null');
+      if(old&&old.theme){
+        const map={light:'gold-light',dark:'gold-dark'};
+        saved={theme:map[old.theme]||old.theme,custom:old.custom};
+        if(saved.theme!=='custom'&&!THEMES[saved.theme]) saved=null;
+      }
+    }catch(e){}
+  }
+  if(saved&&saved.custom&&saved.custom.bg) CUSTOM=saved.custom;
+  const id=saved&&saved.theme?saved.theme
+    : (matchMedia('(prefers-color-scheme: light)').matches?'abyss-light':'abyss-dark');
   applyTheme(id);
 }
-$('#theme-btn').addEventListener('click',()=>{
-  const cur=document.documentElement.dataset.theme;
-  applyTheme(cur==='abyss-dark'?'abyss-light':'abyss-dark');
+function renderThemePicker(){
+  const box=$('#theme-picker'); if(!box) return;
+  box.innerHTML=Object.entries(THEMES).map(([id,t])=>
+    '<button data-th="'+id+'" class="'+(CUR_THEME===id?'act':'')+'" title="'+esc(t.label)+'" '+
+    'style="background:linear-gradient(135deg,'+t.bg+' 55%,'+t.accent+' 55%)" '+
+    'aria-label="Тема '+esc(t.label)+'"></button>').join('')+
+    '<button data-th="custom" class="'+(CUR_THEME==='custom'?'act':'')+'" title="Своя" '+
+    'style="background:conic-gradient(#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7,#f43f5e)" aria-label="Своя тема"></button>';
+}
+function renderThemeGrid(){
+  const box=$('#theme-grid'); if(!box) return;
+  box.innerHTML=Object.entries(THEMES).map(([id,t])=>
+    '<div class="tsw'+(CUR_THEME===id?' act':'')+'" data-th="'+id+'" role="button" tabindex="0">'+
+    '<div class="prev" style="background:'+t.bg+'"><i style="background:'+t.accent+'"></i></div>'+
+    '<span>'+esc(t.label)+'</span></div>').join('')+
+    '<div class="tsw'+(CUR_THEME==='custom'?' act':'')+'" data-th="custom" role="button" tabindex="0">'+
+    '<div class="prev" style="background:'+CUSTOM.bg+'"><i style="background:'+CUSTOM.accent+'"></i></div>'+
+    '<span>Своя</span></div>';
+}
+$('#theme-btn').addEventListener('click',e=>{
+  e.stopPropagation(); $('#theme-picker').classList.toggle('open');
+});
+$('#theme-picker').addEventListener('click',e=>{
+  const b=e.target.closest('[data-th]'); if(!b) return;
+  applyTheme(b.dataset.th);
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.tbwrap')) $('#theme-picker').classList.remove('open');
 });
 
 /* ════════════════════════════ ТОСТЫ ════════════════════════════ */
@@ -1170,7 +1418,7 @@ async function pollWatchdog(){
   else fresh.forEach(l=>toast('watchdog: '+l.replace(/^\S+\s+\S+\s+/,''),'error'));
   if(CUR_TAB!=='log'){ NAV_BADGE=Math.min(99,NAV_BADGE+fresh.length); setNavBadge(NAV_BADGE); }
 }
-ON_ENTER.log=()=>{ NAV_BADGE=0; setNavBadge(0); };
+/* ON_ENTER.log определяется в модуле «Журнал» (ниже) — там же сброс бейджа */
 
 /* ════════════════════════════ ПРОФИЛИ: СПИСОК ════════════════════════════ */
 let MODAL_OPEN=false, MODAL_NAME='', SCHED_OPEN=null;
@@ -1615,6 +1863,83 @@ $('#route-import-btn').addEventListener('click',async()=>{
   });
 });
 ON_ENTER.routes=loadRoutes;
+
+/* ════════════════════════════ ЖУРНАЛ ════════════════════════════ */
+let LOG_TIMER=null;
+async function loadLog(){
+  try{ $('#log-box').textContent=(await API.text('log')).trim()||'— лог пуст —'; }
+  catch(e){ $('#log-box').textContent='не удалось получить лог'; }
+}
+async function loadPingLog(){
+  try{
+    const d=await API.json('pinglog');
+    const ws=$('#watchdog-status'), run=d.watchdog==='running';
+    ws.innerHTML='<span class="dot '+(run?'live':'')+'"></span>'+(run?'демон работает':'демон остановлен');
+    $('#pinglog-box').textContent=(d.lines||[]).join('\n')||'— событий не было —';
+  }catch(e){ $('#pinglog-box').textContent='не удалось получить лог watchdog'; }
+}
+function startLogAuto(){ stopLogAuto(); if($('#log-auto').checked) LOG_TIMER=setInterval(loadLog,3000); }
+function stopLogAuto(){ if(LOG_TIMER){ clearInterval(LOG_TIMER); LOG_TIMER=null; } }
+$('#log-auto').addEventListener('change',startLogAuto);
+$('#log-refresh').addEventListener('click',loadLog);
+$('#pinglog-refresh').addEventListener('click',loadPingLog);
+$('#log-clear').addEventListener('click',async()=>{
+  if(!confirm('Очистить лог OpenVPN?')) return;
+  try{ await API.text('clearlog'); toast('Лог очищен','ok'); loadLog(); }
+  catch(e){ toast('Ошибка очистки','error'); }
+});
+$('#pinglog-clear').addEventListener('click',async()=>{
+  if(!confirm('Очистить лог watchdog?')) return;
+  try{ await API.post('pinglog',null,'action=clear'); toast('Лог watchdog очищен','ok'); loadPingLog(); }
+  catch(e){ toast('Ошибка очистки','error'); }
+});
+ON_ENTER.log=()=>{ NAV_BADGE=0; setNavBadge(0); loadLog(); loadPingLog(); startLogAuto(); };
+ON_LEAVE.log=stopLogAuto;
+
+/* ════════════════════════════ НАСТРОЙКИ ════════════════════════════ */
+async function loadSysinfo(){
+  let d={}; try{ d=await API.json('sysinfo'); }catch(e){}
+  const v=x=>(x===undefined||x===null||x==='')?'—':x;
+  $('#sys-arch').textContent=v(d.arch)==='—'?'':d.arch;
+  $('#sys-model').textContent=v(d.model);
+  $('#sys-os').textContent=v(d.os_title)+(d.os_release?' '+d.os_release:'');
+  $('#sys-cpu').textContent=v(d.cpu)+(d.cputemp?' · '+d.cputemp+'°C':'')+(d.cpuload?' · '+d.cpuload+'%':'');
+  $('#sys-mem').textContent=d.memtotal
+    ? Math.round(d.memused/1024)+' / '+Math.round(d.memtotal/1024)+' МБ' : '—';
+  $('#sys-uptime').textContent=d.uptime?fmtUp(d.uptime):'—';
+  $('#sys-load').textContent=v(d.loadavg);
+}
+async function loadAutostart(){
+  try{
+    const on=(await API.text('autostart')).trim()==='yes';
+    $('#autostart-toggle').classList.toggle('on',on);
+  }catch(e){}
+}
+$('#autostart-toggle').addEventListener('click',async()=>{
+  const t=$('#autostart-toggle'), on=!t.classList.contains('on');
+  try{
+    await API.post('autostart',null,on?'yes':'no');
+    t.classList.toggle('on',on);
+    toast(on?'Автозапуск включён':'Автозапуск выключен','ok');
+  }catch(e){ toast('Ошибка сохранения','error'); }
+});
+$('#theme-grid').addEventListener('click',e=>{
+  const s=e.target.closest('[data-th]'); if(!s) return;
+  applyTheme(s.dataset.th);
+});
+$('#theme-grid').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const s=e.target.closest('[data-th]'); if(!s) return;
+  e.preventDefault(); applyTheme(s.dataset.th);
+});
+$('#custom-apply').addEventListener('click',()=>{
+  applyTheme('custom',{accent:$('#cu-accent').value,bg:$('#cu-bg').value,text:$('#cu-text').value});
+  toast('Своя тема применена','ok');
+});
+ON_ENTER.settings=()=>{
+  loadSysinfo(); loadAutostart(); renderThemeGrid();
+  $('#cu-accent').value=CUSTOM.accent; $('#cu-bg').value=CUSTOM.bg; $('#cu-text').value=CUSTOM.text;
+};
 
 /* регистрация в главном цикле 5с */
 LOADERS.push(loadProfiles, loadStats);
