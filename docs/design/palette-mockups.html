@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru" data-palette="aurora" data-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvNet — мокапы палитр (beta-редизайн)</title>
+<!-- Мокап: шрифты с CDN только для превью; в проде — self-host woff2 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ===================== ПАЛИТРЫ ===================== */
+/* A. АВРОРА — полярное сияние: индиго/циан/виолет */
+[data-palette="aurora"][data-mode="dark"]{
+  --bg:#0B1026; --blob1:#4F46E5; --blob2:#06B6D4; --blob3:#A855F7;
+  --glass:rgba(148,163,255,.07); --glass-strong:rgba(148,163,255,.12);
+  --hairline:rgba(190,205,255,.16); --hairline-hi:rgba(190,205,255,.32);
+  --ink:#EEF2FF; --ink2:#C3CBEA; --muted:#8E98BF;
+  --accent:#22D3EE; --accent-2:#818CF8; --on-accent:#04222B;
+  --ok:#34D399; --bad:#FB7185; --warn:#FBBF24;
+  --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(3,6,24,.55);
+}
+[data-palette="aurora"][data-mode="light"]{
+  --bg:#E9EDFB; --blob1:#818CF8; --blob2:#67E8F9; --blob3:#D8B4FE;
+  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.75);
+  --hairline:rgba(60,72,140,.14); --hairline-hi:rgba(60,72,140,.28);
+  --ink:#1D2447; --ink2:#3C4570; --muted:#67719D;
+  --accent:#0891B2; --accent-2:#4F46E5; --on-accent:#F0FDFF;
+  --ok:#059669; --bad:#E11D48; --warn:#B45309;
+  --rx:#2563EB; --tx:#DB2777; --shadow:rgba(90,100,160,.25);
+}
+/* B. МЕДЬ — дым и тёплый металл (эволюция бренда) */
+[data-palette="copper"][data-mode="dark"]{
+  --bg:#161009; --blob1:#B45309; --blob2:#7C2D12; --blob3:#F59E0B;
+  --glass:rgba(255,214,165,.06); --glass-strong:rgba(255,214,165,.11);
+  --hairline:rgba(255,220,180,.15); --hairline-hi:rgba(255,220,180,.32);
+  --ink:#F7EFE4; --ink2:#DFCFB9; --muted:#A6947E;
+  --accent:#FB923C; --accent-2:#F59E0B; --on-accent:#2A1503;
+  --ok:#4ADE80; --bad:#F87171; --warn:#FACC15;
+  --rx:#38BDF8; --tx:#FB7185; --shadow:rgba(20,10,2,.6);
+}
+[data-palette="copper"][data-mode="light"]{
+  --bg:#F6EFE4; --blob1:#FDBA74; --blob2:#FCA5A5; --blob3:#FDE68A;
+  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --hairline:rgba(120,72,20,.14); --hairline-hi:rgba(120,72,20,.30);
+  --ink:#2C1D0E; --ink2:#54402B; --muted:#7E6A52;
+  --accent:#C2540A; --accent-2:#B45309; --on-accent:#FFF7ED;
+  --ok:#15803D; --bad:#DC2626; --warn:#A16207;
+  --rx:#0369A1; --tx:#BE123C; --shadow:rgba(140,100,50,.25);
+}
+/* C. ГЛУБИНА — стелс-подлодка: тил/аква */
+[data-palette="abyss"][data-mode="dark"]{
+  --bg:#04141A; --blob1:#0D9488; --blob2:#0EA5E9; --blob3:#155E75;
+  --glass:rgba(150,240,225,.055); --glass-strong:rgba(150,240,225,.10);
+  --hairline:rgba(170,235,225,.15); --hairline-hi:rgba(170,235,225,.32);
+  --ink:#E7F9F5; --ink2:#BADFD8; --muted:#7FA8A0;
+  --accent:#38BDF8; --accent-2:#2DD4BF; --on-accent:#04222B;
+  --ok:#34D399; --bad:#FB7185; --warn:#FBBF24;
+  --rx:#818CF8; --tx:#FBBF24; --shadow:rgba(1,12,14,.6);
+}
+[data-palette="abyss"][data-mode="light"]{
+  --bg:#E7F2F0; --blob1:#5EEAD4; --blob2:#7DD3FC; --blob3:#A5F3FC;
+  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --hairline:rgba(15,70,75,.14); --hairline-hi:rgba(15,70,75,.28);
+  --ink:#0E2E33; --ink2:#2C4F53; --muted:#557C7B;
+  --accent:#0284C7; --accent-2:#0D9488; --on-accent:#F0FAFF;
+  --ok:#047857; --bad:#E11D48; --warn:#A16207;
+  --rx:#4338CA; --tx:#B45309; --shadow:rgba(60,110,110,.25);
+}
+/* ===================== БАЗА ===================== */
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{
+  min-height:100dvh; background:var(--bg); color:var(--ink);
+  font-family:"Manrope",system-ui,sans-serif; overflow-x:hidden;
+  transition:background .4s ease;
+}
+.blobs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;transition:background 1s ease}
+.b1{width:44vw;height:44vw;left:-8vw;top:-14vh;background:var(--blob1)}
+.b2{width:36vw;height:36vw;right:-6vw;top:22vh;background:var(--blob2);opacity:.4}
+.b3{width:30vw;height:30vw;left:30vw;bottom:-18vh;background:var(--blob3);opacity:.35}
+[data-mode="light"] .blob{opacity:.55;filter:blur(110px)}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:20px clamp(14px,3vw,32px) 60px}
+/* стекло */
+.glass{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4);
+  backdrop-filter:blur(18px) saturate(1.4);
+  border:1px solid var(--hairline);
+  border-radius:20px;
+  box-shadow:0 12px 40px -18px var(--shadow), inset 0 1px 0 rgba(255,255,255,.09);
+}
+/* ===================== ШАПКА-СТЕНД ===================== */
+.stand{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  padding:14px 18px;margin-bottom:22px}
+.stand h1{font-family:"Unbounded",sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em}
+.stand h1 span{color:var(--accent)}
+.sw{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  font:600 .8rem/1 "Manrope";padding:10px 16px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--hairline-hi);color:var(--ink2);background:transparent;
+  transition:all .2s ease;
+}
+.chip:hover{color:var(--ink);border-color:var(--accent)}
+.chip.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
+/* ===================== ЛЭЙАУТ ===================== */
+.grid{display:grid;grid-template-columns:210px 1fr;gap:20px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+/* сайдбар */
+.side{padding:18px 12px;height:fit-content;position:sticky;top:20px}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px}
+.mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent)}
+.brand b{font-family:"Unbounded";font-size:.72rem;font-weight:700;line-height:1.25}
+.brand small{display:block;font:500 .62rem "JetBrains Mono";color:var(--muted);letter-spacing:.08em}
+.nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;
+  color:var(--ink2);text-decoration:none;font-weight:600;font-size:.85rem;transition:all .18s}
+.nav a svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav a:hover{background:var(--glass-strong);color:var(--ink)}
+.nav a.act{background:var(--glass-strong);color:var(--ink);border:1px solid var(--hairline);
+  box-shadow:inset 2px 0 0 var(--accent)}
+/* ===================== ГЕРОЙ ===================== */
+.hero{padding:26px 26px 22px;margin-bottom:20px;position:relative;overflow:hidden}
+.hero .eyebrow{font:500 .68rem "JetBrains Mono";letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+.hero h2{font-family:"Unbounded";font-weight:700;font-size:clamp(1.25rem,3vw,1.9rem);margin:10px 0 6px}
+.hero h2 em{font-style:normal;color:var(--accent)}
+.hero .sub{color:var(--ink2);font-size:.9rem}
+.badges{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;
+  font:600 .75rem "Manrope";border:1px solid var(--hairline);background:var(--glass)}
+.badge .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.badge.xor{color:var(--accent)}
+.badge.xor svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+/* топология */
+.topo{margin-top:20px;padding:16px 8px 6px;position:relative}
+.topo svg{width:100%;height:auto;display:block}
+.topo text{font:500 10.5px "JetBrains Mono";fill:var(--muted)}
+.topo .lbl-hi{fill:var(--ink2)}
+.flow{stroke-dasharray:6 8;animation:dash 1.2s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-14}}
+@media(prefers-reduced-motion:reduce){.flow{animation:none}}
+/* ===================== ПЛИТКИ ===================== */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:20px}
+.tile{padding:18px;transition:transform .2s ease}
+.tile:hover{transform:translateY(-3px)}
+.tile .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tname{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1rem}
+.tdot{width:9px;height:9px;border-radius:50%}
+.tdot.live{background:var(--ok);box-shadow:0 0 12px var(--ok);animation:pulse 2.2s ease infinite}
+.tdot.off{background:var(--muted);opacity:.5}
+@keyframes pulse{50%{box-shadow:0 0 3px var(--ok)}}
+.route{font:500 .72rem "JetBrains Mono";color:var(--muted);margin:12px 0 4px;display:flex;align-items:center;gap:6px}
+.route b{color:var(--accent);font-weight:500}
+.tmeta{font-size:.75rem;color:var(--muted);margin-top:8px}
+.tgl{width:46px;height:26px;border-radius:999px;border:1px solid var(--hairline-hi);position:relative;
+  cursor:pointer;background:transparent;transition:all .25s;flex:none}
+.tgl::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--muted);transition:all .25s}
+.tgl.on{background:var(--accent);border-color:transparent}
+.tgl.on::after{left:23px;background:var(--on-accent)}
+.xchip{font:700 .6rem "JetBrains Mono";letter-spacing:.1em;color:var(--accent);
+  border:1px solid currentColor;padding:3px 7px;border-radius:6px;opacity:.9}
+/* ===================== ГРАФИК ===================== */
+.duo{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+@media(max-width:900px){.duo{grid-template-columns:1fr}}
+.card{padding:20px}
+.card h3{font-size:.8rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);margin-bottom:14px}
+.rates{display:flex;gap:18px;margin-bottom:10px}
+.rate b{font:700 1.15rem "JetBrains Mono";display:block}
+.rate span{font:500 .68rem "Manrope";color:var(--muted)}
+.rate.rx b{color:var(--rx)} .rate.tx b{color:var(--tx)}
+.chart svg{width:100%;height:auto;display:block}
+.wd{display:flex;flex-direction:column;gap:10px}
+.wd .ev{display:flex;gap:10px;align-items:baseline;font-size:.78rem;color:var(--ink2)}
+.wd .t{font:500 .68rem "JetBrains Mono";color:var(--muted);flex:none}
+.foot{margin-top:26px;text-align:center;font:500 .68rem "JetBrains Mono";color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="wrap">
+
+  <!-- стенд выбора -->
+  <div class="stand glass">
+    <h1>Мокапы <span>beta</span>-редизайна</h1>
+    <div class="sw" id="pal">
+      <button class="chip on" data-p="aurora">A · Аврора</button>
+      <button class="chip" data-p="copper">B · Медь</button>
+      <button class="chip" data-p="abyss">C · Глубина</button>
+    </div>
+    <div class="sw" id="mode">
+      <button class="chip on" data-m="dark">Тёмная</button>
+      <button class="chip" data-m="light">Светлая</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- сайдбар -->
+    <aside class="side glass">
+      <div class="brand">
+        <div class="mark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 11l2 2 4-4"/></svg>
+        </div>
+        <b>INVISIBLE NET<small>VPN·XOR CONTROL</small></b>
+      </div>
+      <nav class="nav">
+        <a class="act" href="#"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>Обзор</a>
+        <a href="#"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/></svg>Профили</a>
+        <a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="12" rx="2"/><path d="M9 20h6"/></svg>Устройства</a>
+        <a href="#"><svg viewBox="0 0 24 24"><path d="M4 12h6l2-6 2 12 2-6h4"/></svg>Маршруты</a>
+        <a href="#"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Журнал</a>
+        <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12"/></svg>Настройки</a>
+      </nav>
+    </aside>
+
+    <main>
+      <!-- герой -->
+      <section class="hero glass">
+        <div class="eyebrow">// состояние сети</div>
+        <h2>Активно <em>два туннеля</em> — трафик невидим</h2>
+        <div class="sub">XOR и Telegram-туннель работают в штатном режиме, утечек не обнаружено</div>
+        <div class="badges">
+          <span class="badge"><span class="dot"></span>online</span>
+          <span class="badge xor">
+            <svg viewBox="0 0 24 24"><path d="M4 7l16 10M20 7L4 17"/><circle cx="12" cy="12" r="9"/></svg>
+            XOR-обфускация активна
+          </span>
+          <span class="badge">watchdog: работает</span>
+        </div>
+        <!-- сигнатура: поток сквозь стекло -->
+        <div class="topo">
+          <svg viewBox="0 0 640 96">
+            <!-- устройства -->
+            <circle cx="36" cy="30" r="9" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+            <circle cx="36" cy="62" r="9" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+            <text x="20" y="88">devices</text>
+            <!-- линии до стекла -->
+            <path class="flow" d="M48 30 C 120 30, 150 46, 218 46" fill="none" stroke="var(--rx)" stroke-width="2"/>
+            <path class="flow" d="M48 62 C 120 62, 150 46, 218 46" fill="none" stroke="var(--rx)" stroke-width="2" style="animation-delay:.4s"/>
+            <!-- стеклянная XOR-панель -->
+            <rect x="222" y="18" width="72" height="58" rx="12" fill="var(--glass-strong)" stroke="var(--hairline-hi)"/>
+            <text x="238" y="50" class="lbl-hi" style="font-size:13px;font-weight:700">XOR</text>
+            <text x="230" y="88">scramble</text>
+            <!-- после стекла — «шифрованный» пунктир другим цветом -->
+            <path class="flow" d="M296 46 C 380 46, 420 40, 500 40" fill="none" stroke="var(--accent)" stroke-width="2" style="animation-duration:.8s"/>
+            <!-- сервер -->
+            <rect x="504" y="26" width="30" height="30" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <circle cx="519" cy="41" r="3.5" fill="var(--accent)"/>
+            <text x="544" y="38" class="lbl-hi">fin-01</text>
+            <text x="544" y="52">🇫🇮 83.97.•.•</text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- плитки -->
+      <div class="tiles">
+        <div class="tile glass">
+          <div class="row">
+            <span class="tname"><span class="tdot live"></span>XOR</span>
+            <span class="xchip">XOR</span>
+            <button class="tgl on" aria-label="Выключить XOR"></button>
+          </div>
+          <div class="route">Turkmentelecom <b>⟶</b> fi.stealth.net</div>
+          <div class="tmeta">работает · 4 устройства · расписание</div>
+        </div>
+        <div class="tile glass">
+          <div class="row">
+            <span class="tname"><span class="tdot live"></span>Telegram</span>
+            <button class="tgl on" aria-label="Выключить Telegram"></button>
+          </div>
+          <div class="route">KWRT <b>⟶</b> no.proxy.tg</div>
+          <div class="tmeta">работает · 2 устройства</div>
+        </div>
+        <div class="tile glass">
+          <div class="row">
+            <span class="tname"><span class="tdot off"></span>Privado</span>
+            <button class="tgl" aria-label="Включить Privado"></button>
+          </div>
+          <div class="route">авто <b>⟶</b> us.privado.io</div>
+          <div class="tmeta">выключен · весь LAN</div>
+        </div>
+      </div>
+
+      <!-- график + watchdog -->
+      <div class="duo">
+        <div class="card glass chart">
+          <h3>Трафик туннелей</h3>
+          <div class="rates">
+            <div class="rate rx"><b>4.2 МБ/с</b><span>↓ приём</span></div>
+            <div class="rate tx"><b>1.1 МБ/с</b><span>↑ отдача</span></div>
+          </div>
+          <svg viewBox="0 0 560 120">
+            <defs>
+              <linearGradient id="grx" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="var(--rx)" stop-opacity=".35"/>
+                <stop offset="1" stop-color="var(--rx)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0 95 C40 90,60 60,90 62 C120 64,140 30,180 34 C220 38,240 70,280 66 C320 62,340 22,390 28 C440 34,460 74,510 70 L560 66 L560 120 L0 120 Z" fill="url(#grx)"/>
+            <path d="M0 95 C40 90,60 60,90 62 C120 64,140 30,180 34 C220 38,240 70,280 66 C320 62,340 22,390 28 C440 34,460 74,510 70 L560 66" fill="none" stroke="var(--rx)" stroke-width="2.2"/>
+            <path d="M0 108 C60 106,90 96,130 98 C180 100,220 88,270 92 C330 96,360 84,420 88 C470 92,510 100,560 98" fill="none" stroke="var(--tx)" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <div class="card glass wd">
+          <h3>Watchdog</h3>
+          <div class="ev"><span class="t">14:02</span>XOR: переподключение — пинг потерян</div>
+          <div class="ev"><span class="t">09:47</span>Telegram: туннель восстановлен</div>
+          <div class="ev"><span class="t">вчера</span>XOR: переподключение (3×)</div>
+        </div>
+      </div>
+
+      <div class="foot">Unbounded · Manrope · JetBrains Mono — единая типографика для всех вариантов</div>
+    </main>
+  </div>
+</div>
+<script>
+const root=document.documentElement;
+document.getElementById('pal').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b)return;
+  root.dataset.palette=b.dataset.p;
+  document.querySelectorAll('#pal .chip').forEach(c=>c.classList.toggle('on',c===b));
+});
+document.getElementById('mode').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b)return;
+  root.dataset.mode=b.dataset.m;
+  document.querySelectorAll('#mode .chip').forEach(c=>c.classList.toggle('on',c===b));
+});
+</script>
+</body>
+</html>
