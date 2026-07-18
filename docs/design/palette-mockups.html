@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-palette="aurora" data-mode="dark">
+<html lang="ru" data-palette="abyss" data-mode="dark" data-fonts="v1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,7 +7,7 @@
 <!-- Мокап: шрифты с CDN только для превью; в проде — self-host woff2 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Exo+2:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Onest:wght@400;500;600;700;800&family=Golos+Text:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ===================== ПАЛИТРЫ ===================== */
 /* A. АВРОРА — полярное сияние: индиго/циан/виолет */
@@ -67,12 +67,16 @@
   --ok:#047857; --bad:#E11D48; --warn:#A16207;
   --rx:#4338CA; --tx:#B45309; --shadow:rgba(60,110,110,.25);
 }
+/* ===================== ШРИФТОВЫЕ ПАРЫ ===================== */
+[data-fonts="v1"]{--f-disp:"Unbounded";--f-text:"Manrope";--f-mono:"JetBrains Mono"}
+[data-fonts="v2"]{--f-disp:"Exo 2";--f-text:"IBM Plex Sans";--f-mono:"IBM Plex Mono"}
+[data-fonts="v3"]{--f-disp:"Onest";--f-text:"Golos Text";--f-mono:"Fira Code"}
 /* ===================== БАЗА ===================== */
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
 body{
   min-height:100dvh; background:var(--bg); color:var(--ink);
-  font-family:"Manrope",system-ui,sans-serif; overflow-x:hidden;
+  font-family:var(--f-text),system-ui,sans-serif; overflow-x:hidden;
   transition:background .4s ease;
 }
 .blobs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
@@ -94,11 +98,11 @@ body{
 /* ===================== ШАПКА-СТЕНД ===================== */
 .stand{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
   padding:14px 18px;margin-bottom:22px}
-.stand h1{font-family:"Unbounded",sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em}
+.stand h1{font-family:var(--f-disp),sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em}
 .stand h1 span{color:var(--accent)}
 .sw{display:flex;gap:8px;flex-wrap:wrap}
 .chip{
-  font:600 .8rem/1 "Manrope";padding:10px 16px;border-radius:999px;cursor:pointer;
+  font:600 .8rem/1 var(--f-text);padding:10px 16px;border-radius:999px;cursor:pointer;
   border:1px solid var(--hairline-hi);color:var(--ink2);background:transparent;
   transition:all .2s ease;
 }
@@ -112,8 +116,8 @@ body{
 .brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px}
 .mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
   background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent)}
-.brand b{font-family:"Unbounded";font-size:.72rem;font-weight:700;line-height:1.25}
-.brand small{display:block;font:500 .62rem "JetBrains Mono";color:var(--muted);letter-spacing:.08em}
+.brand b{font-family:var(--f-disp);font-size:.72rem;font-weight:700;line-height:1.25}
+.brand small{display:block;font:500 .62rem var(--f-mono);color:var(--muted);letter-spacing:.08em}
 .nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;
   color:var(--ink2);text-decoration:none;font-weight:600;font-size:.85rem;transition:all .18s}
 .nav a svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -122,20 +126,20 @@ body{
   box-shadow:inset 2px 0 0 var(--accent)}
 /* ===================== ГЕРОЙ ===================== */
 .hero{padding:26px 26px 22px;margin-bottom:20px;position:relative;overflow:hidden}
-.hero .eyebrow{font:500 .68rem "JetBrains Mono";letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
-.hero h2{font-family:"Unbounded";font-weight:700;font-size:clamp(1.25rem,3vw,1.9rem);margin:10px 0 6px}
+.hero .eyebrow{font:500 .68rem var(--f-mono);letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+.hero h2{font-family:var(--f-disp);font-weight:700;font-size:clamp(1.25rem,3vw,1.9rem);margin:10px 0 6px}
 .hero h2 em{font-style:normal;color:var(--accent)}
 .hero .sub{color:var(--ink2);font-size:.9rem}
 .badges{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
 .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;
-  font:600 .75rem "Manrope";border:1px solid var(--hairline);background:var(--glass)}
+  font:600 .75rem var(--f-text);border:1px solid var(--hairline);background:var(--glass)}
 .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
 .badge.xor{color:var(--accent)}
 .badge.xor svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
 /* топология */
 .topo{margin-top:20px;padding:16px 8px 6px;position:relative}
 .topo svg{width:100%;height:auto;display:block}
-.topo text{font:500 10.5px "JetBrains Mono";fill:var(--muted)}
+.topo text{font:500 10.5px var(--f-mono);fill:var(--muted)}
 .topo .lbl-hi{fill:var(--ink2)}
 .flow{stroke-dasharray:6 8;animation:dash 1.2s linear infinite}
 @keyframes dash{to{stroke-dashoffset:-14}}
@@ -150,7 +154,7 @@ body{
 .tdot.live{background:var(--ok);box-shadow:0 0 12px var(--ok);animation:pulse 2.2s ease infinite}
 .tdot.off{background:var(--muted);opacity:.5}
 @keyframes pulse{50%{box-shadow:0 0 3px var(--ok)}}
-.route{font:500 .72rem "JetBrains Mono";color:var(--muted);margin:12px 0 4px;display:flex;align-items:center;gap:6px}
+.route{font:500 .72rem var(--f-mono);color:var(--muted);margin:12px 0 4px;display:flex;align-items:center;gap:6px}
 .route b{color:var(--accent);font-weight:500}
 .tmeta{font-size:.75rem;color:var(--muted);margin-top:8px}
 .tgl{width:46px;height:26px;border-radius:999px;border:1px solid var(--hairline-hi);position:relative;
@@ -159,7 +163,7 @@ body{
   background:var(--muted);transition:all .25s}
 .tgl.on{background:var(--accent);border-color:transparent}
 .tgl.on::after{left:23px;background:var(--on-accent)}
-.xchip{font:700 .6rem "JetBrains Mono";letter-spacing:.1em;color:var(--accent);
+.xchip{font:700 .6rem var(--f-mono);letter-spacing:.1em;color:var(--accent);
   border:1px solid currentColor;padding:3px 7px;border-radius:6px;opacity:.9}
 /* ===================== ГРАФИК ===================== */
 .duo{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
@@ -167,14 +171,14 @@ body{
 .card{padding:20px}
 .card h3{font-size:.8rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);margin-bottom:14px}
 .rates{display:flex;gap:18px;margin-bottom:10px}
-.rate b{font:700 1.15rem "JetBrains Mono";display:block}
-.rate span{font:500 .68rem "Manrope";color:var(--muted)}
+.rate b{font:700 1.15rem var(--f-mono);display:block}
+.rate span{font:500 .68rem var(--f-text);color:var(--muted)}
 .rate.rx b{color:var(--rx)} .rate.tx b{color:var(--tx)}
 .chart svg{width:100%;height:auto;display:block}
 .wd{display:flex;flex-direction:column;gap:10px}
 .wd .ev{display:flex;gap:10px;align-items:baseline;font-size:.78rem;color:var(--ink2)}
-.wd .t{font:500 .68rem "JetBrains Mono";color:var(--muted);flex:none}
-.foot{margin-top:26px;text-align:center;font:500 .68rem "JetBrains Mono";color:var(--muted)}
+.wd .t{font:500 .68rem var(--f-mono);color:var(--muted);flex:none}
+.foot{margin-top:26px;text-align:center;font:500 .68rem var(--f-mono);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -185,13 +189,18 @@ body{
   <div class="stand glass">
     <h1>Мокапы <span>beta</span>-редизайна</h1>
     <div class="sw" id="pal">
-      <button class="chip on" data-p="aurora">A · Аврора</button>
+      <button class="chip" data-p="aurora">A · Аврора</button>
       <button class="chip" data-p="copper">B · Медь</button>
-      <button class="chip" data-p="abyss">C · Глубина</button>
+      <button class="chip on" data-p="abyss">C · Глубина</button>
     </div>
     <div class="sw" id="mode">
       <button class="chip on" data-m="dark">Тёмная</button>
       <button class="chip" data-m="light">Светлая</button>
+    </div>
+    <div class="sw" id="fonts">
+      <button class="chip on" data-f="v1">1 · Unbounded</button>
+      <button class="chip" data-f="v2">2 · Exo 2</button>
+      <button class="chip" data-f="v3">3 · Onest</button>
     </div>
   </div>
 
@@ -310,7 +319,7 @@ body{
         </div>
       </div>
 
-      <div class="foot">Unbounded · Manrope · JetBrains Mono — единая типографика для всех вариантов</div>
+      <div class="foot" id="foot-fonts">Пара 1: Unbounded · Manrope · JetBrains Mono</div>
     </main>
   </div>
 </div>
@@ -325,6 +334,15 @@ document.getElementById('mode').addEventListener('click',e=>{
   const b=e.target.closest('.chip'); if(!b)return;
   root.dataset.mode=b.dataset.m;
   document.querySelectorAll('#mode .chip').forEach(c=>c.classList.toggle('on',c===b));
+});
+const FOOT={v1:'Пара 1: Unbounded · Manrope · JetBrains Mono',
+            v2:'Пара 2: Exo 2 · IBM Plex Sans · IBM Plex Mono',
+            v3:'Пара 3: Onest · Golos Text · Fira Code'};
+document.getElementById('fonts').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b)return;
+  root.dataset.fonts=b.dataset.f;
+  document.getElementById('foot-fonts').textContent=FOOT[b.dataset.f];
+  document.querySelectorAll('#fonts .chip').forEach(c=>c.classList.toggle('on',c===b));
 });
 </script>
 </body>
