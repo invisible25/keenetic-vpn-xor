@@ -446,6 +446,11 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rrow select{padding:7px 9px;border-radius:var(--r-sm);background:var(--glass-soft);
   border:1px solid var(--hairline-hi);color:var(--ink);font-size:.72rem;max-width:170px}
+@media(max-width:640px){
+  .rrow{flex-wrap:wrap}
+  .rrow .rcomm{flex-basis:100%;order:5}
+  .rrow select{max-width:none;flex:1;min-width:0}
+}
 .kimport{margin-top:14px;display:none}
 .kimport.show{display:block}
 .krow{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);
