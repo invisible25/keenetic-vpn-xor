@@ -288,6 +288,61 @@ main{min-width:0}
 .wd .ev{display:flex;gap:10px;align-items:baseline;font-size:var(--t-sm);color:var(--ink2)}
 .wd .ev .t{font:500 var(--t-xs) var(--f-mono);color:var(--muted);flex:none}
 
+/* ════════════════════════════ ПРОФИЛИ ════════════════════════════ */
+.plist{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+.pcard{padding:14px 16px}
+.prow{display:flex;align-items:center;gap:10px}
+.pinfo{flex:1;min-width:0;cursor:pointer;display:flex;flex-direction:column;gap:7px}
+.pname{font-weight:800;font-size:var(--t-lg);display:flex;gap:9px;align-items:center;min-width:0}
+.pname .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbadges{display:flex;gap:6px;flex-wrap:wrap}
+.pb{font:600 .58rem var(--f-mono);letter-spacing:.04em;padding:3px 8px;border-radius:6px;
+  border:1px solid var(--hairline);color:var(--muted)}
+.pb.wan{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.pb.schedb{color:var(--accent-2);border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
+.pstate{font-size:var(--t-sm);color:var(--muted);flex:none;min-width:74px;text-align:right}
+@media(max-width:600px){.pstate{display:none}}
+.hint{font-size:var(--t-sm);color:var(--muted);margin-bottom:12px}
+/* форма добавления и поля */
+.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.addgrid{grid-template-columns:1fr}}
+.field label{display:block;font:600 var(--t-xs) var(--f-text);color:var(--muted);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.input{width:100%;padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);
+  border:1px solid var(--hairline-hi);color:var(--ink)}
+.input:focus{outline:none;border-color:var(--accent)}
+textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resize:vertical}
+.drop{border:1.5px dashed var(--hairline-hi);border-radius:var(--r-md);padding:20px 14px;
+  text-align:center;color:var(--muted);cursor:pointer;font-size:var(--t-sm);
+  transition:all var(--dur-1);display:flex;flex-direction:column;align-items:center;gap:8px}
+.drop svg{width:20px;height:20px}
+.drop:hover{color:var(--ink2);border-color:var(--accent)}
+.drop.dragover{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+/* модалка-редактор */
+.mhead{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.mhead h3{font-family:var(--f-disp);font-weight:800;font-size:var(--t-lg);flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mmeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.mmeta .mi{padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);border:1px solid var(--hairline)}
+.mmeta .mi small{display:block;font:600 .58rem var(--f-text);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.mmeta .mi b{font:500 .74rem var(--f-mono);color:var(--ink);word-break:break-all}
+.mfoot{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;align-items:center}
+.mfoot .grow{flex:1}
+/* расписание (недельная сетка) */
+.sched-box{display:none;margin-top:12px;border-top:1px solid var(--hairline);padding-top:12px}
+.sched-box.open{display:block}
+.srow{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.srow .lbl{font-size:var(--t-sm);color:var(--ink2);font-weight:600;flex:1}
+.sgrid{display:grid;grid-template-columns:30px repeat(24,1fr);gap:2px;touch-action:none;
+  user-select:none;margin:8px 0 10px}
+.sgrid .shead{font:500 .5rem var(--f-mono);color:var(--muted)}
+.sgrid .slbl{font:500 .58rem var(--f-mono);color:var(--muted);line-height:15px}
+.scell{height:15px;border-radius:3px;background:var(--glass-strong);cursor:pointer;border:1px solid transparent}
+.scell:hover{border-color:var(--accent)}
+.scell.on{background:var(--accent)}
+#sched-next{font:500 var(--t-xs) var(--f-mono);color:var(--muted);margin-bottom:10px}
+
 /* ════════════════════════════ МОБИЛЬНЫЙ ТАБ-БАР ════════════════════════════ */
 @media(max-width:959px){
   .app{grid-template-columns:1fr;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -436,8 +491,26 @@ main{min-width:0}
 
     <!-- ════════════════ ВИД: ПРОФИЛИ ════════════════ -->
     <section class="view" data-view="profiles">
+      <div class="vhead"><h2>Профили</h2><span class="count" id="profiles-count"></span></div>
+      <div class="hint" id="profiles-hint">клик по карточке — устройства профиля · ✎ — редактор · ⏰ — расписание · тумблер — вкл/выкл</div>
+      <div class="plist" id="profile-list"><div class="skel"></div><div class="skel"></div></div>
       <div class="card glass">
-        <div class="empty"><svg><use href="#ic-shield"/></svg><b>Профили</b><span>этап 3.2 редизайна</span></div>
+        <h3>Новый профиль</h3>
+        <div class="addgrid">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label for="new-name">Имя профиля</label>
+              <input class="input" id="new-name" maxlength="32" placeholder="например, XOR-Finland" autocomplete="off"></div>
+            <div class="drop" id="ovpn-drop" role="button" tabindex="0" aria-label="Загрузить файл .ovpn">
+              <svg><use href="#ic-upload"/></svg>
+              <span>перетащите .ovpn сюда<br>или нажмите для выбора файла</span>
+            </div>
+            <input type="file" id="ovpn-file" accept=".ovpn,.conf,.txt" hidden>
+          </div>
+          <div class="field"><label for="new-content">Конфигурация .ovpn</label>
+            <textarea class="input" id="new-content" spellcheck="false" placeholder="client&#10;dev tun&#10;remote host port …"></textarea></div>
+        </div>
+        <div class="mfoot"><span class="grow"></span>
+          <button class="btn primary" id="upload-btn"><svg><use href="#ic-add"/></svg>Сохранить профиль</button></div>
       </div>
     </section>
 
@@ -473,7 +546,34 @@ main{min-width:0}
 
 <!-- ════════════════ МОДАЛКА-РЕДАКТОР (наполняется на этапе 3.2) ════════════════ -->
 <div class="modal-overlay" id="profile-modal-overlay" aria-hidden="true">
-  <div class="modal glass" id="profile-modal" role="dialog" aria-modal="true" aria-label="Редактор профиля"></div>
+  <div class="modal glass" id="profile-modal" role="dialog" aria-modal="true" aria-label="Редактор профиля">
+    <div class="mhead">
+      <h3 id="m-title">Профиль</h3>
+      <button class="icobtn" id="m-close" aria-label="Закрыть редактор"><svg><use href="#ic-x"/></svg></button>
+    </div>
+    <div class="mmeta">
+      <div class="mi"><small>Статус</small><b id="m-state">—</b></div>
+      <div class="mi"><small>Сервер</small><b id="m-remote">—</b></div>
+      <div class="mi"><small>Режим</small><b id="m-mode">—</b></div>
+      <div class="mi"><small>Устройств</small><b id="m-devcount">—</b></div>
+    </div>
+    <div class="addgrid">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="field"><label for="m-name">Имя (переименование)</label>
+          <input class="input" id="m-name" maxlength="32" autocomplete="off"></div>
+        <div class="field"><label for="m-wan-select">WAN-канал профиля</label>
+          <select class="input" id="m-wan-select"></select></div>
+      </div>
+      <div class="field"><label for="m-content">.ovpn</label>
+        <textarea class="input" id="m-content" spellcheck="false" style="min-height:220px"></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn danger" id="m-delete"><svg><use href="#ic-trash"/></svg>Удалить профиль</button>
+      <span class="grow"></span>
+      <button class="btn" id="m-cancel">Отмена</button>
+      <button class="btn primary" id="m-save"><svg><use href="#ic-check"/></svg>Сохранить</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
@@ -727,7 +827,7 @@ async function loadProfiles(){
   renderAllOverview();
   ensureXorFlags();
 }
-function renderAllOverview(){ renderHero(); renderTiles(); renderTopo(); fillCheckipSelect(); }
+function renderAllOverview(){ renderHero(); renderTiles(); renderTopo(); fillCheckipSelect(); renderProfilesView(); }
 
 /* герой-статус */
 function renderHero(){
@@ -979,6 +1079,271 @@ async function pollWatchdog(){
   if(CUR_TAB!=='log'){ NAV_BADGE=Math.min(99,NAV_BADGE+fresh.length); setNavBadge(NAV_BADGE); }
 }
 ON_ENTER.log=()=>{ NAV_BADGE=0; setNavBadge(0); };
+
+/* ════════════════════════════ ПРОФИЛИ: СПИСОК ════════════════════════════ */
+let MODAL_OPEN=false, MODAL_NAME='', SCHED_OPEN=null;
+function renderProfilesView(){
+  if(MODAL_OPEN||SCHED_OPEN) return;         // не рушим открытый редактор/сетку
+  const list=$('#profile-list');
+  $('#profiles-count').textContent=STATE.profiles.length
+    ? STATE.profiles.length+' '+plural(STATE.profiles.length,['профиль','профиля','профилей']) : '';
+  if(!STATE.profiles.length){
+    list.innerHTML='<div class="card glass"><div class="empty"><svg><use href="#ic-shield"/></svg>'+
+      '<b>Профилей пока нет</b><span>добавьте первый .ovpn в форме ниже</span></div></div>';
+    return;
+  }
+  list.innerHTML=STATE.profiles.map(p=>{
+    const dot=p.running?'live':(p.enabled?'pending':'');
+    const st=p.running?'подключено':(p.enabled?'запуск…':'выключен');
+    const devb=p.mode==='all'?'весь LAN':(p.devices_count>0
+      ? p.devices_count+' '+plural(p.devices_count,['устр-во','устр-ва','устр-в']) : 'нет устр.');
+    return '<div class="pcard glass" data-name="'+esc(p.name)+'">'+
+      '<div class="prow">'+
+        '<div class="pinfo" data-act="info" role="button" tabindex="0" aria-label="Устройства профиля '+esc(p.name)+'">'+
+          '<div class="pname"><span class="dot '+dot+'"></span><span class="nm">'+esc(p.name)+'</span>'+
+          (XOR_CACHE[p.name]?'<span class="xchip">XOR</span>':'')+'</div>'+
+          '<div class="pbadges">'+
+            (p.wan?'<span class="pb wan">via '+esc(wanLabel(p.wan))+'</span>':'')+
+            '<span class="pb">'+esc(devb)+'</span>'+
+            (p.sched?'<span class="pb schedb">расписание</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<span class="pstate">'+st+'</span>'+
+        '<button class="icobtn" data-act="sched" title="Расписание" aria-label="Расписание '+esc(p.name)+'"><svg><use href="#ic-sched"/></svg></button>'+
+        '<button class="icobtn" data-act="edit" title="Редактировать" aria-label="Редактировать '+esc(p.name)+'"><svg><use href="#ic-edit"/></svg></button>'+
+        '<button class="tgl'+(p.enabled?' on':'')+(TOGGLE_BUSY[p.name]?' busy':'')+'" data-act="tgl" '+
+          'aria-label="'+(p.enabled?'Выключить':'Включить')+' '+esc(p.name)+'"></button>'+
+      '</div>'+
+      '<div class="sched-box" data-sched-box></div>'+
+    '</div>';
+  }).join('');
+}
+$('#profile-list').addEventListener('click',e=>{
+  const card=e.target.closest('.pcard'); if(!card) return;
+  const name=card.dataset.name;
+  const actEl=e.target.closest('[data-act]');
+  const act=actEl?actEl.dataset.act:null;
+  if(act==='tgl'){ profileToggle(name,!actEl.classList.contains('on')); return; }
+  if(act==='edit'){ editProfile(name); return; }
+  if(act==='sched'){ toggleSchedule(name,card); return; }
+  if(act==='info'){ window.DEV_TARGET=name; switchTab('devices'); }
+});
+$('#profile-list').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const info=e.target.closest('[data-act="info"]'); if(!info) return;
+  e.preventDefault();
+  window.DEV_TARGET=info.closest('.pcard').dataset.name; switchTab('devices');
+});
+
+/* ════════════════════════════ ПРОФИЛИ: ЗАГРУЗКА .OVPN ════════════════════════════ */
+function readOvpnFile(file){
+  if(!file) return;
+  if(file.size>500*1024){ toast('Файл больше 500 КБ','error'); return; }
+  const rd=new FileReader();
+  rd.onload=()=>{
+    $('#new-content').value=rd.result;
+    if(!$('#new-name').value)
+      $('#new-name').value=file.name.replace(/\.(ovpn|conf|txt)$/i,'').replace(/[^A-Za-z0-9._-]/g,'-').slice(0,32);
+  };
+  rd.readAsText(file);
+}
+(function initDrop(){
+  const drop=$('#ovpn-drop'), file=$('#ovpn-file');
+  drop.addEventListener('click',()=>file.click());
+  drop.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); file.click(); } });
+  drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave',()=>drop.classList.remove('dragover'));
+  drop.addEventListener('drop',e=>{ e.preventDefault(); drop.classList.remove('dragover');
+    readOvpnFile(e.dataTransfer.files[0]); });
+  file.addEventListener('change',()=>{ readOvpnFile(file.files[0]); file.value=''; });
+})();
+$('#upload-btn').addEventListener('click',async()=>{
+  const name=$('#new-name').value.trim(), content=$('#new-content').value;
+  if(!name) return toast('Укажите имя профиля','error');
+  if(!/^[A-Za-z0-9._-]+$/.test(name)) return toast('Имя: латиница, цифры, точка, дефис','error');
+  if(!/^\s*(client|tls-client)\s*$/m.test(content)) return toast('Конфиг не похож на client (.ovpn)','error');
+  if(!/^remote /m.test(content)) return toast('В конфиге нет директивы remote','error');
+  const btn=$('#upload-btn'); btn.disabled=true;
+  try{
+    const r=await API.post('upload-profile',null,
+      'name='+encodeURIComponent(name)+'&content='+encodeURIComponent(content)).then(x=>x.text());
+    const ok=r.includes('Сохранён');
+    toast(r.trim()||'Готово',ok?'ok':'error');
+    if(ok){ $('#new-name').value=''; $('#new-content').value='';
+      delete XOR_CACHE[name]; PROFILES_SIG=''; loadProfiles(); }
+  }catch(e){ toast('Ошибка загрузки профиля','error'); }
+  finally{ btn.disabled=false; }
+});
+
+/* ════════════════════════════ ПРОФИЛИ: РЕДАКТОР ════════════════════════════ */
+async function editProfile(name){
+  let d;
+  try{ d=await API.json('profile',{name}); }catch(e){ return toast('Не удалось загрузить профиль','error'); }
+  if(d.error) return toast(d.error,'error');
+  MODAL_NAME=name; MODAL_OPEN=true;
+  $('#m-title').textContent='Профиль «'+name+'»';
+  const p=STATE.profiles.find(x=>x.name===name)||{};
+  $('#m-state').textContent=p.running?'подключено':(p.enabled?'запуск…':'выключен');
+  $('#m-remote').textContent=d.remote||'—';
+  $('#m-mode').textContent=d.mode==='all'?'весь LAN':'выбранные устройства';
+  $('#m-devcount').textContent=(d.devices_count??'—')+'';
+  $('#m-name').value=name;
+  $('#m-wan-select').innerHTML='<option value="">авто (системный default)</option>'+
+    STATE.wans.map(w=>'<option value="'+esc(w.iface)+'"'+(w.iface===d.wan?' selected':'')+'>'+
+      esc(w.label||w.iface)+(w.default?' · default':'')+(w.connected===false?' · нет линка':'')+'</option>').join('');
+  $('#m-content').value=d.content||'';
+  const ov=$('#profile-modal-overlay');
+  ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
+  $('#m-name').focus();
+}
+function closeModal(){
+  MODAL_OPEN=false; MODAL_NAME='';
+  const ov=$('#profile-modal-overlay');
+  ov.classList.remove('open'); ov.setAttribute('aria-hidden','true');
+  renderProfilesView();
+}
+$('#m-close').addEventListener('click',closeModal);
+$('#m-cancel').addEventListener('click',closeModal);
+$('#profile-modal-overlay').addEventListener('click',e=>{ if(e.target.id==='profile-modal-overlay') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&MODAL_OPEN) closeModal(); });
+$('#m-save').addEventListener('click',async()=>{
+  const content=$('#m-content').value, newName=$('#m-name').value.trim();
+  if(!/^remote /m.test(content)) return toast('В конфиге нет директивы remote','error');
+  if(!/^[A-Za-z0-9._-]+$/.test(newName)) return toast('Имя: латиница, цифры, точка, дефис','error');
+  const btn=$('#m-save'); btn.disabled=true;
+  try{
+    await API.post('profile-wan',{name:MODAL_NAME},'wan='+encodeURIComponent($('#m-wan-select').value));
+    const r=await API.post('profile',{name:MODAL_NAME},
+      'name='+encodeURIComponent(newName)+'&content='+encodeURIComponent(content)).then(x=>x.json());
+    if(r.error) throw new Error(r.error);
+    toast('Профиль «'+(r.name||newName)+'» сохранён'+(r.restarted?' и перезапущен':''),'ok');
+    delete XOR_CACHE[MODAL_NAME]; delete XOR_CACHE[r.name||newName];
+    closeModal(); PROFILES_SIG=''; loadProfiles();
+  }catch(e){ toast('Ошибка сохранения: '+(e.message||''),'error'); }
+  finally{ btn.disabled=false; }
+});
+$('#m-delete').addEventListener('click',async()=>{
+  const p=STATE.profiles.find(x=>x.name===MODAL_NAME);
+  if(p&&p.running) return toast('Сначала остановите туннель','error');
+  if(!confirm('Удалить профиль «'+MODAL_NAME+'»? Файл .ovpn будет стёрт.')) return;
+  try{
+    const r=await API.text('delete-profile',{name:MODAL_NAME});
+    toast(r.trim()||'Профиль удалён','ok');
+    closeModal(); PROFILES_SIG=''; loadProfiles();
+  }catch(e){ toast('Ошибка удаления','error'); }
+});
+
+/* ════════════════════════════ РАСПИСАНИЕ (сетка 7×24, dow 1..7 = Пн..Вс) ════════════════════════════ */
+const DOWS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+let SGRID=new Array(168).fill(false), SCHED_ENABLED=false, SPAINT=null;
+const idxMin=i=>Math.floor(i/24)*1440+(i%24)*60;
+function actionsToGrid(sch){
+  const grid=new Array(168).fill(false), evs=[];
+  (sch.actions||[]).forEach(a=>(a.dow||[]).forEach(d=>
+    evs.push({m:(d-1)*1440+(+a.hh||0)*60+(+a.mm||0),on:a.do==='start'})));
+  if(!evs.length) return grid;
+  evs.sort((a,b)=>a.m-b.m);
+  for(let i=0;i<168;i++){
+    const m=idxMin(i); let st=null;
+    for(const e of evs){ if(e.m<=m) st=e.on; else break; }
+    if(st===null) st=evs[evs.length-1].on;         // круг недели
+    grid[i]=st;
+  }
+  return grid;
+}
+function gridToActions(grid){
+  const acts={};
+  for(let i=0;i<168;i++){
+    if(grid[i]===grid[(i+167)%168]) continue;      // нет перехода
+    const k=(grid[i]?'start':'stop')+'|'+(i%24);
+    (acts[k]=acts[k]||new Set()).add(Math.floor(i/24)+1);
+  }
+  return Object.entries(acts).map(([k,d])=>{
+    const [doo,hh]=k.split('|');
+    return {do:doo,hh:+hh,mm:0,dow:[...d].sort((a,b)=>a-b)};
+  });
+}
+function updateSchedNext(){
+  const el=$('#sched-next'); if(!el) return;
+  if(!SCHED_ENABLED){ el.textContent='расписание выключено — события не выполняются'; return; }
+  const acts=gridToActions(SGRID);
+  if(!acts.length){ el.textContent='нарисуйте часы работы в сетке (протяжкой)'; return; }
+  const evs=[];
+  acts.forEach(a=>a.dow.forEach(d=>evs.push({m:(d-1)*1440+a.hh*60+a.mm,on:a.do==='start'})));
+  evs.sort((a,b)=>a.m-b.m);
+  const now=new Date(), nowM=((now.getDay()+6)%7)*1440+now.getHours()*60+now.getMinutes();
+  let st=null,next=null;
+  for(const e of evs){ if(e.m<=nowM) st=e.on; if(e.m>nowM&&!next) next=e; }
+  if(st===null) st=evs[evs.length-1].on;
+  if(!next) next=evs[0];
+  const t=String(Math.floor(next.m%1440/60)).padStart(2,'0')+':'+String(next.m%60).padStart(2,'0');
+  el.textContent='сейчас: '+(st?'работает':'остановлен')+' · далее: '+
+    (next.on?'старт':'стоп')+' '+DOWS[Math.floor(next.m/1440)]+' '+t;
+}
+function renderSchedBox(box){
+  let head='<div></div>';
+  for(let c=0;c<24;c++) head+='<div class="shead">'+(c%3===0?c:'')+'</div>';
+  let rows='';
+  for(let r=0;r<7;r++){
+    rows+='<div class="slbl">'+DOWS[r]+'</div>';
+    for(let c=0;c<24;c++){
+      const i=r*24+c;
+      rows+='<div class="scell'+(SGRID[i]?' on':'')+'" data-i="'+i+'"></div>';
+    }
+  }
+  box.innerHTML=
+    '<div class="srow"><span class="lbl">Расписание работы туннеля</span>'+
+    '<button class="tgl'+(SCHED_ENABLED?' on':'')+'" id="sched-enabled" aria-label="Расписание включено"></button></div>'+
+    '<div class="sgrid" id="sched-grid">'+head+rows+'</div>'+
+    '<div id="sched-next"></div>'+
+    '<div class="mfoot" style="margin-top:0"><span class="grow"></span>'+
+    '<button class="btn" id="sched-close">Закрыть</button>'+
+    '<button class="btn primary" id="sched-save"><svg><use href="#ic-check"/></svg>Сохранить</button></div>';
+  updateSchedNext();
+  $('#sched-enabled').addEventListener('click',e=>{
+    SCHED_ENABLED=!SCHED_ENABLED; e.target.classList.toggle('on',SCHED_ENABLED); updateSchedNext(); });
+  const grid=$('#sched-grid');
+  const paint=el=>{ if(!el||!el.classList||!el.classList.contains('scell')) return;
+    SGRID[+el.dataset.i]=SPAINT; el.classList.toggle('on',SPAINT); };
+  grid.addEventListener('pointerdown',e=>{
+    const c=e.target.closest('.scell'); if(!c) return;
+    SPAINT=!c.classList.contains('on'); paint(c);
+    grid.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  grid.addEventListener('pointermove',e=>{
+    if(SPAINT===null) return;
+    paint(document.elementFromPoint(e.clientX,e.clientY));
+  });
+  const stop=()=>{ if(SPAINT!==null){ SPAINT=null; updateSchedNext(); } };
+  grid.addEventListener('pointerup',stop);
+  grid.addEventListener('pointercancel',stop);
+  $('#sched-close').addEventListener('click',closeSched);
+  $('#sched-save').addEventListener('click',async()=>{
+    const name=SCHED_OPEN;
+    try{
+      const r=await API.post('schedule',{profile:name},
+        JSON.stringify({enabled:SCHED_ENABLED,actions:gridToActions(SGRID)})).then(x=>x.json());
+      if(r.error) throw new Error(r.error);
+      toast('Расписание «'+name+'» сохранено','ok');
+      closeSched(); PROFILES_SIG=''; loadProfiles();
+    }catch(e){ toast('Ошибка сохранения расписания','error'); }
+  });
+}
+function closeSched(){
+  SCHED_OPEN=null; SPAINT=null;
+  $$('.sched-box.open').forEach(b=>{ b.classList.remove('open'); b.innerHTML=''; });
+  renderProfilesView();
+}
+async function toggleSchedule(name,card){
+  if(SCHED_OPEN===name){ closeSched(); return; }
+  if(SCHED_OPEN) closeSched();
+  let sch;
+  try{ sch=await API.json('schedule',{profile:name}); }catch(e){ return toast('Не удалось загрузить расписание','error'); }
+  if(sch.error) return toast(sch.error,'error');
+  SCHED_OPEN=name; SCHED_ENABLED=!!sch.enabled; SGRID=actionsToGrid(sch);
+  const box=card.querySelector('[data-sched-box]');
+  renderSchedBox(box); box.classList.add('open');
+}
 
 /* регистрация в главном цикле 5с */
 LOADERS.push(loadProfiles, loadStats);
