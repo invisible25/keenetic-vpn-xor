@@ -126,7 +126,7 @@
   --accent-soft:color-mix(in srgb, var(--accent) 16%, transparent);
   --ok-soft:color-mix(in srgb, var(--ok) 14%, transparent);
   --bad-soft:color-mix(in srgb, var(--bad) 14%, transparent);
-  --r-lg:20px; --r-md:14px; --r-sm:10px;
+  --r-lg:20px; --r-md:14px; --r-sm:10px; --control-h:40px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:22px; --sp-6:28px;
   --t-xs:.68rem; --t-sm:.78rem; --t-md:.88rem; --t-lg:1rem; --t-xl:clamp(1.45rem,3vw,2rem);
   --dur-1:.16s; --dur-2:.26s; --dur-3:.4s;
@@ -203,7 +203,7 @@ main{min-width:0}
 .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
 .pill.on .dot{background:var(--ok);box-shadow:0 0 9px var(--ok)}
 .pill.off{color:var(--bad)} .pill.off .dot{background:var(--bad)}
-.icobtn{width:38px;height:38px;border-radius:var(--r-sm);display:grid;place-items:center;flex:none;
+.icobtn{width:var(--control-h);height:var(--control-h);border-radius:var(--r-sm);display:grid;place-items:center;flex:none;
   border:1px solid var(--hairline);background:var(--glass-soft);color:var(--ink2);
   transition:all var(--dur-1)}
 .icobtn:hover{color:var(--ink);border-color:var(--hairline-hi);transform:translateY(-1px)}
@@ -226,7 +226,7 @@ main{min-width:0}
 /* кнопки */
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--r-sm);
   font-weight:700;font-size:var(--t-sm);border:1px solid var(--hairline-hi);color:var(--ink2);
-  background:var(--glass-soft);transition:all var(--dur-1);min-height:40px}
+  background:var(--glass-soft);transition:all var(--dur-1);min-height:var(--control-h)}
 .btn svg{width:15px;height:15px}
 .btn:hover{color:var(--ink);border-color:var(--accent)}
 .btn:active{transform:translateY(1px)}
@@ -241,7 +241,7 @@ main{min-width:0}
 /* кастомный select (нативный <select> прячется, значение/change сохраняются) */
 .xsel{position:relative;display:inline-block;width:100%}
 .xsel > select{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0}
-.xsel-btn{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;
+.xsel-btn{display:flex;align-items:center;gap:8px;width:100%;min-height:var(--control-h);
   padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--hairline-hi);
   background:var(--glass-soft);color:var(--ink);font-size:var(--t-sm);font-weight:600;
   text-align:left;transition:border-color var(--dur-1)}
@@ -450,7 +450,7 @@ main{min-width:0}
 @media(max-width:700px){.addgrid{grid-template-columns:1fr}}
 .field label{display:block;font:600 var(--t-xs) var(--f-text);color:var(--muted);
   margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
-.input{width:100%;padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);
+.input{width:100%;min-height:var(--control-h);padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);
   border:1px solid var(--hairline-hi);color:var(--ink)}
 .input:focus{border-color:var(--accent);outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:1px}
 textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resize:vertical}
@@ -488,7 +488,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 /* ════════════════════════════ УСТРОЙСТВА ════════════════════════════ */
 .seg{display:inline-flex;border:1px solid var(--hairline-hi);border-radius:var(--r-sm);overflow:hidden}
 .seg button{padding:9px 15px;font-weight:700;font-size:var(--t-sm);color:var(--muted);
-  transition:all var(--dur-1);min-height:38px}
+  transition:all var(--dur-1);min-height:var(--control-h)}
 .seg button.on{background:var(--accent);color:var(--on-accent)}
 .warn-note{display:none;gap:8px;align-items:flex-start;padding:10px 13px;border-radius:var(--r-sm);
   border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);
@@ -903,6 +903,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="sr-alert" role="alert" aria-live="assertive" class="sr-only"></div>
 
 <script>
 'use strict';
@@ -1062,6 +1063,16 @@ let CUSTOM={accent:'#38BDF8',bg:'#04141A',text:'#E7F9F5'};
 function _lum(hex){ const c=(hex||'#000').replace('#','');
   const [r,g,b]=[0,2,4].map(i=>parseInt(c.substr(i,2),16)/255);
   return .2126*r+.7152*g+.0722*b; }
+/* WCAG-контраст между двумя hex-цветами (с гамма-декодированием) */
+function _hex2rgb(hex){ const c=(hex||'#000').replace('#','');
+  const h=c.length===3?c.split('').map(x=>x+x).join(''):c;
+  return [0,2,4].map(i=>parseInt(h.substr(i,2),16)); }
+function _relLum(rgb){ const s=rgb.map(v=>{ v/=255; return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4); });
+  return .2126*s[0]+.7152*s[1]+.0722*s[2]; }
+function _contrast(a,b){ const l1=_relLum(_hex2rgb(a)),l2=_relLum(_hex2rgb(b));
+  return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05); }
+function _mixHex(a,b,t){ const A=_hex2rgb(a),B=_hex2rgb(b);
+  return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join(''); }
 /* custom: 3 цвета → полный набор входных переменных через color-mix */
 const CUSTOM_VARS=['--bg','--blob1','--blob2','--blob3','--glass','--glass-strong',
   '--hairline','--hairline-hi','--ink','--ink2','--muted','--accent','--accent-2',
@@ -1079,10 +1090,15 @@ function applyCustomVars(c){
   st.setProperty('--hairline-hi',mix(c.text,32,'transparent'));
   st.setProperty('--ink',c.text);
   st.setProperty('--ink2',mix(c.text,78,c.bg));
-  st.setProperty('--muted',mix(c.text,55,c.bg));
+  // muted: подмешиваем text к bg, пока контраст не достигнет AA 4.5:1 (иначе подписи нечитаемы)
+  let mt=_mixHex(c.bg,c.text,.55);
+  for(let t=.55;t<=.9;t+=.05){ mt=_mixHex(c.bg,c.text,t); if(_contrast(mt,c.bg)>=4.5) break; }
+  st.setProperty('--muted',mt);
   st.setProperty('--accent',c.accent);
   st.setProperty('--accent-2',mix(c.accent,70,c.text));
-  st.setProperty('--on-accent',_lum(c.accent)>.5?'#10151a':'#f4fbff');
+  // on-accent: берём тот из тёмного/светлого, что даёт больший контраст на кнопке
+  st.setProperty('--on-accent',
+    _contrast('#0b0f14',c.accent)>=_contrast('#f6fbff',c.accent)?'#0b0f14':'#f6fbff');
   st.setProperty('--ok',dark?'#34D399':'#047857');
   st.setProperty('--bad',dark?'#FB7185':'#E11D48');
   st.setProperty('--warn',dark?'#FBBF24':'#A16207');
@@ -1183,6 +1199,8 @@ function toast(msg,kind){
   el.className='toast'+(kind?' '+kind:'');
   el.textContent=msg;
   $('#toast').appendChild(el);
+  // ошибки дублируем в скрытый assertive-регион — скринридер объявит немедленно
+  if(kind==='error'){ const a=$('#sr-alert'); a.textContent=''; setTimeout(()=>{ a.textContent=msg; },30); }
   setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),300); },2800);
 }
 
@@ -1425,7 +1443,17 @@ function renderHero(){
     h.innerHTML=run.length
       ? 'Активно <em>'+run.length+' '+plural(run.length,['туннель','туннеля','туннелей'])+'</em>'
       : 'Соединение не активно';
-    sub.textContent=run.length?run.map(p=>p.name).join(', '):'включите профиль на плитке или во вкладке «Профили»';
+    // подзаголовок — агрегат (имена туннелей и так на плитках/карте ниже, не дублируем)
+    if(!run.length){ sub.textContent='включите профиль на плитке или во вкладке «Профили»'; }
+    else {
+      const allLan=run.some(p=>p.mode==='all');
+      const dev=run.reduce((n,p)=>n+(p.mode==='all'?0:(+p.devices_count||0)),0);
+      const xorN=run.filter(p=>XOR_CACHE[p.name]).length;
+      const parts=[];
+      parts.push(allLan?'весь LAN защищён':(dev?dev+' '+plural(dev,['устройство','устройства','устройств'])+' через VPN':'без привязанных устройств'));
+      if(xorN) parts.push('XOR на '+xorN+' из '+run.length);
+      sub.textContent=parts.join(' · ');
+    }
   }
   const xor=STATE.profiles.some(p=>p.running&&XOR_CACHE[p.name]);
   $('#xor-badge').hidden=!xor;
