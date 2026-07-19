@@ -31,8 +31,8 @@
 /* Тема задаёт ТОЛЬКО эти переменные. Компоненты читают их + производный слой. */
 :root, [data-theme="abyss-dark"]{
   --bg:#04141A; --blob1:#0D9488; --blob2:#0EA5E9; --blob3:#155E75;
-  --glass:rgba(150,240,225,.055); --glass-strong:rgba(150,240,225,.10);
-  --hairline:rgba(170,235,225,.15); --hairline-hi:rgba(170,235,225,.32);
+  --glass:rgba(150,240,225,.06); --glass-strong:rgba(150,240,225,.11);
+  --hairline:rgba(170,235,225,.19); --hairline-hi:rgba(170,235,225,.34);
   --ink:#E7F9F5; --ink2:#BADFD8; --muted:#7FA8A0;
   --accent:#38BDF8; --accent-2:#2DD4BF; --on-accent:#04222B;
   --ok:#34D399; --bad:#FB7185; --warn:#FBBF24; --info:#818CF8;
@@ -82,7 +82,7 @@
   --bg:#1A1B26; --blob1:#3D59A1; --blob2:#BB9AF7; --blob3:#2AC3DE;
   --glass:rgba(160,180,255,.06); --glass-strong:rgba(160,180,255,.11);
   --hairline:rgba(180,195,255,.15); --hairline-hi:rgba(180,195,255,.32);
-  --ink:#C0CAF5; --ink2:#9AA5CE; --muted:#737AA2;
+  --ink:#C0CAF5; --ink2:#9AA5CE; --muted:#8891BF;
   --accent:#7AA2F7; --accent-2:#BB9AF7; --on-accent:#10121C;
   --ok:#9ECE6A; --bad:#F7768E; --warn:#E0AF68; --info:#7DCFFF;
   --rx:#2AC3DE; --tx:#FF9E64; --shadow:rgba(5,6,15,.6); --scheme:dark;
@@ -109,7 +109,7 @@
   --bg:#1E1E2E; --blob1:#89B4FA; --blob2:#CBA6F7; --blob3:#F5C2E7;
   --glass:rgba(200,190,255,.06); --glass-strong:rgba(200,190,255,.11);
   --hairline:rgba(205,214,244,.15); --hairline-hi:rgba(205,214,244,.3);
-  --ink:#CDD6F4; --ink2:#A6ADC8; --muted:#7F849C;
+  --ink:#CDD6F4; --ink2:#A6ADC8; --muted:#9399B2;
   --accent:#89B4FA; --accent-2:#CBA6F7; --on-accent:#11111B;
   --ok:#A6E3A1; --bad:#F38BA8; --warn:#F9E2AF; --info:#74C7EC;
   --rx:#89DCEB; --tx:#FAB387; --shadow:rgba(8,8,18,.6); --scheme:dark;
@@ -271,6 +271,7 @@ main{min-width:0}
 .xsel.compact .xsel-btn{min-height:36px;padding:7px 10px;font-size:.72rem}
 .xsel.dis .xsel-btn{opacity:.5;cursor:not-allowed}
 .dev-tools .xsel{flex:1;max-width:300px}
+@media(max-width:600px){.dev-tools{flex-wrap:wrap}.dev-tools .xsel{max-width:none;flex-basis:100%}}
 .ci-row .xsel{flex:1;min-width:0}
 .rrow .xsel{flex:none;width:auto;min-width:150px;max-width:200px}
 :root{--chk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E")}
@@ -278,6 +279,7 @@ main{min-width:0}
 /* тумблер */
 .tgl{width:46px;height:26px;border-radius:999px;border:1px solid var(--hairline-hi);
   position:relative;background:transparent;transition:all var(--dur-2) var(--ease);flex:none}
+.tgl::before{content:"";position:absolute;inset:-10px}  /* тач-зона до 46×46, вид не меняется */
 .tgl::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
   background:var(--muted);transition:all var(--dur-2) var(--ease)}
 .tgl.on{background:var(--accent);border-color:transparent}
@@ -413,7 +415,7 @@ main{min-width:0}
 .pb.wan{color:color-mix(in srgb,var(--accent) 54%,var(--ink));border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
 .pb.schedb{color:color-mix(in srgb,var(--accent-2) 54%,var(--ink));border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
 .pstate{font-size:var(--t-sm);color:var(--muted);flex:none;min-width:74px;text-align:right}
-@media(max-width:600px){.pstate{display:none}}
+@media(max-width:600px){.pstate{min-width:auto;font-size:.7rem}}
 .hint{font-size:var(--t-sm);color:var(--muted);margin-bottom:12px}
 /* форма добавления и поля */
 .addgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -633,8 +635,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <span class="pill" id="header-pill"><span class="dot"></span><span id="header-pill-text">…</span></span>
       <button class="icobtn" id="refresh-btn" title="Обновить данные" aria-label="Обновить данные"><svg><use href="#ic-refresh"/></svg></button>
       <span class="tbwrap">
-        <button class="icobtn" id="theme-btn" title="Тема оформления" aria-label="Тема оформления" aria-haspopup="true"><svg><use href="#ic-theme"/></svg></button>
-        <div class="tpick glass" id="theme-picker" role="menu" aria-label="Выбор темы"></div>
+        <button class="icobtn" id="theme-btn" title="Тема оформления" aria-label="Тема оформления" aria-haspopup="true" aria-expanded="false"><svg><use href="#ic-theme"/></svg></button>
+        <div class="tpick glass" id="theme-picker" aria-label="Выбор темы"></div>
       </span>
     </header>
 
@@ -735,8 +737,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         <div class="dev-tools">
           <select class="input" id="dev-profile" style="max-width:280px" aria-label="Цель привязки устройств"></select>
           <div class="seg" id="mode-seg" role="group" aria-label="Режим профиля">
-            <button id="mode-devices" class="on">Выбранные</button>
-            <button id="mode-all">Весь LAN</button>
+            <button id="mode-devices" class="on" aria-pressed="true">Выбранные</button>
+            <button id="mode-all" aria-pressed="false">Весь LAN</button>
           </div>
         </div>
         <div class="warn-note" id="dev-wan-note"><svg><use href="#ic-alert"/></svg>
@@ -744,7 +746,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         <div id="devices-section">
           <div class="dev-tools">
             <div class="search"><svg><use href="#ic-search"/></svg>
-              <input class="input" id="dev-search" placeholder="имя, IP, MAC, интерфейс…" autocomplete="off"></div>
+              <input class="input" id="dev-search" placeholder="имя, IP, MAC, интерфейс…" autocomplete="off" aria-label="Поиск устройств" type="search"></div>
             <button class="btn primary" id="dev-save"><svg><use href="#ic-check"/></svg>Сохранить выбор</button>
           </div>
           <div class="dlist" id="dev-list"><div class="skel"></div><div class="skel"></div></div>
@@ -758,8 +760,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <div class="card glass" style="margin-bottom:14px">
         <h3>Добавить CIDR-маршрут в VPN</h3>
         <div class="raddf">
-          <input class="input" id="new-cidr" placeholder="10.0.0.0/8 или 8.8.8.8" autocomplete="off">
-          <input class="input" id="new-comment" placeholder="комментарий" maxlength="80" autocomplete="off">
+          <input class="input" id="new-cidr" placeholder="10.0.0.0/8 или 8.8.8.8" autocomplete="off" inputmode="decimal" aria-label="CIDR или IP-адрес">
+          <input class="input" id="new-comment" placeholder="комментарий" maxlength="80" autocomplete="off" aria-label="Комментарий к маршруту">
           <button class="btn primary" id="route-add"><svg><use href="#ic-add"/></svg>Добавить</button>
           <button class="btn" id="route-import-btn"><svg><use href="#ic-import"/></svg>Импорт из Keenetic</button>
         </div>
@@ -810,7 +812,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         <div class="setrow">
           <div class="stext"><b>Автозапуск VPN при загрузке роутера</b>
             <span>enabled-профили поднимутся сами после перезагрузки</span></div>
-          <button class="tgl" id="autostart-toggle" aria-label="Автозапуск VPN"></button>
+          <button class="tgl" id="autostart-toggle" role="switch" aria-checked="false" aria-label="Автозапуск VPN"></button>
         </div>
       </div>
       <div class="card glass" id="sysinfo">
@@ -856,6 +858,18 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <span class="grow"></span>
       <button class="btn" id="m-cancel">Отмена</button>
       <button class="btn primary" id="m-save"><svg><use href="#ic-check"/></svg>Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ МОДАЛКА-ПОДТВЕРЖДЕНИЕ ════════════════ -->
+<div class="modal-overlay" id="confirm-overlay" aria-hidden="true">
+  <div class="modal glass" id="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirm-text"
+       style="width:min(420px,94vw)">
+    <p id="confirm-text" style="font-size:var(--t-md);margin-bottom:18px"></p>
+    <div class="mfoot" style="margin-top:0"><span class="grow"></span>
+      <button class="btn" id="confirm-no">Отмена</button>
+      <button class="btn danger" id="confirm-yes">Удалить</button>
     </div>
   </div>
 </div>
@@ -1109,16 +1123,31 @@ function renderThemeGrid(){
     '<div class="prev" style="background:'+CUSTOM.bg+'"><i style="background:'+CUSTOM.accent+'"></i></div>'+
     '<span>Своя</span></div>';
 }
+function openThemePicker(open){
+  const pop=$('#theme-picker');
+  pop.classList.toggle('open',open);
+  $('#theme-btn').setAttribute('aria-expanded',open);
+  if(open){ const a=pop.querySelector('.act')||pop.querySelector('button'); if(a) a.focus(); }
+}
+function closeThemePicker(refocus){
+  if(!$('#theme-picker').classList.contains('open')) return;
+  openThemePicker(false); if(refocus) $('#theme-btn').focus();
+}
 $('#theme-btn').addEventListener('click',e=>{
-  e.stopPropagation(); $('#theme-picker').classList.toggle('open');
+  e.stopPropagation(); openThemePicker(!$('#theme-picker').classList.contains('open'));
 });
 $('#theme-picker').addEventListener('click',e=>{
   const b=e.target.closest('[data-th]'); if(!b) return;
-  applyTheme(b.dataset.th);
+  applyTheme(b.dataset.th); closeThemePicker(true);
 });
-document.addEventListener('click',e=>{
-  if(!e.target.closest('.tbwrap')) $('#theme-picker').classList.remove('open');
+$('#theme-picker').addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ e.preventDefault(); closeThemePicker(true); return; }
+  const btns=[...$('#theme-picker').querySelectorAll('button')];
+  const i=btns.indexOf(document.activeElement);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); (btns[i+1]||btns[0]).focus(); }
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); (btns[i-1]||btns[btns.length-1]).focus(); }
 });
+document.addEventListener('click',e=>{ if(!e.target.closest('.tbwrap')) closeThemePicker(false); });
 
 /* ════════════════════════════ ТОСТЫ ════════════════════════════ */
 function toast(msg,kind){
@@ -1127,6 +1156,41 @@ function toast(msg,kind){
   el.textContent=msg;
   $('#toast').appendChild(el);
   setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),300); },2800);
+}
+
+/* ════════════════════════════ ФОКУС-ЛОВУШКА + ПОДТВЕРЖДЕНИЕ ════════════════════════════ */
+const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+function trapFocus(box){
+  box._trap=e=>{
+    if(e.key!=='Tab') return;
+    const f=[...box.querySelectorAll(FOCUSABLE)].filter(el=>el.offsetParent!==null);
+    if(!f.length) return;
+    const first=f[0], last=f[f.length-1];
+    if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  };
+  box.addEventListener('keydown',box._trap);
+}
+function releaseFocus(box){ if(box._trap){ box.removeEventListener('keydown',box._trap); box._trap=null; } }
+function confirmModal(text,okLabel){
+  return new Promise(res=>{
+    const ov=$('#confirm-overlay'), box=$('#confirm-box'), yes=$('#confirm-yes'), no=$('#confirm-no');
+    $('#confirm-text').textContent=text; yes.textContent=okLabel||'Удалить';
+    const prev=document.activeElement;
+    ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
+    trapFocus(box); yes.focus();
+    const done=v=>{
+      releaseFocus(box);
+      ov.classList.remove('open'); ov.setAttribute('aria-hidden','true');
+      yes.onclick=no.onclick=ov.onclick=null; document.removeEventListener('keydown',onKey);
+      if(prev&&prev.focus) prev.focus();
+      res(v);
+    };
+    const onKey=e=>{ if(e.key==='Escape'){ e.preventDefault(); done(false); } };
+    yes.onclick=()=>done(true); no.onclick=()=>done(false);
+    ov.onclick=e=>{ if(e.target===ov) done(false); };
+    document.addEventListener('keydown',onKey);
+  });
 }
 
 /* ════════════════════════════ КАСТОМНЫЙ SELECT (themed) ════════════════════════════ */
@@ -1691,15 +1755,23 @@ async function editProfile(name){
       esc(w.label||w.iface)+(w.default?' · default':'')+(w.connected===false?' · нет линка':'')+'</option>').join('');
   enhanceSelect($('#m-wan-select'));
   $('#m-content').value=d.content||'';
+  MODAL_RETURN=document.activeElement;
   const ov=$('#profile-modal-overlay');
   ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
+  document.querySelector('.app').setAttribute('inert','');
+  trapFocus($('#profile-modal'));
   $('#m-name').focus();
 }
+let MODAL_RETURN=null;
 function closeModal(){
   MODAL_OPEN=false; MODAL_NAME='';
   const ov=$('#profile-modal-overlay');
+  releaseFocus($('#profile-modal'));
   ov.classList.remove('open'); ov.setAttribute('aria-hidden','true');
+  document.querySelector('.app').removeAttribute('inert');
   renderProfilesView();
+  if(MODAL_RETURN&&MODAL_RETURN.focus) MODAL_RETURN.focus();
+  MODAL_RETURN=null;
 }
 $('#m-close').addEventListener('click',closeModal);
 $('#m-cancel').addEventListener('click',closeModal);
@@ -1724,7 +1796,7 @@ $('#m-save').addEventListener('click',async()=>{
 $('#m-delete').addEventListener('click',async()=>{
   const p=STATE.profiles.find(x=>x.name===MODAL_NAME);
   if(p&&p.running) return toast('Сначала остановите туннель','error');
-  if(!confirm('Удалить профиль «'+MODAL_NAME+'»? Файл .ovpn будет стёрт.')) return;
+  if(!await confirmModal('Удалить профиль «'+MODAL_NAME+'»? Файл .ovpn будет стёрт.')) return;
   try{
     const r=await API.text('delete-profile',{name:MODAL_NAME});
     toast(r.trim()||'Профиль удалён','ok');
@@ -1766,7 +1838,7 @@ function updateSchedNext(){
   const el=$('#sched-next'); if(!el) return;
   if(!SCHED_ENABLED){ el.textContent='расписание выключено — события не выполняются'; return; }
   const acts=gridToActions(SGRID);
-  if(!acts.length){ el.textContent='нарисуйте часы работы в сетке (протяжкой)'; return; }
+  if(!acts.length){ el.textContent='отметьте часы работы в сетке (протяжкой или Enter по ячейке)'; return; }
   const evs=[];
   acts.forEach(a=>a.dow.forEach(d=>evs.push({m:(d-1)*1440+a.hh*60+a.mm,on:a.do==='start'})));
   evs.sort((a,b)=>a.m-b.m);
@@ -1787,12 +1859,14 @@ function renderSchedBox(box){
     rows+='<div class="slbl">'+DOWS[r]+'</div>';
     for(let c=0;c<24;c++){
       const i=r*24+c;
-      rows+='<div class="scell'+(SGRID[i]?' on':'')+'" data-i="'+i+'"></div>';
+      rows+='<div class="scell'+(SGRID[i]?' on':'')+'" data-i="'+i+'" role="gridcell" tabindex="0" '+
+        'aria-label="'+DOWS[r]+' '+c+':00 — '+(SGRID[i]?'работает':'выключен')+'" '+
+        'aria-selected="'+(SGRID[i]?'true':'false')+'"></div>';
     }
   }
   box.innerHTML=
     '<div class="srow"><span class="lbl">Расписание работы туннеля</span>'+
-    '<button class="tgl'+(SCHED_ENABLED?' on':'')+'" id="sched-enabled" aria-label="Расписание включено"></button></div>'+
+    '<button class="tgl'+(SCHED_ENABLED?' on':'')+'" id="sched-enabled" role="switch" aria-checked="'+SCHED_ENABLED+'" aria-label="Расписание включено"></button></div>'+
     '<div class="sgrid" id="sched-grid">'+head+rows+'</div>'+
     '<div id="sched-next"></div>'+
     '<div class="mfoot" style="margin-top:0"><span class="grow"></span>'+
@@ -1800,10 +1874,13 @@ function renderSchedBox(box){
     '<button class="btn primary" id="sched-save"><svg><use href="#ic-check"/></svg>Сохранить</button></div>';
   updateSchedNext();
   $('#sched-enabled').addEventListener('click',e=>{
-    SCHED_ENABLED=!SCHED_ENABLED; e.target.classList.toggle('on',SCHED_ENABLED); updateSchedNext(); });
+    SCHED_ENABLED=!SCHED_ENABLED; e.target.classList.toggle('on',SCHED_ENABLED);
+    e.target.setAttribute('aria-checked',SCHED_ENABLED); updateSchedNext(); });
   const grid=$('#sched-grid');
   const paint=el=>{ if(!el||!el.classList||!el.classList.contains('scell')) return;
-    SGRID[+el.dataset.i]=SPAINT; el.classList.toggle('on',SPAINT); };
+    const i=+el.dataset.i; SGRID[i]=SPAINT; el.classList.toggle('on',SPAINT);
+    el.setAttribute('aria-selected',SPAINT);
+    el.setAttribute('aria-label',DOWS[Math.floor(i/24)]+' '+(i%24)+':00 — '+(SPAINT?'работает':'выключен')); };
   grid.addEventListener('pointerdown',e=>{
     const c=e.target.closest('.scell'); if(!c) return;
     SPAINT=!c.classList.contains('on'); paint(c);
@@ -1816,6 +1893,19 @@ function renderSchedBox(box){
   const stop=()=>{ if(SPAINT!==null){ SPAINT=null; updateSchedNext(); } };
   grid.addEventListener('pointerup',stop);
   grid.addEventListener('pointercancel',stop);
+  // клавиатура: Enter/Space переключают ячейку, стрелки двигают фокус по сетке
+  grid.addEventListener('keydown',e=>{
+    const c=e.target.closest('.scell'); if(!c) return;
+    const i=+c.dataset.i;
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault();
+      SPAINT=!c.classList.contains('on'); paint(c); SPAINT=null; updateSchedNext(); return; }
+    let ni=null;
+    if(e.key==='ArrowRight') ni=i%24<23?i+1:i;
+    else if(e.key==='ArrowLeft') ni=i%24>0?i-1:i;
+    else if(e.key==='ArrowDown') ni=i+24<168?i+24:i;
+    else if(e.key==='ArrowUp') ni=i-24>=0?i-24:i;
+    if(ni!==null){ e.preventDefault(); const t=grid.querySelector('.scell[data-i="'+ni+'"]'); if(t) t.focus(); }
+  });
   $('#sched-close').addEventListener('click',closeSched);
   $('#sched-save').addEventListener('click',async()=>{
     const name=SCHED_OPEN;
@@ -1890,21 +1980,24 @@ async function loadDevs(){
     try{
       DEV_MODE=(await API.text('mode',{profile:t.profile})).trim()==='all'?'all':'devices';
     }catch(e){ DEV_MODE='devices'; }
-    $('#mode-devices').classList.toggle('on',DEV_MODE==='devices');
-    $('#mode-all').classList.toggle('on',DEV_MODE==='all');
+    setModeButtons(DEV_MODE);
     $('#devices-section').classList.toggle('muted-section',DEV_MODE==='all');
   } else $('#devices-section').classList.remove('muted-section');
   try{ DEVS=await API.json('devices',t); }
   catch(e){ DEVS=[]; }
   renderDevs();
 }
+function setModeButtons(m){
+  const d=$('#mode-devices'), a=$('#mode-all');
+  d.classList.toggle('on',m==='devices'); d.setAttribute('aria-pressed',m==='devices');
+  a.classList.toggle('on',m==='all');     a.setAttribute('aria-pressed',m==='all');
+}
 async function setMode(m){
   const t=devTarget(); if(!t.profile) return;
   try{
     await API.post('mode',{profile:t.profile},m);
     DEV_MODE=m;
-    $('#mode-devices').classList.toggle('on',m==='devices');
-    $('#mode-all').classList.toggle('on',m==='all');
+    setModeButtons(m);
     $('#devices-section').classList.toggle('muted-section',m==='all');
     toast(m==='all'?'Через VPN пойдёт весь LAN':'Через VPN — только выбранные устройства','ok');
     PROFILES_SIG=''; loadProfiles();
@@ -1931,7 +2024,8 @@ $('#dev-save').addEventListener('click',async()=>{
   }catch(e){ toast('Ошибка сохранения','error'); }
   finally{ btn.disabled=false; }
 });
-ON_ENTER.devices=()=>{
+ON_ENTER.devices=async()=>{
+  if(!STATE.wans.length) await loadWans();
   fillDevTargets();
   if(window.DEV_TARGET){
     const sel=$('#dev-profile');
@@ -1989,7 +2083,7 @@ $('#routes-list').addEventListener('click',e=>{
   const del=e.target.closest('[data-rdel]');
   if(del){
     const r=ROUTES_ARR[+del.dataset.rdel];
-    if(confirm('Удалить маршрут '+r.cidr+'?')) routesPost('action=delete&index='+del.dataset.rdel);
+    confirmModal('Удалить маршрут '+r.cidr+'?').then(ok=>{ if(ok) routesPost('action=delete&index='+del.dataset.rdel); });
   }
 });
 $('#routes-list').addEventListener('change',e=>{
@@ -2023,7 +2117,7 @@ $('#route-import-btn').addEventListener('click',async()=>{
     }
   });
 });
-ON_ENTER.routes=loadRoutes;
+ON_ENTER.routes=async()=>{ if(!STATE.wans.length) await loadWans(); loadRoutes(); };
 
 /* ════════════════════════════ ЖУРНАЛ ════════════════════════════ */
 let LOG_TIMER=null;
@@ -2045,12 +2139,12 @@ $('#log-auto').addEventListener('change',startLogAuto);
 $('#log-refresh').addEventListener('click',loadLog);
 $('#pinglog-refresh').addEventListener('click',loadPingLog);
 $('#log-clear').addEventListener('click',async()=>{
-  if(!confirm('Очистить лог OpenVPN?')) return;
+  if(!await confirmModal('Очистить лог OpenVPN?','Очистить')) return;
   try{ await API.text('clearlog'); toast('Лог очищен','ok'); loadLog(); }
   catch(e){ toast('Ошибка очистки','error'); }
 });
 $('#pinglog-clear').addEventListener('click',async()=>{
-  if(!confirm('Очистить лог watchdog?')) return;
+  if(!await confirmModal('Очистить лог watchdog?','Очистить')) return;
   try{ await API.post('pinglog',null,'action=clear'); toast('Лог watchdog очищен','ok'); loadPingLog(); }
   catch(e){ toast('Ошибка очистки','error'); }
 });
@@ -2073,14 +2167,14 @@ async function loadSysinfo(){
 async function loadAutostart(){
   try{
     const on=(await API.text('autostart')).trim()==='yes';
-    $('#autostart-toggle').classList.toggle('on',on);
+    const t=$('#autostart-toggle'); t.classList.toggle('on',on); t.setAttribute('aria-checked',on);
   }catch(e){}
 }
 $('#autostart-toggle').addEventListener('click',async()=>{
   const t=$('#autostart-toggle'), on=!t.classList.contains('on');
   try{
     await API.post('autostart',null,on?'yes':'no');
-    t.classList.toggle('on',on);
+    t.classList.toggle('on',on); t.setAttribute('aria-checked',on);
     toast(on?'Автозапуск включён':'Автозапуск выключен','ok');
   }catch(e){ toast('Ошибка сохранения','error'); }
 });
@@ -2114,6 +2208,10 @@ async function loadAll(){
 $('#refresh-btn').addEventListener('click',loadAll);
 
 /* ════════════════════════════ СТАРТ ════════════════════════════ */
+// связываем табы с панелями для скринридера (role=tabpanel + aria)
+$$('.tab').forEach(t=>{ const n=t.dataset.tab; t.id='tab-'+n; t.setAttribute('aria-controls','view-'+n); });
+$$('.view').forEach(v=>{ const n=v.dataset.view; v.id='view-'+n;
+  v.setAttribute('role','tabpanel'); v.setAttribute('aria-labelledby','tab-'+n); v.setAttribute('tabindex','0'); });
 initTheme();
 switchTab((location.hash.match(/^#\/(\w+)/)||[])[1]||'overview');
 renderChart();          // буфер из sessionStorage виден ещё до первого полла
