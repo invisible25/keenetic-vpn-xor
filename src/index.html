@@ -40,10 +40,10 @@
   --scheme:dark;
 }
 [data-theme="abyss-light"]{
-  --bg:#E7F2F0; --blob1:#5EEAD4; --blob2:#7DD3FC; --blob3:#A5F3FC;
-  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --bg:#DDE8E7; --blob1:#7FD9CC; --blob2:#9CC9E0; --blob3:#B6D8E4;
+  --glass:rgba(255,255,255,.5); --glass-strong:rgba(255,255,255,.72);
   --hairline:rgba(15,70,75,.14); --hairline-hi:rgba(15,70,75,.28);
-  --ink:#0E2E33; --ink2:#2C4F53; --muted:#456E6D;
+  --ink:#0E2E33; --ink2:#2C4F53; --muted:#3C6362;
   --accent:#075985; --accent-2:#0B6E64; --on-accent:#F0FAFF;
   --ok:#047857; --bad:#E11D48; --warn:#A16207; --info:#4338CA;
   --rx:#2563EB; --tx:#B45309; --shadow:rgba(60,110,110,.25);
@@ -52,8 +52,8 @@
 
 /* Портированные пресеты прежней панели (входной слой, тот же контракт переменных) */
 [data-theme="gold-light"]{
-  --bg:#F2EDE3; --blob1:#E7C873; --blob2:#F3E3B8; --blob3:#D9B45B;
-  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --bg:#ECE4D3; --blob1:#DEC488; --blob2:#E7DCBE; --blob3:#D3BA83;
+  --glass:rgba(255,255,255,.5); --glass-strong:rgba(255,255,255,.72);
   --hairline:rgba(90,70,20,.14); --hairline-hi:rgba(90,70,20,.28);
   --ink:#2A2013; --ink2:#54452C; --muted:#6E5E3E;
   --accent:#8A5406; --accent-2:#8A6D1F; --on-accent:#FFF8E6;
@@ -97,8 +97,8 @@
   --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(0,10,15,.65); --scheme:dark;
 }
 [data-theme="mint"]{
-  --bg:#E8F4EC; --blob1:#6EE7B7; --blob2:#99F6E4; --blob3:#A7F3D0;
-  --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
+  --bg:#DEEAE2; --blob1:#8FD9B8; --blob2:#A9E4DC; --blob3:#AEDCC4;
+  --glass:rgba(255,255,255,.5); --glass-strong:rgba(255,255,255,.72);
   --hairline:rgba(10,70,45,.14); --hairline-hi:rgba(10,70,45,.28);
   --ink:#0E2E22; --ink2:#2C5044; --muted:#456B5D;
   --accent:#115E59; --accent-2:#0F7A4B; --on-accent:#F0FFFA;
@@ -153,7 +153,12 @@ a{color:inherit}
 .b1{width:44vw;height:44vw;left:-8vw;top:-14vh;background:var(--blob1)}
 .b2{width:36vw;height:36vw;right:-6vw;top:22vh;background:var(--blob2);opacity:.4}
 .b3{width:30vw;height:30vw;left:30vw;bottom:-18vh;background:var(--blob3);opacity:.35}
-[data-theme$="light"] .blob{opacity:.55;filter:blur(110px)}
+/* светлые темы: блобы почти незаметны и приглушены — иначе фон «кислит» */
+[data-scheme="light"] .blob{opacity:.2;filter:blur(150px) saturate(.55)}
+[data-scheme="light"] .b2{opacity:.14}
+[data-scheme="light"] .b3{opacity:.1}
+[data-scheme="light"] .glass{-webkit-backdrop-filter:blur(18px) saturate(1.05);backdrop-filter:blur(18px) saturate(1.05)}
+[data-scheme="light"] .side,[data-scheme="light"] .topbar{-webkit-backdrop-filter:blur(12px) saturate(1);backdrop-filter:blur(12px) saturate(1)}
 
 /* стекло — три яруса глубины (хром / контент / поднятое) */
 .glass{background:var(--glass);
@@ -570,18 +575,31 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .sysgrid .mi small{display:block;font:600 .58rem var(--f-text);color:var(--muted);
   text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
 .sysgrid .mi b{font:500 .74rem var(--f-mono);color:var(--ink);word-break:break-word}
-/* поповер выбора темы в топбаре */
-/* поповер — «поднятый» ярус; своя непрозрачная подложка, т.к. вложенный
-   backdrop-filter (внутри .topbar.glass) по спецификации не захватывает страницу */
+/* меню выбора темы в топбаре — вертикальный список с реальным превью палитры.
+   Своя непрозрачная подложка: вложенный backdrop-filter (внутри .topbar.glass)
+   по спецификации не захватывает страницу */
 .tpick{position:absolute;right:0;top:calc(100% + 8px);z-index:95;display:none;
-  padding:12px;gap:10px;grid-template-columns:repeat(5,34px);
-  background:color-mix(in srgb,var(--bg) 88%,var(--ink) 6%);
+  flex-direction:column;gap:2px;width:250px;max-height:70vh;overflow:auto;padding:6px;
+  border:1px solid var(--hairline-hi);border-radius:var(--r-md);
+  background:color-mix(in srgb,var(--bg) 92%,var(--ink) 5%);
   -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--elev-2)}
-.tpick.open{display:grid}
-.tpick button{width:34px;height:34px;border-radius:50%;border:2px solid var(--hairline-hi);
-  cursor:pointer;transition:transform var(--dur-1)}
-.tpick button:hover{transform:scale(1.12)}
-.tpick button.act{border-color:var(--accent)}
+.tpick.open{display:flex}
+.tpick.up{top:auto;bottom:calc(100% + 8px)}
+.tpick-hd{font:700 .58rem var(--f-text);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);padding:6px 10px 4px}
+.tpick-item{display:flex;align-items:center;gap:12px;width:100%;padding:8px 10px;
+  border-radius:var(--r-sm);cursor:pointer;text-align:left;color:var(--ink2);
+  transition:background var(--dur-1),color var(--dur-1)}
+.tpick-item:hover{background:var(--glass-strong);color:var(--ink)}
+.tpick-item.act{color:var(--ink)}
+.tpick-prev{width:46px;height:30px;border-radius:8px;flex:none;position:relative;overflow:hidden;
+  border:1px solid rgba(255,255,255,.14)}
+.tpick-prev .pa{position:absolute;right:5px;bottom:5px;width:12px;height:12px;border-radius:50%}
+.tpick-prev .pt{position:absolute;left:6px;top:3px;font:800 12px var(--f-disp);line-height:1}
+.tpick-item .pn{flex:1;min-width:0;font-weight:700;font-size:var(--t-sm);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpick-item .pchk{width:17px;height:17px;flex:none;color:var(--accent);opacity:0}
+.tpick-item.act .pchk{opacity:1}
 .tbwrap{position:relative}
 
 /* ════════════════════════════ МОБИЛЬНЫЙ ТАБ-БАР ════════════════════════════ */
@@ -630,6 +648,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   <symbol id="ic-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></g></symbol>
   <symbol id="ic-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></g></symbol>
   <symbol id="ic-chevron" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></g></symbol>
+  <symbol id="ic-back" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></g></symbol>
   <symbol id="ic-wan" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 13v7"/></g></symbol>
   <symbol id="ic-watchdog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></g></symbol>
   <symbol id="ic-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></g></symbol>
@@ -659,12 +678,13 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
     <!-- ════════════════ ТОПБАР ════════════════ -->
     <header class="topbar glass">
       <span class="tbrand"><span class="mark" style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent)"><svg style="width:16px;height:16px"><use href="#ic-mark"/></svg></span></span>
+      <button class="icobtn" id="back-btn" hidden aria-label="Назад"><svg><use href="#ic-back"/></svg></button>
       <h1 id="page-title">Обзор</h1>
       <span class="pill" id="header-pill"><span class="dot"></span><span id="header-pill-text">…</span></span>
       <button class="icobtn" id="refresh-btn" title="Обновить данные" aria-label="Обновить данные"><svg><use href="#ic-refresh"/></svg></button>
       <span class="tbwrap">
         <button class="icobtn" id="theme-btn" title="Тема оформления" aria-label="Тема оформления" aria-haspopup="true" aria-expanded="false"><svg><use href="#ic-theme"/></svg></button>
-        <div class="tpick glass" id="theme-picker" aria-label="Выбор темы"></div>
+        <div class="tpick" id="theme-picker" role="menu" aria-label="Выбор темы"></div>
       </span>
     </header>
 
@@ -1047,15 +1067,15 @@ const API={
 
 /* ════════════════════════════ ТЕМЫ (пресеты + custom-движок) ════════════════════════════ */
 const THEMES={
-  'abyss-dark':  {label:'Глубина',        bg:'#04141A',accent:'#38BDF8',dark:1},
-  'abyss-light': {label:'Глубина светлая',bg:'#E7F2F0',accent:'#0284C7',dark:0},
-  'gold-light':  {label:'Gold светлая',   bg:'#F2EDE3',accent:'#A16207',dark:0},
-  'gold-dark':   {label:'Gold тёмная',    bg:'#181410',accent:'#D9AE3E',dark:1},
-  'noir':        {label:'Noir',           bg:'#121110',accent:'#C9A227',dark:1},
-  'tokyonight':  {label:'Tokyo Night',    bg:'#1A1B26',accent:'#7AA2F7',dark:1},
-  'neo':         {label:'Cyber',          bg:'#070C10',accent:'#00E5FF',dark:1},
-  'mint':        {label:'Mint',           bg:'#E8F4EC',accent:'#0D9488',dark:0},
-  'catppuccin':  {label:'Catppuccin',     bg:'#1E1E2E',accent:'#89B4FA',dark:1}
+  'abyss-dark':  {label:'Глубина',        bg:'#04141A',accent:'#38BDF8',ink:'#E7F9F5',dark:1},
+  'abyss-light': {label:'Глубина светлая',bg:'#DDE8E7',accent:'#075985',ink:'#0E2E33',dark:0},
+  'gold-light':  {label:'Gold светлая',   bg:'#ECE4D3',accent:'#8A5406',ink:'#2A2013',dark:0},
+  'gold-dark':   {label:'Gold тёмная',    bg:'#181410',accent:'#D9AE3E',ink:'#F5EEDC',dark:1},
+  'noir':        {label:'Noir',           bg:'#121110',accent:'#C9A227',ink:'#EDE9E1',dark:1},
+  'tokyonight':  {label:'Tokyo Night',    bg:'#1A1B26',accent:'#7AA2F7',ink:'#C0CAF5',dark:1},
+  'neo':         {label:'Cyber',          bg:'#070C10',accent:'#00E5FF',ink:'#E6FBFF',dark:1},
+  'mint':        {label:'Mint',           bg:'#DEEAE2',accent:'#115E59',ink:'#0E2E22',dark:0},
+  'catppuccin':  {label:'Catppuccin',     bg:'#1E1E2E',accent:'#89B4FA',ink:'#CDD6F4',dark:1}
 };
 const THEME_KEY='invnet-theme-v3';
 let CUR_THEME='abyss-dark';
@@ -1126,6 +1146,7 @@ function applyTheme(id,custom){
   // контролы/скроллбары иначе светлые на тёмной теме)
   const isDark=id==='custom'?_lum(CUSTOM.bg)<.45:!!THEMES[id].dark;
   document.documentElement.style.colorScheme=isDark?'dark':'light';
+  document.documentElement.dataset.scheme=isDark?'dark':'light';   // для тонировки блобов и пр.
   CUR_THEME=id;
   try{ localStorage.setItem(THEME_KEY,JSON.stringify({theme:id,custom:CUSTOM})); }catch(e){}
   renderThemePicker(); renderThemeGrid();
@@ -1148,14 +1169,25 @@ function initTheme(){
     : (matchMedia('(prefers-color-scheme: light)').matches?'abyss-light':'abyss-dark');
   applyTheme(id);
 }
+function themeItem(id,t){
+  const on=CUR_THEME===id;
+  const prev=t
+    ? '<span class="tpick-prev" style="background:'+t.bg+'">'+
+        '<span class="pt" style="color:'+t.ink+'">Aa</span>'+
+        '<span class="pa" style="background:'+t.accent+'"></span></span>'
+    : '<span class="tpick-prev" style="background:'+CUSTOM.bg+'">'+
+        '<span class="pt" style="color:'+CUSTOM.text+'">Aa</span>'+
+        '<span class="pa" style="background:'+CUSTOM.accent+'"></span></span>';
+  return '<button class="tpick-item'+(on?' act':'')+'" data-th="'+id+'" role="menuitemradio" '+
+    'aria-checked="'+on+'">'+prev+
+    '<span class="pn">'+esc(t?t.label:'Своя тема')+'</span>'+
+    '<svg class="pchk"><use href="#ic-check"/></svg></button>';
+}
 function renderThemePicker(){
   const box=$('#theme-picker'); if(!box) return;
-  box.innerHTML=Object.entries(THEMES).map(([id,t])=>
-    '<button data-th="'+id+'" class="'+(CUR_THEME===id?'act':'')+'" title="'+esc(t.label)+'" '+
-    'style="background:linear-gradient(135deg,'+t.bg+' 55%,'+t.accent+' 55%)" '+
-    'aria-label="Тема '+esc(t.label)+'"></button>').join('')+
-    '<button data-th="custom" class="'+(CUR_THEME==='custom'?'act':'')+'" title="Своя" '+
-    'style="background:conic-gradient(#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7,#f43f5e)" aria-label="Своя тема"></button>';
+  box.innerHTML='<div class="tpick-hd">Оформление</div>'+
+    Object.entries(THEMES).map(([id,t])=>themeItem(id,t)).join('')+
+    themeItem('custom',null);
 }
 function renderThemeGrid(){
   const box=$('#theme-grid'); if(!box) return;
@@ -1337,9 +1369,21 @@ const VALID_TABS=['overview','profiles','devices','routes','log','settings'];
 const TAB_TITLES={overview:'Обзор',profiles:'Профили',devices:'Устройства',routes:'Маршруты',log:'Журнал',settings:'Настройки'};
 const ON_ENTER={}, ON_LEAVE={};   // хуки видов (наполняются этапами 3.x)
 let CUR_TAB='overview';
-function switchTab(name){
+const NAV_STACK=[];               // история переходов внутри сессии (для кнопки «назад»)
+function updateBackBtn(){
+  const b=$('#back-btn'); if(!b) return;
+  b.hidden=!NAV_STACK.length;
+  if(NAV_STACK.length) b.setAttribute('aria-label','Назад к «'+TAB_TITLES[NAV_STACK[NAV_STACK.length-1]]+'»');
+}
+function switchTab(name,opts){
+  opts=opts||{};
   if(!VALID_TABS.includes(name)) name='overview';
   if(name===CUR_TAB) return;
+  if(!opts.back){                 // обычный переход — запоминаем откуда пришли
+    if(NAV_STACK[NAV_STACK.length-1]!==CUR_TAB) NAV_STACK.push(CUR_TAB);
+    if(NAV_STACK.length>20) NAV_STACK.shift();
+  }
+  updateBackBtn();
   (ON_LEAVE[CUR_TAB]||(()=>{}))();
   CUR_TAB=name;
   $$('.tab').forEach(t=>{ const on=t.dataset.tab===name;
@@ -1349,6 +1393,13 @@ function switchTab(name){
   history.replaceState(null,'','#/'+name);
   (ON_ENTER[name]||(()=>{}))();
 }
+function goBack(){
+  if(!NAV_STACK.length) return;
+  const prev=NAV_STACK.pop();
+  updateBackBtn();
+  switchTab(prev,{back:true});
+}
+$('#back-btn').addEventListener('click',goBack);
 $$('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
 document.querySelector('.nav').addEventListener('keydown',e=>{
   if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft'&&e.key!=='ArrowDown'&&e.key!=='ArrowUp') return;
