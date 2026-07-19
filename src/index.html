@@ -137,7 +137,7 @@
 
 /* ════════════════════════════ БАЗА ════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0}
-html{font-size:16px;color-scheme:var(--scheme)}
+html{font-size:16px}  /* color-scheme ставится литералом в applyTheme (var() тут игнорируется) */
 body{min-height:100dvh;background:var(--bg);color:var(--ink);
   font-family:var(--f-text);line-height:1.5;overflow-x:hidden;transition:background var(--dur-3) var(--ease)}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
@@ -237,6 +237,43 @@ main{min-width:0}
 .btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
 .btn.danger:hover{background:var(--bad-soft)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* кастомный select (нативный <select> прячется, значение/change сохраняются) */
+.xsel{position:relative;display:inline-block;width:100%}
+.xsel > select{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0}
+.xsel-btn{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;
+  padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--hairline-hi);
+  background:var(--glass-soft);color:var(--ink);font-size:var(--t-sm);font-weight:600;
+  text-align:left;transition:border-color var(--dur-1)}
+.xsel-btn:hover{border-color:var(--accent)}
+.xsel-btn .xv{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xsel-btn .xchev{width:16px;height:16px;flex:none;color:var(--muted);transition:transform var(--dur-1)}
+.xsel.open .xsel-btn{border-color:var(--accent)}
+.xsel.open .xchev{transform:rotate(90deg)}
+.xsel-pop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:60;display:none;
+  max-height:280px;overflow:auto;padding:6px;border-radius:var(--r-md);
+  border:1px solid var(--hairline-hi);box-shadow:var(--elev-2);
+  background:color-mix(in srgb,var(--bg) 90%,var(--ink) 5%);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4)}
+.xsel.open .xsel-pop{display:block}
+.xsel.up .xsel-pop{top:auto;bottom:calc(100% + 6px)}
+.xsel-grp{font:700 .58rem var(--f-text);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);padding:8px 10px 4px}
+.xsel-opt{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--r-sm);
+  font-size:var(--t-sm);color:var(--ink2);cursor:pointer;min-height:38px}
+.xsel-opt:hover,.xsel-opt.hl{background:var(--glass-strong);color:var(--ink)}
+.xsel-opt.sel{color:var(--ink);font-weight:700}
+.xsel-opt.sel::after{content:"";width:15px;height:15px;flex:none;margin-left:auto;
+  -webkit-mask:var(--chk) center/contain no-repeat;mask:var(--chk) center/contain no-repeat;
+  background:var(--accent)}
+.xsel-opt.dis{color:var(--muted);opacity:.5;cursor:not-allowed}
+.xsel-opt.dis:hover{background:none}
+.xsel.compact .xsel-btn{min-height:36px;padding:7px 10px;font-size:.72rem}
+.xsel.dis .xsel-btn{opacity:.5;cursor:not-allowed}
+.dev-tools .xsel{flex:1;max-width:300px}
+.ci-row .xsel{flex:1;min-width:0}
+.rrow .xsel{flex:none;width:auto;min-width:150px;max-width:200px}
+:root{--chk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E")}
 
 /* тумблер */
 .tgl{width:46px;height:26px;border-radius:999px;border:1px solid var(--hairline-hi);
@@ -459,7 +496,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 @media(max-width:640px){
   .rrow{flex-wrap:wrap}
   .rrow .rcomm{flex-basis:100%;order:5}
-  .rrow select{max-width:none;flex:1;min-width:0}
+  .rrow .xsel{max-width:none;flex:1;min-width:0}
 }
 .kimport{margin-top:14px;display:none}
 .kimport.show{display:block}
@@ -1027,6 +1064,10 @@ function applyTheme(id,custom){
     document.documentElement.dataset.theme=id;
     document.querySelector('meta[name=theme-color]').setAttribute('content',THEMES[id].bg);
   }
+  // color-scheme литералом (var() в color-scheme браузеры игнорируют → нативные
+  // контролы/скроллбары иначе светлые на тёмной теме)
+  const isDark=id==='custom'?_lum(CUSTOM.bg)<.45:!!THEMES[id].dark;
+  document.documentElement.style.colorScheme=isDark?'dark':'light';
   CUR_THEME=id;
   try{ localStorage.setItem(THEME_KEY,JSON.stringify({theme:id,custom:CUSTOM})); }catch(e){}
   renderThemePicker(); renderThemeGrid();
@@ -1087,6 +1128,99 @@ function toast(msg,kind){
   $('#toast').appendChild(el);
   setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),300); },2800);
 }
+
+/* ════════════════════════════ КАСТОМНЫЙ SELECT (themed) ════════════════════════════ */
+/* Нативный <select> прячется, но остаётся источником значения и целью события change —
+   все существующие обработчики продолжают работать. Список рисуем сами → стекло/тема. */
+function enhanceSelect(sel,opts){
+  opts=opts||{};
+  let wrap=sel.closest('.xsel');
+  if(!wrap){
+    wrap=document.createElement('div');
+    wrap.className='xsel'+(opts.compact?' compact':'');
+    sel.parentNode.insertBefore(wrap,sel);
+    wrap.appendChild(sel);
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='xsel-btn';
+    btn.setAttribute('aria-haspopup','listbox');
+    btn.innerHTML='<span class="xv"></span><svg class="xchev"><use href="#ic-chevron"/></svg>';
+    if(sel.getAttribute('aria-label')) btn.setAttribute('aria-label',sel.getAttribute('aria-label'));
+    const pop=document.createElement('div');
+    pop.className='xsel-pop'; pop.setAttribute('role','listbox');
+    wrap.appendChild(btn); wrap.appendChild(pop);
+    wrap._btn=btn; wrap._pop=pop;
+    btn.addEventListener('click',e=>{ e.stopPropagation(); toggleXsel(wrap); });
+    btn.addEventListener('keydown',e=>xselKey(e,wrap));
+    pop.addEventListener('click',e=>{
+      const o=e.target.closest('.xsel-opt'); if(!o||o.classList.contains('dis')) return;
+      pickXsel(wrap,o.dataset.val);
+    });
+  }
+  if(!wrap.classList.contains('open')) buildXsel(wrap);
+  return wrap;
+}
+function optHtml(o,sel){
+  const on=o.value===sel.value;
+  return '<div class="xsel-opt'+(on?' sel':'')+(o.disabled?' dis':'')+'" role="option" '+
+    'aria-selected="'+on+'" data-val="'+esc(o.value)+'">'+esc(o.textContent)+'</div>';
+}
+function buildXsel(wrap){
+  const sel=wrap.querySelector('select'), pop=wrap._pop;
+  let html='';
+  [...sel.children].forEach(node=>{
+    if(node.tagName==='OPTGROUP'){
+      html+='<div class="xsel-grp">'+esc(node.label)+'</div>';
+      [...node.children].forEach(o=>{ if(o.tagName==='OPTION') html+=optHtml(o,sel); });
+    } else if(node.tagName==='OPTION'){ html+=optHtml(node,sel); }
+  });
+  pop.innerHTML=html;
+  const cur=sel.options[sel.selectedIndex];
+  wrap._btn.querySelector('.xv').textContent=cur?cur.textContent:'';
+  wrap.classList.toggle('dis',sel.disabled);
+  wrap._btn.disabled=sel.disabled;
+}
+function toggleXsel(wrap){
+  const wasOpen=wrap.classList.contains('open');
+  closeAllXsel();
+  if(!wasOpen && !wrap.querySelector('select').disabled){
+    buildXsel(wrap);
+    wrap.classList.add('open');
+    const r=wrap.getBoundingClientRect();
+    wrap.classList.toggle('up', r.bottom+290>innerHeight && r.top>320);
+    const o=wrap._pop.querySelector('.xsel-opt.sel')||wrap._pop.querySelector('.xsel-opt:not(.dis)');
+    if(o) o.scrollIntoView({block:'nearest'});
+  }
+}
+function closeAllXsel(){ $$('.xsel.open').forEach(w=>{ w.classList.remove('open','up');
+  w._pop.querySelectorAll('.hl').forEach(o=>o.classList.remove('hl')); }); }
+function pickXsel(wrap,val){
+  const sel=wrap.querySelector('select');
+  const changed=sel.value!==val;
+  sel.value=val; buildXsel(wrap);
+  wrap.classList.remove('open','up'); wrap._btn.focus();
+  if(changed) sel.dispatchEvent(new Event('change',{bubbles:true}));
+}
+function xselKey(e,wrap){
+  const open=wrap.classList.contains('open');
+  const opts=[...wrap._pop.querySelectorAll('.xsel-opt:not(.dis)')];
+  if(e.key==='Enter'||e.key===' '){
+    e.preventDefault();
+    if(!open){ toggleXsel(wrap); return; }
+    const hl=wrap._pop.querySelector('.xsel-opt.hl'); if(hl) pickXsel(wrap,hl.dataset.val);
+    return;
+  }
+  if(e.key==='Escape'){ if(open){ e.preventDefault(); closeAllXsel(); } return; }
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    if(!open){ toggleXsel(wrap); return; }
+    let cur=opts.findIndex(o=>o.classList.contains('hl'));
+    if(cur<0) cur=opts.findIndex(o=>o.classList.contains('sel'));
+    const ni=Math.max(0,Math.min(opts.length-1,cur+(e.key==='ArrowDown'?1:-1)));
+    opts.forEach(o=>o.classList.remove('hl'));
+    if(opts[ni]){ opts[ni].classList.add('hl'); opts[ni].scrollIntoView({block:'nearest'}); }
+  }
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.xsel')) closeAllXsel(); });
 
 /* ════════════════════════════ НАВИГАЦИЯ (hash-синк) ════════════════════════════ */
 const VALID_TABS=['overview','profiles','devices','routes','log','settings'];
@@ -1383,6 +1517,7 @@ function fillCheckipSelect(){
     : '<option value="">нет активных</option>';
   sel.disabled=!run.length; $('#checkip-btn').disabled=!run.length;
   if(run.some(p=>p.name===cur)) sel.value=cur;
+  enhanceSelect(sel);
 }
 $('#checkip-btn').addEventListener('click',async()=>{
   const name=$('#checkip-profile').value; if(!name) return;
@@ -1554,6 +1689,7 @@ async function editProfile(name){
   $('#m-wan-select').innerHTML='<option value="">авто (системный default)</option>'+
     STATE.wans.map(w=>'<option value="'+esc(w.iface)+'"'+(w.iface===d.wan?' selected':'')+'>'+
       esc(w.label||w.iface)+(w.default?' · default':'')+(w.connected===false?' · нет линка':'')+'</option>').join('');
+  enhanceSelect($('#m-wan-select'));
   $('#m-content').value=d.content||'';
   const ov=$('#profile-modal-overlay');
   ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
@@ -1728,6 +1864,7 @@ function fillDevTargets(){
       STATE.wans.map(w=>'<option value="wan:'+esc(w.iface)+'">↗ '+esc(w.label||w.iface)+'</option>').join('')+
     '</optgroup>';
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  enhanceSelect(sel);
 }
 function renderDevs(){
   const q=$('#dev-search').value.trim().toLowerCase();
@@ -1824,6 +1961,7 @@ function renderRoutes(){
   }).join('')
   : '<div class="card glass"><div class="empty"><svg><use href="#ic-via"/></svg>'+
     '<b>Маршрутов нет</b><span>добавьте CIDR или импортируйте из Keenetic</span></div></div>';
+  $$('#routes-list select[data-dir]').forEach(s=>enhanceSelect(s,{compact:true}));
 }
 async function routesPost(body){
   try{
