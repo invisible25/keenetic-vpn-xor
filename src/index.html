@@ -345,14 +345,42 @@ main{min-width:0}
 .badge svg{width:14px;height:14px}
 .badge.xor{color:color-mix(in srgb,var(--accent-2) 56%,var(--ink));border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
 .badge.warnb{color:var(--warn)}
-/* топология «поток сквозь стекло» */
-.topo{margin-top:18px;overflow-x:auto}
-.topo svg{width:100%;min-width:520px;display:block}
-.topo text{font:500 10.5px var(--f-mono);fill:var(--muted)}
-.topo .lbl-hi{fill:var(--ink2)}
-.topo .lbl-acc{fill:var(--accent);font-weight:700}
-.flow{stroke-dasharray:6 8;animation:dash 1.2s linear infinite}
-@keyframes dash{to{stroke-dashoffset:-14}}
+/* карта выхода: устройства → (обфускация) → сервер и страна выхода.
+   HTML-раскладка — текст не клипается, обрезается ellipsis'ом */
+.topo{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);
+  display:flex;flex-direction:column;gap:12px}
+.topo-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,120px) minmax(0,1.25fr);
+  align-items:center;gap:4px}
+.tn{display:flex;align-items:center;gap:10px;min-width:0}
+.tn-ic{width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;
+  border:1px solid var(--hairline-hi);background:var(--glass-soft);color:var(--ink2)}
+.tn-ic svg{width:18px;height:18px}
+.tn-ic.exit.xor{border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accent)}
+.tn-ic.exit.vpn{border-color:color-mix(in srgb,var(--info) 45%,transparent);color:var(--info)}
+.tn-tx{min-width:0}
+.tn-tx small{display:block;font:500 var(--t-xs) var(--f-mono);color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn-tx b{display:block;font-size:var(--t-md);font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn-tx .exitc{color:var(--ink);display:flex;align-items:center;gap:6px}
+.tn-tx .cip{color:var(--muted);font-family:var(--f-mono);font-size:.66rem}
+.tn-check{background:none;border:none;color:var(--accent);font:600 var(--t-xs) var(--f-text);
+  cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
+.topo-wire{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px}
+.tw-tag{font:700 .58rem var(--f-mono);letter-spacing:.12em;padding:2px 8px;border-radius:6px;border:1px solid}
+.tw-tag.xor{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.tw-tag.vpn{color:var(--info);border-color:color-mix(in srgb,var(--info) 45%,transparent)}
+.tw-line{width:100%;height:2px;border-radius:2px;
+  background:repeating-linear-gradient(90deg,var(--wc) 0 5px,transparent 5px 12px);
+  background-size:12px 100%;animation:wire .8s linear infinite}
+.tw-line.xor{--wc:var(--accent)} .tw-line.vpn{--wc:var(--info)}
+@keyframes wire{to{background-position:12px 0}}
+@media(prefers-reduced-motion:reduce){.tw-line{animation:none}}
+@media(max-width:560px){
+  .topo-row{grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr)}
+  .tn-ic{width:30px;height:30px} .tn-ic svg{width:15px;height:15px}
+  .tn-tx b{font-size:var(--t-sm)}
+}
 /* плитки туннелей */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px;margin-bottom:18px}
 .tiles .skel{min-height:118px}
@@ -651,7 +679,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
           <span class="badge" id="xor-badge" hidden><svg><use href="#ic-xor"/></svg>XOR-обфускация активна</span>
           <span class="badge" id="wd-badge" hidden><svg><use href="#ic-watchdog"/></svg><span id="wd-badge-text">watchdog</span></span>
         </div>
-        <div class="topo" id="topo" hidden><svg id="topo-svg"></svg></div>
+        <div class="topo" id="topo" hidden></div>
       </div>
 
       <!-- плитки туннелей -->
@@ -1441,41 +1469,41 @@ $('#tiles').addEventListener('keydown',e=>{
   e.preventDefault(); window.DEV_TARGET=tile.dataset.name; switchTab('devices');
 });
 
-/* топология «поток сквозь стекло» — сигнатурная визуализация */
+/* карта выхода: устройства → (обфускация) → сервер и страна выхода.
+   HTML-раскладка: подписи не клипаются, длинные — обрезаются ellipsis'ом */
+const FLAGS={'Финляндия':'🇫🇮','Норвегия':'🇳🇴','Германия':'🇩🇪','США':'🇺🇸','Нидерланды':'🇳🇱',
+  'Швеция':'🇸🇪','Франция':'🇫🇷','Великобритания':'🇬🇧','Турция':'🇹🇷','Туркменистан':'🇹🇲'};
 function renderTopo(){
   const run=STATE.profiles.filter(p=>p.running);
   const wrap=$('#topo');
-  if(!run.length){ wrap.hidden=true; return; }
+  if(!run.length){ wrap.hidden=true; wrap.innerHTML=''; return; }
   wrap.hidden=false;
-  const H=34+run.length*40;
-  const gy=10, gh=H-20;                       // общий стеклянный узел «шифрование»
-  const xorAny=run.some(p=>XOR_CACHE[p.name]), xorAll=run.every(p=>XOR_CACHE[p.name]);
-  const blockLabel=xorAll?'XOR':(xorAny?'ШИФР':'VPN');
-  let s='';
-  run.forEach((p,i)=>{
-    const y=40+i*40;
+  wrap.innerHTML=run.map(p=>{
     const host=(p.remote||'').split(' ')[0]||'—';
     const ci=STATE.checkip[p.name];
     const xor=!!XOR_CACHE[p.name];
-    const dev=p.mode==='all'?'LAN':(p.devices_count+' устр.');
-    // после узла шифрования: XOR-профиль → accent + подпись «XOR»; обычный VPN → info + «VPN»
-    s+='<circle cx="34" cy="'+(y-4)+'" r="8" fill="none" stroke="var(--muted)" stroke-width="1.5"/>'+
-       '<text x="52" y="'+(y-14)+'">'+esc(dev)+'</text>'+
-       '<text x="52" y="'+(y+7)+'" class="lbl-hi">'+esc(wanLabel(p.wan))+'</text>'+
-       '<path class="flow" d="M44 '+(y-4)+' C 130 '+(y-4)+', 150 '+(y-4)+', 226 '+(y-4)+'" fill="none" stroke="var(--rx)" stroke-width="2" vector-effect="non-scaling-stroke" style="animation-delay:'+(i*.3)+'s"/>'+
-       '<path class="flow" d="M298 '+(y-4)+' C 380 '+(y-4)+', 410 '+(y-4)+', 486 '+(y-4)+'" fill="none" stroke="var(--'+(xor?'accent':'info')+')" stroke-width="2" vector-effect="non-scaling-stroke" style="animation-duration:.8s"/>'+
-       '<text x="392" y="'+(y-9)+'" text-anchor="middle" style="font-size:9px;fill:var(--'+(xor?'accent':'info')+')">'+(xor?'XOR':'VPN')+'</text>'+
-       '<rect x="490" y="'+(y-19)+'" width="26" height="26" rx="7" fill="none" stroke="var(--'+(xor?'accent':'info')+')" stroke-width="1.5"/>'+
-       '<circle cx="503" cy="'+(y-6)+'" r="3" fill="var(--'+(xor?'accent':'info')+')"/>'+
-       '<text x="524" y="'+(y-10)+'" class="lbl-hi">'+esc(p.name)+' · '+esc(host)+'</text>'+
-       '<text x="524" y="'+(y+5)+'">'+esc(ci?(ci.country||'')+(ci.ip?' · '+ci.ip:''):'страна: проверьте IP')+'</text>';
-  });
-  s+='<rect x="230" y="'+gy+'" width="64" height="'+gh+'" rx="12" fill="var(--glass-strong)" stroke="var(--hairline-hi)"/>'+
-     '<text x="262" y="'+(gy+gh/2+4)+'" text-anchor="middle" class="lbl-acc" style="font-size:12px">'+blockLabel+'</text>';
-  const svg=$('#topo-svg');
-  svg.setAttribute('viewBox','0 0 640 '+H);
-  svg.innerHTML=s;
+    const kind=xor?'xor':'vpn';
+    const src=p.mode==='all'?'весь LAN':(p.devices_count+' '+plural(p.devices_count,['устр-во','устр-ва','устр-в']));
+    const exit=ci
+      ? '<small class="exitc">'+(FLAGS[ci.country]||'')+' '+esc(ci.country||'выход')+
+        (ci.ip?' <span class="cip">'+esc(ci.ip)+'</span>':'')+'</small>'
+      : '<button class="tn-check" data-checkip="'+esc(p.name)+'">проверить выход →</button>';
+    return '<div class="topo-row">'+
+      '<div class="tn"><span class="tn-ic"><svg><use href="#ic-device"/></svg></span>'+
+        '<span class="tn-tx"><small>'+esc(src)+'</small><b>'+esc(wanLabel(p.wan))+'</b></span></div>'+
+      '<div class="topo-wire"><span class="tw-tag '+kind+'">'+(xor?'XOR':'VPN')+'</span>'+
+        '<span class="tw-line '+kind+'"></span></div>'+
+      '<div class="tn"><span class="tn-ic exit '+kind+'"><svg><use href="#ic-globe"/></svg></span>'+
+        '<span class="tn-tx"><b>'+esc(p.name)+' · '+esc(host)+'</b>'+exit+'</span></div>'+
+    '</div>';
+  }).join('');
 }
+$('#topo').addEventListener('click',e=>{
+  const b=e.target.closest('[data-checkip]'); if(!b) return;
+  $('#checkip-profile').value=b.dataset.checkip;
+  if($('#checkip-profile').closest('.xsel')) buildXsel($('#checkip-profile').closest('.xsel'));
+  $('#checkip-btn').click();
+});
 
 /* ════════════════════════════ ТУМБЛЕР (оптимистичный + фоновый poll) ════════════════════════════ */
 async function profileToggle(name,on){
