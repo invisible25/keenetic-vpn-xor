@@ -404,7 +404,7 @@ main{min-width:0}
 .tile:hover{transform:translateY(-3px)}
 #tiles.ready .tile{animation:vin var(--dur-3) var(--ease)}
 .tile .row{display:flex;align-items:center;gap:9px}
-.tile .tname{display:flex;align-items:center;gap:9px;font-weight:800;font-size:var(--t-lg);
+.tile .tname{font-weight:800;font-size:var(--t-lg);
   flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .xchip{font:700 .62rem var(--f-mono);letter-spacing:.1em;color:color-mix(in srgb,var(--accent-2) 56%,var(--ink));
   border:1px solid color-mix(in srgb,var(--accent-2) 55%,transparent);padding:3px 7px;border-radius:6px;flex:none}
@@ -1551,7 +1551,7 @@ function renderTiles(){
       .filter(Boolean).join(' · ');
     return '<div class="tile glass" data-name="'+esc(p.name)+'" role="button" tabindex="0" '+
       'aria-label="Профиль '+esc(p.name)+': '+st+'">'+
-      '<div class="row"><span class="tname"><span class="dot '+dot+'"></span>'+esc(p.name)+'</span>'+
+      '<div class="row"><span class="dot '+dot+'"></span><span class="tname">'+esc(p.name)+'</span>'+
       (XOR_CACHE[p.name]?'<span class="xchip">XOR</span>':'')+
       '<button class="tgl'+(p.enabled?' on':'')+(TOGGLE_BUSY[p.name]?' busy':'')+'" data-tgl="'+esc(p.name)+'" '+
       'aria-label="'+(p.enabled?'Выключить':'Включить')+' '+esc(p.name)+'"></button></div>'+
