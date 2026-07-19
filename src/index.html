@@ -36,17 +36,17 @@
   --ink:#E7F9F5; --ink2:#BADFD8; --muted:#7FA8A0;
   --accent:#38BDF8; --accent-2:#2DD4BF; --on-accent:#04222B;
   --ok:#34D399; --bad:#FB7185; --warn:#FBBF24; --info:#818CF8;
-  --rx:#818CF8; --tx:#FBBF24; --shadow:rgba(1,12,14,.6);
+  --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(1,12,14,.6);
   --scheme:dark;
 }
 [data-theme="abyss-light"]{
   --bg:#E7F2F0; --blob1:#5EEAD4; --blob2:#7DD3FC; --blob3:#A5F3FC;
   --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
   --hairline:rgba(15,70,75,.14); --hairline-hi:rgba(15,70,75,.28);
-  --ink:#0E2E33; --ink2:#2C4F53; --muted:#557C7B;
-  --accent:#0284C7; --accent-2:#0D9488; --on-accent:#F0FAFF;
+  --ink:#0E2E33; --ink2:#2C4F53; --muted:#456E6D;
+  --accent:#075985; --accent-2:#0B6E64; --on-accent:#F0FAFF;
   --ok:#047857; --bad:#E11D48; --warn:#A16207; --info:#4338CA;
-  --rx:#4338CA; --tx:#B45309; --shadow:rgba(60,110,110,.25);
+  --rx:#2563EB; --tx:#B45309; --shadow:rgba(60,110,110,.25);
   --scheme:light;
 }
 
@@ -55,8 +55,8 @@
   --bg:#F2EDE3; --blob1:#E7C873; --blob2:#F3E3B8; --blob3:#D9B45B;
   --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
   --hairline:rgba(90,70,20,.14); --hairline-hi:rgba(90,70,20,.28);
-  --ink:#2A2013; --ink2:#54452C; --muted:#7E6E4F;
-  --accent:#A16207; --accent-2:#C9A227; --on-accent:#FFF8E6;
+  --ink:#2A2013; --ink2:#54452C; --muted:#6E5E3E;
+  --accent:#8A5406; --accent-2:#8A6D1F; --on-accent:#FFF8E6;
   --ok:#15803D; --bad:#DC2626; --warn:#B45309; --info:#4338CA;
   --rx:#0369A1; --tx:#BE123C; --shadow:rgba(140,110,50,.25); --scheme:light;
 }
@@ -85,7 +85,7 @@
   --ink:#C0CAF5; --ink2:#9AA5CE; --muted:#737AA2;
   --accent:#7AA2F7; --accent-2:#BB9AF7; --on-accent:#10121C;
   --ok:#9ECE6A; --bad:#F7768E; --warn:#E0AF68; --info:#7DCFFF;
-  --rx:#7DCFFF; --tx:#FF9E64; --shadow:rgba(5,6,15,.6); --scheme:dark;
+  --rx:#2AC3DE; --tx:#FF9E64; --shadow:rgba(5,6,15,.6); --scheme:dark;
 }
 [data-theme="neo"]{
   --bg:#070C10; --blob1:#00B8D4; --blob2:#123B4F; --blob3:#7C4DFF;
@@ -100,8 +100,8 @@
   --bg:#E8F4EC; --blob1:#6EE7B7; --blob2:#99F6E4; --blob3:#A7F3D0;
   --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.78);
   --hairline:rgba(10,70,45,.14); --hairline-hi:rgba(10,70,45,.28);
-  --ink:#0E2E22; --ink2:#2C5044; --muted:#55786A;
-  --accent:#0D9488; --accent-2:#059669; --on-accent:#F0FFFA;
+  --ink:#0E2E22; --ink2:#2C5044; --muted:#456B5D;
+  --accent:#115E59; --accent-2:#0F7A4B; --on-accent:#F0FFFA;
   --ok:#047857; --bad:#E11D48; --warn:#A16207; --info:#4338CA;
   --rx:#2563EB; --tx:#B45309; --shadow:rgba(60,110,90,.25); --scheme:light;
 }
@@ -112,7 +112,7 @@
   --ink:#CDD6F4; --ink2:#A6ADC8; --muted:#7F849C;
   --accent:#89B4FA; --accent-2:#CBA6F7; --on-accent:#11111B;
   --ok:#A6E3A1; --bad:#F38BA8; --warn:#F9E2AF; --info:#74C7EC;
-  --rx:#74C7EC; --tx:#FAB387; --shadow:rgba(8,8,18,.6); --scheme:dark;
+  --rx:#89DCEB; --tx:#FAB387; --shadow:rgba(8,8,18,.6); --scheme:dark;
 }
 
 /* ════════════════════════════ ТОКЕНЫ: ПРОИЗВОДНЫЙ СЛОЙ ════════════════════════════ */
@@ -128,7 +128,7 @@
   --bad-soft:color-mix(in srgb, var(--bad) 14%, transparent);
   --r-lg:20px; --r-md:14px; --r-sm:10px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:22px; --sp-6:28px;
-  --t-xs:.68rem; --t-sm:.78rem; --t-md:.88rem; --t-lg:1rem; --t-xl:clamp(1.2rem,2.6vw,1.7rem);
+  --t-xs:.68rem; --t-sm:.78rem; --t-md:.88rem; --t-lg:1rem; --t-xl:clamp(1.45rem,3vw,2rem);
   --dur-1:.16s; --dur-2:.26s; --dur-3:.4s;
   --ease:cubic-bezier(.22,1,.36,1);
   --elev-1:0 10px 32px -16px var(--shadow), inset 0 1px 0 rgba(255,255,255,.08);
@@ -139,7 +139,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px;color-scheme:var(--scheme)}
 body{min-height:100dvh;background:var(--bg);color:var(--ink);
-  font-family:var(--f-text);overflow-x:hidden;transition:background var(--dur-3) var(--ease)}
+  font-family:var(--f-text);line-height:1.5;overflow-x:hidden;transition:background var(--dur-3) var(--ease)}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 input,select,textarea{font:inherit;color:var(--ink)}
 a{color:inherit}
@@ -155,10 +155,15 @@ a{color:inherit}
 .b3{width:30vw;height:30vw;left:30vw;bottom:-18vh;background:var(--blob3);opacity:.35}
 [data-theme$="light"] .blob{opacity:.55;filter:blur(110px)}
 
-/* стекло */
+/* стекло — три яруса глубины (хром / контент / поднятое) */
 .glass{background:var(--glass);
   -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
   border:1px solid var(--hairline);border-radius:var(--r-lg);box-shadow:var(--elev-1)}
+.side,.topbar{background:var(--glass-soft);
+  -webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25)}
+.modal{background:var(--glass-strong);
+  -webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);
+  box-shadow:var(--elev-2)}
 
 /* ════════════════════════════ КАРКАС ════════════════════════════ */
 .app{position:relative;z-index:1;display:grid;grid-template-columns:216px 1fr;
@@ -186,8 +191,10 @@ main{min-width:0}
 .tab .nbadge.show{display:block}
 .sfoot{padding:14px 10px 4px;font:500 .6rem var(--f-mono);color:var(--muted);letter-spacing:.06em}
 
-/* топбар */
-.topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:18px}
+/* топбар: свой z-index обязателен — backdrop-filter создаёт stacking context,
+   иначе поповер тем рисуется под идущими позже по DOM карточками */
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:18px;
+  position:relative;z-index:70}
 .topbar .tbrand{display:none;align-items:center;gap:9px}
 .topbar h1{font-family:var(--f-disp);font-weight:800;font-size:.95rem;letter-spacing:.01em;flex:1;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -209,7 +216,7 @@ main{min-width:0}
 .view.active{display:block}
 @keyframes vin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .vhead{display:flex;align-items:center;gap:10px;margin:4px 2px 14px}
-.vhead h2{font-family:var(--f-disp);font-weight:800;font-size:var(--t-lg)}
+.vhead h2{font-family:var(--f-disp);font-weight:800;font-size:1.25rem}
 .vhead .count{font:500 .7rem var(--f-mono);color:var(--muted)}
 .vhead .grow{flex:1}
 .card{padding:var(--sp-5)}
@@ -222,6 +229,9 @@ main{min-width:0}
   background:var(--glass-soft);transition:all var(--dur-1);min-height:40px}
 .btn svg{width:15px;height:15px}
 .btn:hover{color:var(--ink);border-color:var(--accent)}
+.btn:active{transform:translateY(1px)}
+.icobtn:active{transform:translateY(1px)}
+.tile:active,.pcard:active{transform:scale(.995)}
 .btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
 .btn.primary:hover{filter:brightness(1.1)}
 .btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
@@ -294,7 +304,7 @@ main{min-width:0}
 .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;
   font:600 var(--t-sm) var(--f-text);border:1px solid var(--hairline);background:var(--glass-soft)}
 .badge svg{width:14px;height:14px}
-.badge.xor{color:var(--accent-2);border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
+.badge.xor{color:color-mix(in srgb,var(--accent-2) 56%,var(--ink));border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
 .badge.warnb{color:var(--warn)}
 /* топология «поток сквозь стекло» */
 .topo{margin-top:18px;overflow-x:auto}
@@ -313,8 +323,8 @@ main{min-width:0}
 .tile .row{display:flex;align-items:center;gap:9px}
 .tile .tname{display:flex;align-items:center;gap:9px;font-weight:800;font-size:var(--t-lg);
   flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.xchip{font:700 .58rem var(--f-mono);letter-spacing:.1em;color:var(--accent-2);
-  border:1px solid currentColor;padding:3px 7px;border-radius:6px;flex:none}
+.xchip{font:700 .62rem var(--f-mono);letter-spacing:.1em;color:color-mix(in srgb,var(--accent-2) 56%,var(--ink));
+  border:1px solid color-mix(in srgb,var(--accent-2) 55%,transparent);padding:3px 7px;border-radius:6px;flex:none}
 .tile .route{font:500 var(--t-xs) var(--f-mono);color:var(--muted);margin:11px 0 4px;
   display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile .route b{color:var(--accent);font-weight:500;flex:none}
@@ -361,10 +371,10 @@ main{min-width:0}
 .pname{font-weight:800;font-size:var(--t-lg);display:flex;gap:9px;align-items:center;min-width:0}
 .pname .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pbadges{display:flex;gap:6px;flex-wrap:wrap}
-.pb{font:600 .58rem var(--f-mono);letter-spacing:.04em;padding:3px 8px;border-radius:6px;
+.pb{font:600 .64rem var(--f-mono);letter-spacing:.04em;padding:3px 8px;border-radius:6px;
   border:1px solid var(--hairline);color:var(--muted)}
-.pb.wan{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
-.pb.schedb{color:var(--accent-2);border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
+.pb.wan{color:color-mix(in srgb,var(--accent) 54%,var(--ink));border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.pb.schedb{color:color-mix(in srgb,var(--accent-2) 54%,var(--ink));border-color:color-mix(in srgb,var(--accent-2) 40%,transparent)}
 .pstate{font-size:var(--t-sm);color:var(--muted);flex:none;min-width:74px;text-align:right}
 @media(max-width:600px){.pstate{display:none}}
 .hint{font-size:var(--t-sm);color:var(--muted);margin-bottom:12px}
@@ -375,7 +385,7 @@ main{min-width:0}
   margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
 .input{width:100%;padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);
   border:1px solid var(--hairline-hi);color:var(--ink)}
-.input:focus{outline:none;border-color:var(--accent)}
+.input:focus{border-color:var(--accent);outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:1px}
 textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resize:vertical}
 .drop{border:1.5px dashed var(--hairline-hi);border-radius:var(--r-md);padding:20px 14px;
   text-align:center;color:var(--muted);cursor:pointer;font-size:var(--t-sm);
@@ -465,7 +475,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .logtools .chk{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-sm);
   color:var(--ink2);cursor:pointer;user-select:none}
 .logtools .chk input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
-.logpre{font:400 .66rem/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-all;
+.logpre{font:400 .74rem/1.6 var(--f-mono);white-space:pre-wrap;word-break:break-all;
   max-height:340px;overflow:auto;padding:12px;border-radius:var(--r-md);
   border:1px solid var(--hairline);background:color-mix(in srgb,var(--bg) 55%,transparent);
   color:var(--ink2)}
@@ -494,10 +504,14 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
 .sysgrid .mi b{font:500 .74rem var(--f-mono);color:var(--ink);word-break:break-word}
 /* поповер выбора темы в топбаре */
+/* поповер — «поднятый» ярус; своя непрозрачная подложка, т.к. вложенный
+   backdrop-filter (внутри .topbar.glass) по спецификации не захватывает страницу */
 .tpick{position:absolute;right:0;top:calc(100% + 8px);z-index:95;display:none;
-  padding:10px;gap:8px;grid-template-columns:repeat(5,28px)}
+  padding:12px;gap:10px;grid-template-columns:repeat(5,34px);
+  background:color-mix(in srgb,var(--bg) 88%,var(--ink) 6%);
+  -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--elev-2)}
 .tpick.open{display:grid}
-.tpick button{width:28px;height:28px;border-radius:50%;border:2px solid var(--hairline-hi);
+.tpick button{width:34px;height:34px;border-radius:50%;border:2px solid var(--hairline-hi);
   cursor:pointer;transition:transform var(--dur-1)}
 .tpick button:hover{transform:scale(1.12)}
 .tpick button.act{border-color:var(--accent)}
@@ -528,32 +542,32 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 <!-- ════════════════ SVG-СПРАЙТ ════════════════ -->
 <svg id="icons" style="display:none" aria-hidden="true">
   <symbol id="ic-mark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 11l2 2 4-4"/></g></symbol>
-  <symbol id="ic-dash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></g></symbol>
-  <symbol id="ic-shield" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/></g></symbol>
-  <symbol id="ic-device" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="12" rx="2"/><path d="M9 20h6"/></g></symbol>
-  <symbol id="ic-via" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h6l2-6 2 12 2-6h4"/></g></symbol>
-  <symbol id="ic-journal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></g></symbol>
-  <symbol id="ic-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></g></symbol>
-  <symbol id="ic-refresh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3v4h-4"/></g></symbol>
-  <symbol id="ic-theme" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></g></symbol>
-  <symbol id="ic-xor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5 7l14 10M19 7L5 17"/></g></symbol>
-  <symbol id="ic-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></g></symbol>
-  <symbol id="ic-alert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18.5v.5"/></g></symbol>
-  <symbol id="ic-add" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></g></symbol>
-  <symbol id="ic-x" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></g></symbol>
-  <symbol id="ic-edit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L20 7l-3-3L5 16l-1 4z"/></g></symbol>
-  <symbol id="ic-trash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></g></symbol>
-  <symbol id="ic-sched" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></g></symbol>
-  <symbol id="ic-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></g></symbol>
-  <symbol id="ic-import" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></g></symbol>
-  <symbol id="ic-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></g></symbol>
-  <symbol id="ic-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></g></symbol>
-  <symbol id="ic-chevron" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></g></symbol>
-  <symbol id="ic-wan" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 13v7"/></g></symbol>
-  <symbol id="ic-watchdog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 3 10 2-5h7"/></g></symbol>
-  <symbol id="ic-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></g></symbol>
-  <symbol id="ic-down" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></g></symbol>
-  <symbol id="ic-power" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></g></symbol>
+  <symbol id="ic-dash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></g></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/></g></symbol>
+  <symbol id="ic-device" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></g></symbol>
+  <symbol id="ic-via" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></g></symbol>
+  <symbol id="ic-journal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M15 2v5h5"/><path d="M10 9H8M16 13H8M16 17H8"/></g></symbol>
+  <symbol id="ic-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></g></symbol>
+  <symbol id="ic-theme" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.28-.44-.65-.44-1.12a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.55-2.5 5.55-5.55C21.97 6.01 17.46 2 12 2z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/></g></symbol>
+  <symbol id="ic-xor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h2a4 4 0 0 0 3.3-1.8l4.4-6.4A4 4 0 0 1 19 8h3"/><path d="M2 6h2a4 4 0 0 1 3.3 1.8l.6.9"/><path d="M22 16h-3a4 4 0 0 1-3.3-1.8l-.6-.9"/></g></symbol>
+  <symbol id="ic-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></g></symbol>
+  <symbol id="ic-alert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 20h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></g></symbol>
+  <symbol id="ic-add" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></g></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></g></symbol>
+  <symbol id="ic-edit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></g></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></g></symbol>
+  <symbol id="ic-sched" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4M8 2v4M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></g></symbol>
+  <symbol id="ic-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></g></symbol>
+  <symbol id="ic-import" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></g></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></g></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></g></symbol>
+  <symbol id="ic-chevron" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></g></symbol>
+  <symbol id="ic-wan" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 13v7"/></g></symbol>
+  <symbol id="ic-watchdog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></g></symbol>
+  <symbol id="ic-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></g></symbol>
+  <symbol id="ic-down" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></g></symbol>
+  <symbol id="ic-power" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></g></symbol>
 </svg>
 
 <div class="app">
@@ -655,7 +669,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
     <!-- ════════════════ ВИД: ПРОФИЛИ ════════════════ -->
     <section class="view" data-view="profiles">
       <div class="vhead"><h2>Профили</h2><span class="count" id="profiles-count"></span></div>
-      <div class="hint" id="profiles-hint">клик по карточке — устройства профиля · ✎ — редактор · ⏰ — расписание · тумблер — вкл/выкл</div>
+      <div class="hint" id="profiles-hint">Клик по карточке открывает устройства профиля. Кнопки справа: расписание, редактор, тумблер включения.</div>
       <div class="plist" id="profile-list"><div class="skel"></div><div class="skel"></div></div>
       <div class="card glass">
         <h3>Новый профиль</h3>
@@ -1236,7 +1250,9 @@ function renderTopo(){
   if(!run.length){ wrap.hidden=true; return; }
   wrap.hidden=false;
   const H=34+run.length*40;
-  const gy=10, gh=H-20;                       // стеклянная XOR-панель во всю высоту
+  const gy=10, gh=H-20;                       // общий стеклянный узел «шифрование»
+  const xorAny=run.some(p=>XOR_CACHE[p.name]), xorAll=run.every(p=>XOR_CACHE[p.name]);
+  const blockLabel=xorAll?'XOR':(xorAny?'ШИФР':'VPN');
   let s='';
   run.forEach((p,i)=>{
     const y=40+i*40;
@@ -1244,18 +1260,20 @@ function renderTopo(){
     const ci=STATE.checkip[p.name];
     const xor=!!XOR_CACHE[p.name];
     const dev=p.mode==='all'?'LAN':(p.devices_count+' устр.');
+    // после узла шифрования: XOR-профиль → accent + подпись «XOR»; обычный VPN → info + «VPN»
     s+='<circle cx="34" cy="'+(y-4)+'" r="8" fill="none" stroke="var(--muted)" stroke-width="1.5"/>'+
        '<text x="52" y="'+(y-14)+'">'+esc(dev)+'</text>'+
        '<text x="52" y="'+(y+7)+'" class="lbl-hi">'+esc(wanLabel(p.wan))+'</text>'+
-       '<path class="flow" d="M44 '+(y-4)+' C 130 '+(y-4)+', 150 '+(y-4)+', 226 '+(y-4)+'" fill="none" stroke="var(--rx)" stroke-width="2" style="animation-delay:'+(i*.3)+'s"/>'+
-       '<path class="flow" d="M298 '+(y-4)+' C 380 '+(y-4)+', 410 '+(y-4)+', 486 '+(y-4)+'" fill="none" stroke="var(--'+(xor?'accent':'info')+')" stroke-width="2" style="animation-duration:.8s"/>'+
-       '<rect x="490" y="'+(y-19)+'" width="26" height="26" rx="7" fill="none" stroke="var(--accent)" stroke-width="1.5"/>'+
-       '<circle cx="503" cy="'+(y-6)+'" r="3" fill="var(--accent)"/>'+
+       '<path class="flow" d="M44 '+(y-4)+' C 130 '+(y-4)+', 150 '+(y-4)+', 226 '+(y-4)+'" fill="none" stroke="var(--rx)" stroke-width="2" vector-effect="non-scaling-stroke" style="animation-delay:'+(i*.3)+'s"/>'+
+       '<path class="flow" d="M298 '+(y-4)+' C 380 '+(y-4)+', 410 '+(y-4)+', 486 '+(y-4)+'" fill="none" stroke="var(--'+(xor?'accent':'info')+')" stroke-width="2" vector-effect="non-scaling-stroke" style="animation-duration:.8s"/>'+
+       '<text x="392" y="'+(y-9)+'" text-anchor="middle" style="font-size:9px;fill:var(--'+(xor?'accent':'info')+')">'+(xor?'XOR':'VPN')+'</text>'+
+       '<rect x="490" y="'+(y-19)+'" width="26" height="26" rx="7" fill="none" stroke="var(--'+(xor?'accent':'info')+')" stroke-width="1.5"/>'+
+       '<circle cx="503" cy="'+(y-6)+'" r="3" fill="var(--'+(xor?'accent':'info')+')"/>'+
        '<text x="524" y="'+(y-10)+'" class="lbl-hi">'+esc(p.name)+' · '+esc(host)+'</text>'+
        '<text x="524" y="'+(y+5)+'">'+esc(ci?(ci.country||'')+(ci.ip?' · '+ci.ip:''):'страна: проверьте IP')+'</text>';
   });
   s+='<rect x="230" y="'+gy+'" width="64" height="'+gh+'" rx="12" fill="var(--glass-strong)" stroke="var(--hairline-hi)"/>'+
-     '<text x="244" y="'+(gy+gh/2+4)+'" class="lbl-acc" style="font-size:12px">XOR</text>';
+     '<text x="262" y="'+(gy+gh/2+4)+'" text-anchor="middle" class="lbl-acc" style="font-size:12px">'+blockLabel+'</text>';
   const svg=$('#topo-svg');
   svg.setAttribute('viewBox','0 0 640 '+H);
   svg.innerHTML=s;
@@ -1330,9 +1348,9 @@ function renderChart(){
     '<stop offset="0" stop-color="var(--rx)" stop-opacity=".3"/>'+
     '<stop offset="1" stop-color="var(--rx)" stop-opacity="0"/></linearGradient></defs>'+
     '<path d="'+line('rxr')+' L'+W+' '+Hh+' L0 '+Hh+' Z" fill="url(#grx)"/>'+
-    '<path d="'+line('rxr')+'" fill="none" stroke="var(--rx)" stroke-width="2"/>'+
-    '<path d="'+line('txr')+'" fill="none" stroke="var(--tx)" stroke-width="2"/>'+
-    '<line id="chart-cross" y1="0" y2="'+Hh+'" stroke="var(--hairline-hi)" stroke-width="1" visibility="hidden"/>';
+    '<path d="'+line('rxr')+'" fill="none" stroke="var(--rx)" stroke-width="2" vector-effect="non-scaling-stroke"/>'+
+    '<path d="'+line('txr')+'" fill="none" stroke="var(--tx)" stroke-width="2" vector-effect="non-scaling-stroke"/>'+
+    '<line id="chart-cross" y1="0" y2="'+Hh+'" stroke="var(--hairline-hi)" stroke-width="1" vector-effect="non-scaling-stroke" visibility="hidden"/>';
   $('#chart-max').textContent='до '+fmtRate(m);
 }
 (function chartHover(){
