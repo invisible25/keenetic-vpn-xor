@@ -1,5 +1,5 @@
 #!/bin/sh
-# Системная информация роутера: NDM RCI (show/version + show/system) + /proc.
+# Системная информация роутера: NDM RCI (show/version + show/system + WifiMaster) + /proc + df.
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
@@ -7,23 +7,66 @@ printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 RCI=http://127.0.0.1:79/rci
 V=$(curl -s -m4 "$RCI/show/version" 2>/dev/null)
 S=$(curl -s -m4 "$RCI/show/system" 2>/dev/null)
+W0=$(curl -s -m3 "$RCI/show/interface/WifiMaster0" 2>/dev/null)   # радио 2.4 ГГц
+W1=$(curl -s -m3 "$RCI/show/interface/WifiMaster1" 2>/dev/null)   # радио 5 ГГц
 LOAD=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' '/')
 
-# Температура CPU — best-effort. thermal_zone есть на aarch64 (Giga/Hopper);
-# hwmon — запасной источник. На EcoNet (KN-2410 mips) датчика НЕТ нигде (проверено:
-# ни sysfs, ни hwmon, ни NDM RCI, ни ndmc) → TEMP останется пустой, UI покажет «—».
+# Температура CPU — best-effort. thermal_zone есть на aarch64 (Giga/Hopper); hwmon — запасной.
+# На EcoNet (KN-2410 mips) датчика НЕТ нигде (проверено) → TEMP пустой, UI покажет «—».
 TEMP=""
 for z in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do
   [ -f "$z" ] || continue
   t=$(cat "$z" 2>/dev/null)
-  case "$t" in ''|*[!0-9]*) continue ;; esac      # только неотрицательные целые
-  [ "$t" -gt 1000 ] 2>/dev/null && t=$((t/1000))   # милли-°C → °C
-  [ "$t" -ge 20 ] 2>/dev/null && [ "$t" -le 120 ] 2>/dev/null || continue  # отсечь мусор/0/датчик выкл
+  case "$t" in ''|*[!0-9]*) continue ;; esac
+  [ "$t" -gt 1000 ] 2>/dev/null && t=$((t/1000))
+  [ "$t" -ge 20 ] 2>/dev/null && [ "$t" -le 120 ] 2>/dev/null || continue
   TEMP=$t; break
 done
 
-# $V и $S — два JSON-объекта; jq -s сольёт в массив [version, system]
-printf '%s\n%s\n' "$V" "$S" | jq -s --arg load "$LOAD" --arg temp "$TEMP" '
+# Температуры Wi-Fi-радио (NDM отдаёт .temperature у WifiMaster0/1)
+wifi_temp() { echo "$1" | jq -r '.temperature // empty' 2>/dev/null | grep -E '^[0-9]+$' | head -1; }
+WIFI24=$(wifi_temp "$W0"); WIFI5=$(wifi_temp "$W1")
+
+# Число ядер CPU и generic-имя из /proc/cpuinfo (fallback, если модель SoC не в таблице)
+CORES=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null)
+case "$CORES" in ''|*[!0-9]*) CORES=0 ;; esac
+CPUNAME=$(grep -m1 -i '^model name\|^cpu model\|^Processor' /proc/cpuinfo 2>/dev/null | sed 's/^[^:]*: *//')
+
+# SoC по hw_id (таблица портирована из AWG-Manager internal/sys/kmod/soc.go — маппинг
+# по 4-значному номеру модели KN-xxxx/NC-xxxx; NDM модель проца не отдаёт).
+HW=$(echo "$V" | jq -r '.hw_id // ""' 2>/dev/null)
+NUM=$(echo "$HW" | sed -n 's/.*[KkNn][NnCc][-_]\([0-9]\{3,\}\).*/\1/p' | head -1)
+soc_of() {  # $1=номер модели, $2=сырой hw_id (для legacy)
+  case "$2" in
+    ki_rb) echo mt7628; return ;;
+    kng_re|ku_rd) echo mt7621; return ;;
+  esac
+  case "$1" in
+    1010|1011|1810|1910|1913|2310|2311|2610|2810|2910|2911|3010|3013|3410|3510) echo mt7621 ;;
+    1110|1111|1112|1121|1210|1211|1212|1213|1214|1215|1216|1217|1218|1219|1220|1221|1310|1311|1410|1510|1511|1610|1611|1612|1613|1614|1615|1616|1617|1618|1619|1620|1621|1710|1711|1712|1713|1714|1715|1716|1717|1718|1719|1720|1721|2210|2211|2212|3210|3211|3212|3310|3311|4910) echo mt7628 ;;
+    2010|2011|2012|2110|2111) echo en7512 ;;
+    2112|2410|2510|3610) echo en7516 ;;
+    1912|3012|3710|3810) echo en7528 ;;
+    1811|2710) echo mt7622 ;;
+    1012|2312|3411|3611|3711|3712|3811|3910|3911|4010|4110|4410) echo mt7981 ;;
+    1812) echo mt7988 ;;
+    *) echo "" ;;
+  esac
+}
+SOC=$(soc_of "$NUM" "$HW")
+if [ -n "$SOC" ]; then CPUMODEL=$(echo "$SOC" | tr 'a-z' 'A-Z'); else CPUMODEL="$CPUNAME"; fi
+
+# Диск раздела /opt (opkg-хранилище) в КБ
+DF=$(df -k /opt 2>/dev/null | awk 'NR==2{print $2, $3}')
+OPKGTOTAL=$(echo "$DF" | awk '{print $1}'); OPKGUSED=$(echo "$DF" | awk '{print $2}')
+case "$OPKGTOTAL" in ''|*[!0-9]*) OPKGTOTAL=0 ;; esac
+case "$OPKGUSED"  in ''|*[!0-9]*) OPKGUSED=0  ;; esac
+
+printf '%s\n%s\n' "$V" "$S" | jq -s \
+  --arg load "$LOAD" --arg temp "$TEMP" --arg cpumodel "$CPUMODEL" \
+  --arg cores "$CORES" --arg w24 "$WIFI24" --arg w5 "$WIFI5" \
+  --arg opkgtotal "$OPKGTOTAL" --arg opkgused "$OPKGUSED" '
+  def num(x): if (x // "") == "" then null else (x | tonumber? // null) end;
   (.[0] // {}) as $v | (.[1] // {}) as $s |
   ($s.memory // "" | split("/")) as $mem |
   {
@@ -31,14 +74,22 @@ printf '%s\n%s\n' "$V" "$S" | jq -s --arg load "$LOAD" --arg temp "$TEMP" '
     hw_id:      ($v.hw_id   // ""),
     os_title:   ($v.title   // ""),
     os_release: ($v.release // ""),
+    os_sandbox: ($v.sandbox // ""),
+    os_date:    (($v.ndm // {}).cdate // ""),
     arch:       ($v.arch    // ""),
     cpu:        ($v.cpu     // ""),
+    cpumodel:   ($cpumodel),
+    cpucores:   num($cores),
     cpuload:    ($s.cpuload // null),
     memtotal:   ($s.memtotal // null),
     memfree:    ($s.memfree  // null),
     memused:    (($mem[0] // "") | if . == "" then null else (tonumber? // null) end),
     uptime:     ($s.uptime  // null),
     loadavg:    $load,
-    cputemp:    (if $temp == "" then null else $temp end)
+    cputemp:    num($temp),
+    wifi24temp: num($w24),
+    wifi5temp:  num($w5),
+    opkgused:   num($opkgused),
+    opkgtotal:  num($opkgtotal)
   }
 ' 2>/dev/null || echo '{"model":"","error":"rci"}'

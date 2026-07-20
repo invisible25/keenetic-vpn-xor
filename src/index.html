@@ -878,7 +878,9 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
           <div class="mi"><small>Модель</small><b id="sys-model">—</b></div>
           <div class="mi"><small>ОС</small><b id="sys-os">—</b></div>
           <div class="mi"><small>Процессор</small><b id="sys-cpu">—</b></div>
+          <div class="mi"><small>Температуры</small><b id="sys-temp">—</b></div>
           <div class="mi"><small>Память</small><b id="sys-mem">—</b></div>
+          <div class="mi"><small>Диск /opt</small><b id="sys-disk">—</b></div>
           <div class="mi"><small>Аптайм</small><b id="sys-uptime">—</b></div>
           <div class="mi"><small>Load average</small><b id="sys-load">—</b></div>
         </div>
@@ -1049,8 +1051,10 @@ function fmtRate(bps){ bps=+bps||0;
         if(opt&&opt.method==='POST'){ try{SCHED[q.profile]=JSON.parse(body)}catch(e){} return J({ok:true}); }
         return J(SCHED[q.profile]||{enabled:false,actions:[]});
       case 'checkip': return new Promise(res=>setTimeout(()=>res(J(CHECKIP[q.profile]||{error:'туннель не отвечает'})),900));
-      case 'sysinfo': return J({model:'Keenetic Giga (KN-1011)',os_title:'KeeneticOS',os_release:'4.1.7',arch:'aarch64',
-        cpu:'EN7581 4×1.2 ГГц',cputemp:'52',cpuload:'7',memtotal:'1048576',memfree:'612000',memused:'436576',uptime:'693421',loadavg:'0.14 0.08 0.05'});
+      case 'sysinfo': return J({model:'Giga (KN-1012)',hw_id:'KN-1012',os_title:'5.1.1',os_release:'5.01.C.1.0-0',
+        os_sandbox:'preview',os_date:'3 Jul 2026',arch:'aarch64',cpu:'',cpumodel:'MT7981',cpucores:2,cputemp:61,
+        wifi24temp:52,wifi5temp:52,cpuload:7,memtotal:524288,memfree:58360,memused:303876,
+        opkgused:134424,opkgtotal:13211924,uptime:693421,loadavg:'0.14/0.08/0.05'});
       case 'log': return T('2026-07-18 22:59:01 [XOR] Initialization Sequence Completed\n2026-07-18 22:59:00 [XOR] TUN/TAP device tun_invnet2 opened\n2026-07-18 22:58:49 [XOR] TLS: soft reset\n2026-07-18 22:41:03 [Claude] Initialization Sequence Completed');
       case 'pinglog':{
         if(opt&&opt.method==='POST'){ PINGLINES=[]; return J({ok:true}); }
@@ -2372,10 +2376,25 @@ async function loadSysinfo(){
   const v=x=>(x===undefined||x===null||x==='')?'—':x;
   $('#sys-arch').textContent=v(d.arch)==='—'?'':d.arch;
   $('#sys-model').textContent=v(d.model);
-  $('#sys-os').textContent=v(d.os_title)+(d.os_release?' '+d.os_release:'');
-  $('#sys-cpu').textContent=v(d.cpu)+(d.cputemp?' · '+d.cputemp+'°C':'')+(d.cpuload?' · '+d.cpuload+'%':'');
+  $('#sys-os').textContent=v(d.os_title)+(d.os_release?' '+d.os_release:'')
+    +(d.os_sandbox&&d.os_sandbox!=='stable'?' ('+d.os_sandbox+')':'');
+  // процессор: модель SoC (MT7981/EN7516…) + ядра + загрузка
+  const cpuParts=[d.cpumodel||d.cpu||''].filter(Boolean);
+  if(d.cpucores) cpuParts.push(d.cpucores+'×');
+  if(d.cpuload!=null) cpuParts.push(d.cpuload+'%');
+  $('#sys-cpu').textContent=cpuParts.length?cpuParts.join(' · '):'—';
+  // температуры: CPU + Wi-Fi-радио (что отдаёт роутер; на EcoNet CPU-датчика нет → «—»)
+  const temps=[];
+  if(d.cputemp!=null) temps.push('CPU '+d.cputemp+'°');
+  const wt=[d.wifi24temp,d.wifi5temp].filter(x=>x!=null);
+  if(wt.length) temps.push('Wi-Fi '+[...new Set(wt)].join('/')+'°');
+  $('#sys-temp').textContent=temps.length?temps.join(' · '):'—';
   $('#sys-mem').textContent=d.memtotal
-    ? Math.round(d.memused/1024)+' / '+Math.round(d.memtotal/1024)+' МБ' : '—';
+    ? Math.round(d.memused/1024)+' / '+Math.round(d.memtotal/1024)+' МБ · '
+      +Math.round(d.memused/d.memtotal*100)+'%' : '—';
+  $('#sys-disk').textContent=d.opkgtotal
+    ? fmtBytes(d.opkgused*1024)+' / '+fmtBytes(d.opkgtotal*1024)+' · '
+      +Math.round(d.opkgused/d.opkgtotal*100)+'%' : '—';
   $('#sys-uptime').textContent=d.uptime?fmtUp(d.uptime):'—';
   $('#sys-load').textContent=v(d.loadavg);
 }
