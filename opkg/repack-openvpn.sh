@@ -13,6 +13,7 @@ SRCDIR="${1:-$HERE/openvpn}"
 OUT="${2:-$HERE/out}"
 NEWVER="${3:-1:2.6.14-4}"
 mkdir -p "$OUT"
+OUT=$(cd "$OUT" && pwd)     # абсолютный путь: ниже делаем cd в $tmp перед tar -czf "$OUT/..."
 
 found=0
 for ipk in "$SRCDIR"/openvpn-openssl*_*.ipk; do

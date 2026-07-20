@@ -23,6 +23,7 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 DATA="$WORK/data"; CTRL="$WORK/control"
 mkdir -p "$DATA" "$CTRL" "$OUT"
+OUT=$(cd "$OUT" && pwd)     # абсолютный путь: ниже делаем cd в $WORK перед tar -czf "$OUT/..."
 
 # ── data: файлы приложения в целевые пути /opt/... ──
 inst() {  # inst <src-rel> <dest-rel-без-ведущего-слэша> [mode]

@@ -10,6 +10,7 @@ FEED="${1:-$HERE/feed}"
 INVNET_VER="${2:-}"
 
 rm -rf "$FEED"; mkdir -p "$FEED"
+FEED=$(cd "$FEED" && pwd)     # абсолютный путь для под-скриптов (в них есть cd перед tar)
 sh "$HERE/build-ipk.sh"      "$INVNET_VER" "$FEED"
 sh "$HERE/repack-openvpn.sh" "$HERE/openvpn" "$FEED"
 sh "$HERE/make-index.sh"     "$FEED"
