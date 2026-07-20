@@ -1,6 +1,9 @@
 # opkg-фид Invisible Net VPN+XOR (GitHub Pages).
 # Скопируй этот файл на роутере в /opt/etc/opkg/invnet.conf:
 #
+#   # opkg должен уметь HTTPS (github.io только по TLS, busybox-wget его не тянет):
+#   opkg install wget-ssl ca-bundle ca-certificates
+#   ln -sf /opt/bin/wget /opt/usr/bin/wget       # отдать opkg SSL-версию wget
 #   mkdir -p /opt/etc/opkg
 #   echo 'src/gz invnet https://invisible25.github.io/keenetic-vpn-xor' > /opt/etc/opkg/invnet.conf
 #   opkg update
@@ -9,8 +12,7 @@
 # Обновление до новой версии:
 #   opkg update && opkg upgrade invnet
 #
-# ВАЖНО: фид отдаётся по HTTPS (github.io). Если opkg ругается на TLS/сертификат —
-# доставь поддержку HTTPS в Entware:
-#   opkg install ca-bundle ca-certificates
-# (обычно уже стоит; проверь `opkg list-installed | grep ca-`).
+# ВАЖНО про HTTPS: opkg вызывает wget, а первым в PATH идёт busybox-wget (без TLS) →
+# `opkg update` падает с "not an http or ftp url"/"wget returned 1". Симлинк выше отдаёт
+# opkg wget-ssl (/opt/bin/wget). Проверено на живом роутере.
 src/gz invnet https://invisible25.github.io/keenetic-vpn-xor

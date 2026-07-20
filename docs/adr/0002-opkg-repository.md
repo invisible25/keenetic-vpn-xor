@@ -57,10 +57,19 @@ Pages. Локально проверяется `--noaction` через `file://`
 | openvpn-бинарники в репе (`opkg/openvpn/`) | самодостаточный CI | ~840КБ бинарей в git (`*.ipk binary`, путь разрешён в `.gitignore`) |
 | GitHub Pages (HTTPS) | бесплатно, CDN | роутеру нужен TLS (`ca-bundle`); *.github.io только https |
 
+## HTTPS на роутере (подтверждено на живом 7.1)
+
+GitHub Pages — только HTTPS. opkg вызывает `wget`, а в PATH первым идёт `/opt/usr/bin/wget` → **busybox
+без TLS** → `opkg update` по фиду падает (`not an http or ftp url` / `wget returned 1`). Хотя `wget-ssl`
+и `ca-bundle` стоят (как `/opt/bin/wget`), busybox его затеняет. Фикс (в README/conf.example):
+`opkg install wget-ssl ca-bundle` + `ln -sf /opt/bin/wget /opt/usr/bin/wget`. После этого `opkg update`
+индексирует фид и `opkg info invnet` читает пакет 1.6.0 с живого Pages — проверено на 7.1.
+
 ## Что пересмотреть
 
-- **HTTPS на роутере**: если у части роутеров нет TLS в opkg — рассмотреть зеркало на http-хосте или
-  свой домен с http. Пока — документируем `opkg install ca-bundle`.
+- **Долговечность wget-фикса**: симлинк перетирает busybox-wget (владелец — пакет `busybox`), после
+  его апгрейда фикс слетит. Альтернатива — http-зеркало фида (Pages только https) либо опция opkg на
+  curl-бэкенд. Пока — документированный per-router шаг.
 - **Подпись фида** (`opkg` usign/Release.sig) — сейчас без подписи (доверяем HTTPS+GitHub). Добавить, если
   фид станет публичным для third-party.
 - **Разделить фид по арх** (подкаталоги + отдельные Packages) — уберёт предупреждения, ценой сложности

@@ -13,6 +13,12 @@
 На роутере с установленным Entware (SSH, порт 222) подключите фид и поставьте пакет:
 
 ```sh
+# 1) opkg должен уметь HTTPS: фид на github.io отдаётся только по TLS, а встроенный
+#    busybox-wget его НЕ тянет ("not an http or ftp url"). Ставим wget-ssl и направляем на него:
+opkg install wget-ssl ca-bundle ca-certificates
+ln -sf /opt/bin/wget /opt/usr/bin/wget       # opkg берёт wget из /opt/usr/bin — пусть это будет SSL-версия
+
+# 2) подключаем фид и ставим пакет
 mkdir -p /opt/etc/opkg
 echo 'src/gz invnet https://invisible25.github.io/keenetic-vpn-xor' > /opt/etc/opkg/invnet.conf
 opkg update
@@ -28,7 +34,9 @@ opkg update && opkg upgrade invnet
 
 Профили, привязки устройств, маршруты и настройки при обновлении сохраняются (не входят в пакет).
 
-> Фид отдаётся по HTTPS. Если opkg ругается на TLS — доставьте `opkg install ca-bundle ca-certificates`.
+> **Почему шаг 1?** opkg вызывает `wget`, а в `PATH` первым идёт `/opt/usr/bin/wget` → busybox
+> (без TLS). `wget-ssl` ставится как `/opt/bin/wget`; симлинк выше отдаёт opkg именно его. Проверено
+> на живом роутере: без этого `opkg update` по нашему фиду падает с `wget returned 1`.
 
 ## Установка одной командой (tarball)
 
