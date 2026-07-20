@@ -4,3 +4,11 @@ data/
 .env
 *_pw*
 install_info.txt
+
+# opkg: исходные XOR-openvpn бинарники нужны в репо для сборки фида (исключение из *.ipk выше)
+!opkg/openvpn/*.ipk
+# но артефакты сборки фида — не коммитим
+opkg/out/
+opkg/feed/
+# локальные бэкапы перед деплоем на роутер
+backup-before-deploy-*/

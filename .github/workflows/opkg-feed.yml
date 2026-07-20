@@ -1,0 +1,51 @@
+name: Публикация opkg-фида на GitHub Pages
+
+# Собирает opkg-фид (invnet + XOR-openvpn 3 арх + индекс Packages) и публикует его
+# на GitHub Pages. Роутер ставит/обновляет пакет через `opkg install/upgrade invnet`.
+#
+# Триггер: пуш тега vX.Y.Z (версия invnet берётся из тега) либо ручной запуск.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версия invnet (без v), напр. 1.6.0'
+        required: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Определить версию
+        id: ver
+        run: |
+          V="${{ github.event.inputs.version }}"
+          [ -n "$V" ] || V="${GITHUB_REF_NAME#v}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+      - name: Собрать opkg-фид
+        run: sh opkg/build-feed.sh opkg/feed "${{ steps.ver.outputs.version }}"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: opkg/feed
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

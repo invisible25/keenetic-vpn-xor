@@ -819,6 +819,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
           <input class="input" id="new-comment" placeholder="комментарий" maxlength="80" autocomplete="off" aria-label="Комментарий к маршруту">
           <button class="btn primary" id="route-add"><svg><use href="#ic-add"/></svg>Добавить</button>
           <button class="btn" id="route-import-btn"><svg><use href="#ic-import"/></svg>Импорт из Keenetic</button>
+          <button class="btn" id="route-bat-btn"><svg><use href="#ic-upload"/></svg>Импорт из .bat</button>
+          <input type="file" id="bat-file" accept=".bat,.cmd,.txt" hidden>
         </div>
         <div class="kimport" id="keenetic-routes-import"></div>
       </div>
@@ -2271,6 +2273,63 @@ $('#route-import-btn').addEventListener('click',async()=>{
       box.classList.remove('show'); box.innerHTML='';
     }
   });
+});
+/* Импорт маршрутов из Windows .bat/.cmd: парсим `route [-p] add <dest> mask <mask> …`
+   (регистронезависимо), маску → префикс, шлём тем же bulk-import'ом что и Keenetic. */
+function maskToPrefix(mask){
+  const p=mask.split('.').map(Number);
+  if(p.length!==4||p.some(o=>!Number.isInteger(o)||o<0||o>255)) return null;
+  const bits=p.map(o=>o.toString(2).padStart(8,'0')).join('');
+  if(!/^1*0*$/.test(bits)) return null;                 // маска обязана быть непрерывной
+  return bits.replace(/0+$/,'').length;
+}
+function validIPv4(s){ const p=s.split('.'); return p.length===4 && p.every(o=>/^\d{1,3}$/.test(o) && +o<=255); }
+function parseBatRoutes(text){
+  const out=[], seen={};
+  text.split(/\r?\n/).forEach(raw=>{
+    const m=raw.trim().match(/^route\s+(?:(?:-p|\/p)\s+)?add\s+(\d{1,3}(?:\.\d{1,3}){3})\s+mask\s+(\d{1,3}(?:\.\d{1,3}){3})/i);
+    if(!m) return;
+    const dest=m[1], mask=m[2];
+    if(!validIPv4(dest)||!validIPv4(mask)) return;
+    const pfx=maskToPrefix(mask); if(pfx===null) return;
+    if(dest==='0.0.0.0'&&pfx===0) return;                // default-route не импортируем (не гоним весь трафик)
+    const cidr=dest+'/'+pfx;
+    if(seen[cidr]) return; seen[cidr]=1;
+    out.push({cidr, comment:'Импорт .bat'});
+  });
+  return out;
+}
+function renderRouteImportPreview(items){
+  const box=$('#keenetic-routes-import');
+  const exists=c=>ROUTES_ARR.some(r=>r.cidr===c);
+  box.innerHTML=items.map((k,i)=>{
+    const ex=exists(k.cidr);
+    return '<label class="krow"><input type="checkbox" class="imp-route-check" data-i="'+i+'"'+
+      (ex?' disabled':' checked')+'>'+
+      '<span class="kc">'+esc(k.cidr)+'</span><span class="kl">'+esc(k.comment||'')+'</span>'+
+      (ex?'<span class="kex">уже есть</span>':'')+'</label>';
+  }).join('')+
+    '<div class="mfoot"><span class="grow"></span>'+
+    '<button class="btn primary" id="imp-go"><svg><use href="#ic-import"/></svg>Импортировать выбранные</button></div>';
+  box.classList.add('show');
+  $('#imp-go').addEventListener('click',async()=>{
+    const picked=[...box.querySelectorAll('.imp-route-check:checked')].map(c=>items[+c.dataset.i]);
+    if(!picked.length) return toast('Ничего не выбрано','error');
+    if(await routesPost('action=import&data='+encodeURIComponent(JSON.stringify(picked)))){
+      toast('Импортировано маршрутов: '+picked.length,'ok');
+      box.classList.remove('show'); box.innerHTML='';
+    }
+  });
+}
+$('#route-bat-btn').addEventListener('click',()=>$('#bat-file').click());
+$('#bat-file').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value='';   // сброс — иначе повторный выбор того же файла не сработает
+  if(!f) return;
+  if(f.size>512*1024) return toast('Файл больше 512 КБ','error');
+  let text=''; try{ text=await f.text(); }catch(_){ return toast('Не удалось прочитать файл','error'); }
+  const items=parseBatRoutes(text);
+  if(!items.length) return toast('Не найдено строк «route add … mask …»','error');
+  renderRouteImportPreview(items);
 });
 ON_ENTER.routes=async()=>{ if(!STATE.wans.length) await loadWans(); loadRoutes(); };
 ON_ENTER.overview=()=>{ renderChart(); };  // буфер копился и вне «Обзора» — перерисовать при входе

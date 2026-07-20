@@ -1,0 +1,33 @@
+#!/bin/sh
+# invnet postinst — выполняется opkg ПОСЛЕ распаковки файлов пакета.
+# Пакет несёт ТОЛЬКО код. Пользовательские данные (профили, meta, конфиги) создаются
+# здесь с дефолтами, если их ещё нет, и НЕ входят в манифест пакета → переживают upgrade.
+
+# рантайм-каталоги + дефолтные конфиги (не перетираем существующие)
+mkdir -p /opt/etc/openvpn/profiles /opt/etc/openvpn/profile-meta \
+         /opt/var/run/invnet /opt/var/log /opt/etc/ndm/netfilter.d
+[ -f /opt/etc/openvpn/invnet-mode.conf ]       || echo devices > /opt/etc/openvpn/invnet-mode.conf
+[ -f /opt/etc/openvpn/invnet-devices.conf ]    || : > /opt/etc/openvpn/invnet-devices.conf
+[ -f /opt/etc/openvpn/invnet-routes.conf ]     || echo '[]' > /opt/etc/openvpn/invnet-routes.conf
+[ -f /opt/etc/openvpn/invnet-wan-policy.conf ] || echo '[]' > /opt/etc/openvpn/invnet-wan-policy.conf
+[ -f /opt/etc/openvpn/invnet-autostart.conf ]  || echo no > /opt/etc/openvpn/invnet-autostart.conf
+
+# права (tar с Windows-хоста не всегда сохраняет exec-бит → выставляем явно)
+for s in S30invnet S31invnet-web S40invnet-pingcheck S41invnet-sched S95invnet-autostart; do
+  chmod 0755 /opt/etc/init.d/$s 2>/dev/null
+done
+chmod 0755 /opt/sbin/invnetctl \
+           /opt/etc/openvpn/invnet-up.sh /opt/etc/openvpn/invnet-down.sh /opt/etc/openvpn/invnet-fw.sh \
+           /opt/etc/ndm/netfilter.d/50-invnet.sh 2>/dev/null
+chmod 0755 /opt/share/invnet/cgi-bin/* 2>/dev/null
+
+# (пере)запуск служб — идемпотентно (restart перечитывает новый код/конфиг; на свежей = start)
+for s in S31invnet-web S41invnet-sched S40invnet-pingcheck; do
+  /opt/etc/init.d/$s restart >/dev/null 2>&1 || /opt/etc/init.d/$s start >/dev/null 2>&1
+done
+
+# поднять enabled-профили (мульти-профиль). Уже работающие туннели reconcile не рвёт;
+# новый openvpn применится после перезапуска профиля/ребута.
+[ -x /opt/sbin/invnetctl ] && /opt/sbin/invnetctl reconcile >/dev/null 2>&1
+
+exit 0

@@ -1,0 +1,11 @@
+#!/bin/sh
+# invnet prerm — выполняется opkg ПЕРЕД удалением файлов пакета.
+# Останавливаем службы и туннели. Пользовательские данные (профили, meta, конфиги,
+# маршруты) НЕ трогаем — они не в манифесте пакета и остаются на месте.
+
+[ -x /opt/sbin/invnetctl ] && /opt/sbin/invnetctl stopall >/dev/null 2>&1
+for s in S40invnet-pingcheck S41invnet-sched S31invnet-web; do
+  /opt/etc/init.d/$s stop >/dev/null 2>&1
+done
+
+exit 0

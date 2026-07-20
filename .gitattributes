@@ -2,3 +2,5 @@
 *.svg text eol=lf
 *.woff2 binary
 *.woff binary
+*.ipk binary
+*.tar.gz binary

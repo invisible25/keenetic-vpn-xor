@@ -9,12 +9,16 @@ V=$(curl -s -m4 "$RCI/show/version" 2>/dev/null)
 S=$(curl -s -m4 "$RCI/show/system" 2>/dev/null)
 LOAD=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' '/')
 
-# Температура CPU — best-effort из sysfs (милли-°C → °C)
+# Температура CPU — best-effort. thermal_zone есть на aarch64 (Giga/Hopper);
+# hwmon — запасной источник. На EcoNet (KN-2410 mips) датчика НЕТ нигде (проверено:
+# ни sysfs, ни hwmon, ни NDM RCI, ни ndmc) → TEMP останется пустой, UI покажет «—».
 TEMP=""
-for z in /sys/class/thermal/thermal_zone*/temp; do
+for z in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do
   [ -f "$z" ] || continue
-  t=$(cat "$z" 2>/dev/null); [ -z "$t" ] && continue
-  [ "$t" -gt 1000 ] 2>/dev/null && t=$((t/1000))
+  t=$(cat "$z" 2>/dev/null)
+  case "$t" in ''|*[!0-9]*) continue ;; esac      # только неотрицательные целые
+  [ "$t" -gt 1000 ] 2>/dev/null && t=$((t/1000))   # милли-°C → °C
+  [ "$t" -ge 20 ] 2>/dev/null && [ "$t" -le 120 ] 2>/dev/null || continue  # отсечь мусор/0/датчик выкл
   TEMP=$t; break
 done
 

@@ -8,9 +8,31 @@
 доступа и статические маршруты-исключения в Keenetic (у каждого маршрута выбор «через VPN ↔ напрямую»);
 перетаскивание `.ovpn` в форму добавления профиля.
 
-## Установка одной командой
+## Установка через opkg (рекомендуется)
 
-На роутере с установленным Entware (SSH, порт 222):
+На роутере с установленным Entware (SSH, порт 222) подключите фид и поставьте пакет:
+
+```sh
+mkdir -p /opt/etc/opkg
+echo 'src/gz invnet https://invisible25.github.io/keenetic-vpn-xor' > /opt/etc/opkg/invnet.conf
+opkg update
+opkg install invnet
+```
+
+`opkg` сам поставит панель, XOR-openvpn под вашу архитектуру и зависимости. После установки
+откройте `http://<IP-роутера>:8888/`. **Обновление** — как у любого пакета Entware:
+
+```sh
+opkg update && opkg upgrade invnet
+```
+
+Профили, привязки устройств, маршруты и настройки при обновлении сохраняются (не входят в пакет).
+
+> Фид отдаётся по HTTPS. Если opkg ругается на TLS — доставьте `opkg install ca-bundle ca-certificates`.
+
+## Установка одной командой (tarball)
+
+Альтернатива без фида (офлайн-перенос). На роутере с Entware:
 
 ```sh
 opkg update && opkg install curl ca-bundle

@@ -31,6 +31,7 @@ UP=$CONF/invnet-up.sh
 DOWN=$CONF/invnet-down.sh
 MAXSLOT=7
 LANIF="br0 br1"
+HOLD_TABLE=199   # blackhole-удержание VPN-маршрутов, осиротевших без живого туннеля (анти-утечка)
 
 mkdir -p "$RUN" "$META" "$LOGDIR"
 
@@ -285,6 +286,7 @@ apply_routes() {
   while ip rule del priority 40 2>/dev/null; do :; done
   while ip rule del priority 39 2>/dev/null; do :; done
   _t=230; while [ "$_t" -le 238 ]; do ip route flush table "$_t" 2>/dev/null; _t=$((_t+1)); done
+  ip route flush table "$HOLD_TABLE" 2>/dev/null   # снять прошлое blackhole-удержание
   [ -f "$ROUTES_FILE" ] || return 0
 
   # ── ПРЯМЫЕ маршруты-исключения: <cidr> через физический WAN, минуя VPN ──
@@ -313,9 +315,19 @@ apply_routes() {
     is_running "$pr" || continue
     [ "$s" -lt "$MINSLOT" ] && { MINSLOT=$s; PRIMARY=$pr; }
   done
-  [ -z "$PRIMARY" ] && return 0
-  TABLE=$((101 + MINSLOT))
-  jq -r '.[] | select(.enabled != false and ((.direct // false) != true)) | .cidr' "$ROUTES_FILE" 2>/dev/null | while read -r cidr; do
+  VPN_CIDRS=$(jq -r '.[] | select(.enabled != false and ((.direct // false) != true)) | .cidr' "$ROUTES_FILE" 2>/dev/null)
+  [ -z "$VPN_CIDRS" ] && return 0
+  if [ -n "$PRIMARY" ]; then
+    TABLE=$((101 + MINSLOT))                  # есть живой туннель → подсети идут в VPN
+  else
+    # НЕТ живого туннеля-носителя (все профили выкл/удалены): держим VPN-маршруты в
+    # blackhole, а НЕ выпускаем мимо VPN через обычный WAN (это была бы утечка — трафик
+    # к «VPN-only» подсетям светился бы в открытый канал). Осиротевший маршрут остаётся
+    # «в силе» так же, как kill-switch держит устройства (prio 40, отдельная таблица).
+    TABLE=$HOLD_TABLE
+    ip route replace blackhole default table "$HOLD_TABLE" 2>/dev/null
+  fi
+  printf '%s\n' "$VPN_CIDRS" | while read -r cidr; do
     cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
     ip rule add to "$cidr" lookup "$TABLE" priority 40 2>/dev/null
   done
