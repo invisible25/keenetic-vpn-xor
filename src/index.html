@@ -563,6 +563,19 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   border:1px solid var(--hairline);background:color-mix(in srgb,var(--bg) 55%,transparent);
   color:var(--ink2)}
 .daemon{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--ink2)}
+/* диагностика */
+.diag-tools{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.diag-tools .input{flex:1;min-width:200px}
+.diag-tools .xsel-wrap,.diag-tools>select{min-width:190px}
+.diag-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.exrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--hairline);flex-wrap:wrap}
+.exrow:first-child{border-top:none}
+.exrow .exn{font-weight:800;min-width:96px;display:flex;align-items:center;gap:8px}
+.exrow .expair{display:flex;gap:18px;flex:1;flex-wrap:wrap;font-size:var(--t-sm)}
+.exrow .exleg{display:block;font:500 var(--t-xs) var(--f-text);color:var(--muted)}
+.exrow .exip{font-family:var(--f-mono);color:var(--ink)}
+.exrow .exgeo{color:var(--muted)}
+.exrow .exok{color:var(--ok);font-weight:700} .exrow .exleak{color:var(--bad);font-weight:700}
 /* ════════════════════════════ НАСТРОЙКИ ════════════════════════════ */
 .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:14px}
 .tsw{display:flex;flex-direction:column;gap:7px;padding:10px;border-radius:var(--r-md);
@@ -661,6 +674,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   <symbol id="ic-chevron" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></g></symbol>
   <symbol id="ic-back" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></g></symbol>
   <symbol id="ic-watchdog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></g></symbol>
+  <symbol id="ic-diag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-7 4 14 2.5-7H21"/></g></symbol>
 </svg>
 
 <div class="app">
@@ -675,6 +689,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <button class="tab" data-tab="profiles" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-shield"/></svg>Профили</button>
       <button class="tab" data-tab="devices" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-device"/></svg>Устройства</button>
       <button class="tab" data-tab="routes" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-via"/></svg>Маршруты</button>
+      <button class="tab" data-tab="diag" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-diag"/></svg>Диагностика</button>
       <button class="tab" data-tab="log" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-journal"/></svg>Журнал<span class="nbadge" id="nav-log-badge"></span></button>
       <button class="tab" data-tab="settings" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-gear"/></svg>Настройки</button>
     </nav>
@@ -825,6 +840,30 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         <div class="kimport" id="keenetic-routes-import"></div>
       </div>
       <div class="dlist" id="routes-list"><div class="skel"></div></div>
+    </section>
+
+    <!-- ════════════════ ВИД: ДИАГНОСТИКА ════════════════ -->
+    <section class="view" data-view="diag">
+      <div class="vhead"><h2>Диагностика</h2></div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Проверка выхода в интернет</h3>
+        <p class="hint">Сравнивает внешний IP через туннель и напрямую через WAN — видно, что трафик реально уходит в VPN и в какой стране выход. Если IP совпадают — трафик мимо туннеля (утечка).</p>
+        <div id="exit-checks"><div class="empty"><svg><use href="#ic-globe"/></svg><b>Нажмите «Проверить»</b><span>для активных туннелей</span></div></div>
+        <div class="mfoot"><span class="grow"></span><button class="btn primary" id="exit-recheck"><svg><use href="#ic-refresh"/></svg>Проверить</button></div>
+      </div>
+      <div class="card glass">
+        <h3>Сетевые инструменты</h3>
+        <div class="diag-tools">
+          <input class="input" id="diag-target" placeholder="хост или IP, напр. example.com" autocomplete="off" spellcheck="false" aria-label="Цель">
+          <select id="diag-via" aria-label="Через какой канал"></select>
+        </div>
+        <div class="diag-btns">
+          <button class="btn" data-diag="ping"><svg><use href="#ic-diag"/></svg>Ping</button>
+          <button class="btn" data-diag="trace"><svg><use href="#ic-via"/></svg>Traceroute</button>
+          <button class="btn" data-diag="dns"><svg><use href="#ic-globe"/></svg>DNS</button>
+        </div>
+        <pre class="logpre" id="diag-out">Введите цель, выберите канал и инструмент.</pre>
+      </div>
     </section>
 
     <!-- ════════════════ ВИД: ЖУРНАЛ ════════════════ -->
@@ -1050,7 +1089,18 @@ function fmtRate(bps){ bps=+bps||0;
       case 'schedule':
         if(opt&&opt.method==='POST'){ try{SCHED[q.profile]=JSON.parse(body)}catch(e){} return J({ok:true}); }
         return J(SCHED[q.profile]||{enabled:false,actions:[]});
-      case 'checkip': return new Promise(res=>setTimeout(()=>res(J(CHECKIP[q.profile]||{error:'туннель не отвечает'})),900));
+      case 'checkip':{
+        if(q.direct==='1') return new Promise(res=>setTimeout(()=>res(J(
+          {ip:'217.174.236.144',country:'TM',city:'Ashgabat',region:'Ashgabat',org:'AS20661 Turkmentelecom',dev:'eth3',direct:true})),700));
+        return new Promise(res=>setTimeout(()=>res(J(CHECKIP[q.profile]||{ip:'64.31.20.9',country:'US',city:'Washington',region:'DC',org:'AS46475 Limestone Networks',dev:'tun_invnet0'})),900)); }
+      case 'diag':{
+        const tgt=q.target||'—', via=q.via==='wan'?' (через eth3)':q.via?(' (через tun_invnet0)'):'';
+        const head=(q.tool==='dns'?'nslookup '+tgt:q.tool==='trace'?'traceroute '+tgt+via:'ping '+tgt+via)+'\n----------------------------------------\n';
+        let out;
+        if(q.tool==='dns') out='Server:    127.0.0.1\nAddress 1: 127.0.0.1 localhost\n\nName:      '+tgt+'\nAddress 1: 142.251.38.238';
+        else if(q.tool==='trace') out=' 1  192.168.7.1  0.4 ms\n 2  *\n 3  *\n 4  10.60.0.1  212 ms\n 5  64.31.20.9  221 ms';
+        else out='PING '+tgt+': 56 data bytes\n64 bytes: seq=0 ttl=56 time=212 ms\n64 bytes: seq=1 ttl=56 time=219 ms\n64 bytes: seq=2 ttl=56 time=210 ms\n\n--- '+tgt+' ping statistics ---\n4 packets transmitted, 4 received, 0% loss';
+        return new Promise(res=>setTimeout(()=>res(T(head+out)),800)); }
       case 'sysinfo': return J({model:'Giga (KN-1012)',hw_id:'KN-1012',os_title:'5.1.1',os_release:'5.01.C.1.0-0',
         os_sandbox:'preview',os_date:'3 Jul 2026',arch:'aarch64',cpu:'',cpumodel:'MT7981',cpucores:2,cputemp:61,
         wifi24temp:52,wifi5temp:52,cpuload:7,memtotal:524288,memfree:58360,memused:303876,
@@ -1378,8 +1428,8 @@ function xselKey(e,wrap){
 document.addEventListener('click',e=>{ if(!e.target.closest('.xsel')) closeAllXsel(); });
 
 /* ════════════════════════════ НАВИГАЦИЯ (hash-синк) ════════════════════════════ */
-const VALID_TABS=['overview','profiles','devices','routes','log','settings'];
-const TAB_TITLES={overview:'Обзор',profiles:'Профили',devices:'Устройства',routes:'Маршруты',log:'Журнал',settings:'Настройки'};
+const VALID_TABS=['overview','profiles','devices','routes','diag','log','settings'];
+const TAB_TITLES={overview:'Обзор',profiles:'Профили',devices:'Устройства',routes:'Маршруты',diag:'Диагностика',log:'Журнал',settings:'Настройки'};
 const ON_ENTER={}, ON_LEAVE={};   // хуки видов (наполняются этапами 3.x)
 let CUR_TAB='overview';
 const NAV_STACK=[];               // история переходов внутри сессии (для кнопки «назад»)
@@ -2337,6 +2387,60 @@ $('#bat-file').addEventListener('change',async e=>{
 });
 ON_ENTER.routes=async()=>{ if(!STATE.wans.length) await loadWans(); loadRoutes(); };
 ON_ENTER.overview=()=>{ renderChart(); };  // буфер копился и вне «Обзора» — перерисовать при входе
+
+/* ════════════════════════════ ДИАГНОСТИКА ════════════════════════════ */
+function populateDiagVia(){
+  const sel=$('#diag-via'); if(!sel) return;
+  const running=(STATE.profiles||[]).filter(p=>p.running);
+  const opts=[{v:'',t:'По умолчанию (авто)'}]
+    .concat(running.map(p=>({v:p.name,t:'Туннель: '+p.name})))
+    .concat([{v:'wan',t:'Напрямую (WAN, минуя VPN)'}]);
+  const cur=sel.value;
+  sel.innerHTML=opts.map(o=>'<option value="'+esc(o.v)+'">'+esc(o.t)+'</option>').join('');
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;        // сохранить выбор
+  else if(running.length) sel.value=running[0].name;               // иначе — первый живой туннель
+  enhanceSelect(sel);
+}
+async function runExitChecks(){
+  const box=$('#exit-checks');
+  const running=(STATE.profiles||[]).filter(p=>p.running);
+  if(!running.length){ box.innerHTML='<div class="empty"><svg><use href="#ic-alert"/></svg>'+
+    '<b>Нет активных туннелей</b><span>включите профиль на «Обзоре»</span></div>'; return; }
+  box.innerHTML=running.map(p=>'<div class="exrow" data-exn="'+esc(p.name)+'">'+
+    '<span class="exn"><span class="spinner"></span>'+esc(p.name)+'</span>'+
+    '<span class="expair">проверяю…</span></div>').join('');
+  const geo=d=>(d&&d.ip)?[d.country,d.city].filter(Boolean).join(', '):'';
+  for(const p of running){
+    const row=box.querySelector('.exrow[data-exn="'+CSS.escape(p.name)+'"]'); if(!row) continue;
+    const [vpn,direct]=await Promise.all([
+      API.json('checkip',{profile:p.name}).catch(()=>null),
+      API.json('checkip',{profile:p.name,direct:1}).catch(()=>null)
+    ]);
+    const vpnIP=(vpn&&vpn.ip)||'—', dirIP=(direct&&direct.ip)||'—';
+    const known=vpnIP!=='—'&&dirIP!=='—';
+    const leak=known&&vpnIP===dirIP, ok=known&&vpnIP!==dirIP;
+    row.querySelector('.exn').innerHTML=esc(p.name)+
+      (ok?' <span class="exok">✓</span>':leak?' <span class="exleak">⚠</span>':'');
+    row.querySelector('.expair').innerHTML=
+      '<span><span class="exleg">В туннеле</span><span class="exip">'+esc(vpnIP)+'</span> '+
+        '<span class="exgeo">'+esc(geo(vpn))+'</span></span>'+
+      '<span><span class="exleg">Напрямую</span><span class="exip">'+esc(dirIP)+'</span> '+
+        '<span class="exgeo">'+esc(geo(direct))+'</span></span>'+
+      (leak?'<span class="exleak">трафик идёт мимо VPN!</span>':'');
+  }
+}
+async function runDiag(tool){
+  const target=$('#diag-target').value.trim();
+  if(!target){ toast('Укажите цель (хост или IP)','error'); $('#diag-target').focus(); return; }
+  const via=$('#diag-via')?$('#diag-via').value:'';
+  const out=$('#diag-out'); out.textContent='выполняется…'+(tool==='trace'?' (traceroute до 15–20 с)':'');
+  try{ out.textContent=(await API.text('diag',{tool,target,via}))||'(пустой ответ)'; }
+  catch(e){ out.textContent='ошибка запроса diag'; }
+}
+$('#exit-recheck').addEventListener('click',runExitChecks);
+$$('[data-diag]').forEach(b=>b.addEventListener('click',()=>runDiag(b.dataset.diag)));
+$('#diag-target').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); runDiag('ping'); } });
+ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); };
 
 /* ════════════════════════════ ЖУРНАЛ ════════════════════════════ */
 let LOG_TIMER=null;

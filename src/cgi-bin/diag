@@ -1,0 +1,49 @@
+#!/bin/sh
+# Сетевая диагностика: ?tool=ping|trace|dns & target=<host> & via=<profile>|wan
+#   via=<профиль>  — через туннель этого профиля (tun_invnet<slot>)
+#   via=wan        — через физический WAN (минуя VPN)
+#   via пусто      — через маршрут по умолчанию
+# Вывод — plain text (как в терминале). Цель строго валидируется (команда идёт в shell).
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+
+TOOL=$(echo "$QUERY_STRING"  | sed -n 's/.*tool=\([^&]*\).*/\1/p'  | tr -cd 'a-z')
+# target: только буквы/цифры/точка/дефис/двоеточие (хост или IP) — режем всё остальное (анти-инъекция)
+TARGET=$(echo "$QUERY_STRING" | sed -n 's/.*target=\([^&]*\).*/\1/p' | sed 's/%2[eE]/./g' | tr -cd 'A-Za-z0-9.:-')
+VIA=$(echo "$QUERY_STRING"   | sed -n 's/.*via=\([^&]*\).*/\1/p'   | tr -cd 'A-Za-z0-9._-')
+
+[ -z "$TARGET" ] && { echo "Не указана цель"; exit 0; }
+case "$TARGET" in -*) echo "Недопустимая цель"; exit 0 ;; esac   # не даём подсунуть -флаг вместо хоста
+
+# выбор интерфейса
+DEV=""
+if [ "$VIA" = "wan" ]; then
+  DEV=$(ip route show default 2>/dev/null | grep -v tun_invnet | sed -n 's/.*dev \([^ ]*\).*/\1/p' | head -1)
+elif [ -n "$VIA" ]; then
+  SLOT=$(cat "/opt/var/run/invnet/${VIA}.slot" 2>/dev/null)
+  if [ -n "$SLOT" ] && ip link show "tun_invnet$SLOT" >/dev/null 2>&1; then
+    DEV="tun_invnet$SLOT"
+  else
+    echo "Туннель профиля «$VIA» не запущен"; exit 0
+  fi
+fi
+
+hdr() { echo "$1"; echo "----------------------------------------"; }
+
+case "$TOOL" in
+  ping)
+    hdr "ping $TARGET${DEV:+  (через $DEV)}"
+    if [ -n "$DEV" ]; then ping -c 4 -W 2 -I "$DEV" "$TARGET" 2>&1
+    else ping -c 4 -W 2 "$TARGET" 2>&1; fi ;;
+  trace)
+    # ICMP-режим (-I): UDP-пробы у провайдера часто режутся (сплошные *), ICMP проходит как ping.
+    hdr "traceroute $TARGET${DEV:+  (через $DEV)}"
+    if [ -n "$DEV" ]; then traceroute -n -I -q 1 -w 1 -m 15 -i "$DEV" "$TARGET" 2>&1
+    else traceroute -n -I -q 1 -w 1 -m 15 "$TARGET" 2>&1; fi ;;
+  dns)
+    hdr "nslookup $TARGET"
+    nslookup "$TARGET" 2>&1 ;;      # резолв через системный DNS (бинд к интерфейсу nslookup не умеет)
+  *)
+    echo "Неизвестный инструмент: $TOOL" ;;
+esac

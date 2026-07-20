@@ -1,32 +1,67 @@
 #!/bin/sh
-# Проверка внешнего IP. ?profile=X — через туннель конкретного профиля,
-# иначе через первый запущенный tun_invnet*.
+# Внешний IP через туннель профиля (?profile=X) или первый tun_invnet*.
+# ?direct=1 — IP без туннеля (через физический WAN), для сравнения «выход в туннеле vs напрямую».
+#
+# Надёжность (подход AWG-Manager): часть IP-сервисов режется гео-блоком или отдаёт HTML/403
+# (напр. ifconfig.me) → берём ПЕРВЫЙ ВАЛИДНЫЙ IP из нескольких, гео тянем отдельным запросом
+# по этому IP (гео не зависит от пути). Раньше был один ifconfig.co без валидации → мусор/скачки.
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
 PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
+DIRECT=$(echo "$QUERY_STRING" | sed -n 's/.*direct=\([^&]*\).*/\1/p' | tr -cd '01')
 
 DEV=""
-if [ -n "$PROFILE" ]; then
-  SLOT=$(cat /opt/var/run/invnet/$PROFILE.slot 2>/dev/null)
-  [ -n "$SLOT" ] && DEV="tun_invnet$SLOT"
+if [ "$DIRECT" = "1" ]; then
+  # физический WAN профиля (минуя туннель): из meta .wan, иначе defaultgw NDM
+  if [ -n "$PROFILE" ]; then
+    DEV=$(jq -r '.wan // empty' "/opt/etc/openvpn/profile-meta/${PROFILE}.json" 2>/dev/null)
+  fi
+  [ -z "$DEV" ] && DEV=$(ip route show default 2>/dev/null | grep -v tun_invnet | sed -n 's/.*dev \([^ ]*\).*/\1/p' | head -1)
+  # если WAN не определился — пусть идёт через маршрут по умолчанию (DEV пустой = без бинда)
 else
-  DEV=$(ls /sys/class/net 2>/dev/null | grep '^tun_invnet' | head -1)
+  if [ -n "$PROFILE" ]; then
+    SLOT=$(cat "/opt/var/run/invnet/${PROFILE}.slot" 2>/dev/null)
+    [ -n "$SLOT" ] && DEV="tun_invnet$SLOT"
+  else
+    DEV=$(ls /sys/class/net 2>/dev/null | grep '^tun_invnet' | head -1)
+  fi
+  [ -z "$DEV" ] && { echo '{"error":"нет активного VPN"}'; exit 0; }
+  ip link show "$DEV" >/dev/null 2>&1 || { echo '{"error":"туннель не поднят"}'; exit 0; }
 fi
 
-[ -z "$DEV" ] && { echo '{"error":"нет активного VPN"}'; exit 0; }
-ip link show "$DEV" >/dev/null 2>&1 || { echo '{"error":"туннель не поднят"}'; exit 0; }
+valid_ip() {
+  case "$1" in *:*:*) return 0 ;; esac                        # грубо IPv6
+  echo "$1" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$'        # IPv4 (результат = код возврата)
+}
+fetch() {  # $1=url — с биндом к $DEV, если задан
+  if [ -n "$DEV" ]; then curl -s --max-time 6 --interface "$DEV" "$1" 2>/dev/null
+  else curl -s --max-time 6 "$1" 2>/dev/null; fi
+}
 
-JSON=$(curl -s --max-time 8 --interface "$DEV" "https://ifconfig.co/json" 2>/dev/null)
-[ -z "$JSON" ] && JSON=$(curl -s --max-time 8 --interface "$DEV" "https://ipinfo.io/json" 2>/dev/null)
-[ -z "$JSON" ] && { echo '{"error":"нет интернета через VPN"}'; exit 0; }
+# 1) ipinfo.io/json — IP + гео за один запрос (https, стабильный)
+J=$(fetch "https://ipinfo.io/json")
+IP=$(echo "$J" | jq -r '.ip // empty' 2>/dev/null)
 
-echo "$JSON" | jq --arg dev "$DEV" '{
-  ip: (.ip // .ip_addr // ""),
-  country: (.country // .country_iso // ""),
-  city: (.city // ""),
-  region: (.region // .region_code // ""),
-  org: (.asn_org // .org // .hostname // ""),
-  dev: $dev
-}' 2>/dev/null || echo '{"error":"parse"}'
+if ! valid_ip "$IP"; then
+  # 2) fallback: plain-text сервисы, первый валидный IP
+  IP=""
+  for u in https://api.ipify.org https://icanhazip.com https://ipinfo.io/ip https://wtfismyip.com/text; do
+    c=$(fetch "$u" | tr -d '[:space:]')
+    if valid_ip "$c"; then IP="$c"; break; fi
+  done
+  [ -z "$IP" ] && { echo '{"error":"нет интернета через выбранный канал"}'; exit 0; }
+  # 3) гео по найденному IP (без бинда — гео от пути не зависит, так надёжнее)
+  J=$(curl -s --max-time 6 "https://ipinfo.io/${IP}/json" 2>/dev/null)
+fi
+
+echo "$J" | jq --arg ip "$IP" --arg dev "$DEV" --arg direct "$DIRECT" '{
+  ip:      (if $ip != "" then $ip else (.ip // "") end),
+  country: (.country // ""),
+  city:    (.city // ""),
+  region:  (.region // ""),
+  org:     (.org // (.asn.name // "")),
+  dev:     $dev,
+  direct:  ($direct == "1")
+}' 2>/dev/null || echo "{\"ip\":\"$IP\",\"dev\":\"$DEV\"}"
