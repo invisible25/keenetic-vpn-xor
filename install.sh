@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.5.0   # редизайн UI: дашборд «Обзор» (плитки туннелей, график трафика, watchdog-лента), сайдбар/нижний таб-бар, demo-режим
+INVNET_VERSION=1.6.0   # glassmorphism-редизайн, opkg-фид, orphan-blackhole маршрутов, импорт .bat, hwmon-температура
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
