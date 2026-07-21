@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.6.0   # glassmorphism-редизайн, opkg-фид, orphan-blackhole маршрутов, импорт .bat, hwmon-температура
+INVNET_VERSION=1.6.1   # вкладка «Диагностика», точный checkip (валидация+перебор), sysinfo с моделью SoC и темп. Wi-Fi
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
