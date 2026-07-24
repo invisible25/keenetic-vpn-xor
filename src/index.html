@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="abyss-dark">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -29,90 +29,28 @@
 
 /* ════════════════════════════ ТОКЕНЫ: ВХОДНОЙ СЛОЙ (темы) ════════════════════════════ */
 /* Тема задаёт ТОЛЬКО эти переменные. Компоненты читают их + производный слой. */
-:root, [data-theme="abyss-dark"]{
-  --bg:#04141A; --blob1:#0D9488; --blob2:#0EA5E9; --blob3:#155E75;
-  --glass:rgba(150,240,225,.06); --glass-strong:rgba(150,240,225,.11);
-  --hairline:rgba(170,235,225,.19); --hairline-hi:rgba(170,235,225,.34);
-  --ink:#E7F9F5; --ink2:#BADFD8; --muted:#7FA8A0;
-  --accent:#38BDF8; --accent-2:#2DD4BF; --on-accent:#04222B;
-  --ok:#34D399; --bad:#FB7185; --warn:#FBBF24; --info:#818CF8;
-  --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(1,12,14,.6);
+/* Классический нейтральный «Камень» — без брендового акцента: accent = чернильный
+   цвет (тёмный на светлой / светлый на тёмной). Цветными остаются ТОЛЬКО функциональные
+   статусы (работает/упал/внимание) и две data-линии графика — иначе теряется семантика. */
+:root, [data-theme="dark"]{
+  --bg:#14110E; --blob1:#2A2620; --blob2:#221E19; --blob3:#302A22;
+  --glass:rgba(240,235,226,.05); --glass-strong:rgba(240,235,226,.09);
+  --hairline:rgba(236,232,226,.12); --hairline-hi:rgba(236,232,226,.24);
+  --ink:#ECE8E2; --ink2:#C4BEB4; --muted:#8C857B;
+  --accent:#ECE8E2; --accent-2:#A8A198; --on-accent:#1A1712;
+  --ok:#5BB47E; --bad:#E0685E; --warn:#D0A24E; --info:#8A94A6;
+  --rx:#6FA99A; --tx:#C89263; --shadow:rgba(0,0,0,.6);
   --scheme:dark;
 }
-[data-theme="abyss-light"]{
-  --bg:#DDE8E7; --blob1:#7FD9CC; --blob2:#9CC9E0; --blob3:#B6D8E4;
-  --glass:rgba(255,255,255,.5); --glass-strong:rgba(255,255,255,.72);
-  --hairline:rgba(15,70,75,.14); --hairline-hi:rgba(15,70,75,.28);
-  --ink:#0E2E33; --ink2:#2C4F53; --muted:#3C6362;
-  --accent:#075985; --accent-2:#0B6E64; --on-accent:#F0FAFF;
-  --ok:#047857; --bad:#E11D48; --warn:#A16207; --info:#4338CA;
-  --rx:#2563EB; --tx:#B45309; --shadow:rgba(60,110,110,.25);
+[data-theme="light"]{
+  --bg:#F4F2EE; --blob1:#E7E2DA; --blob2:#DED8CE; --blob3:#E3DDD3;
+  --glass:rgba(255,255,255,.62); --glass-strong:rgba(255,255,255,.8);
+  --hairline:rgba(28,25,23,.12); --hairline-hi:rgba(28,25,23,.2);
+  --ink:#1C1917; --ink2:#44403C; --muted:#6E655E;
+  --accent:#2A2420; --accent-2:#57534E; --on-accent:#F4F2EE;
+  --ok:#2F7D5B; --bad:#BF463C; --warn:#8A5A17; --info:#4E5A6E;
+  --rx:#3F7A6B; --tx:#9C6239; --shadow:rgba(60,50,40,.16);
   --scheme:light;
-}
-
-/* Портированные пресеты прежней панели (входной слой, тот же контракт переменных) */
-[data-theme="gold-light"]{
-  --bg:#ECE4D3; --blob1:#DEC488; --blob2:#E7DCBE; --blob3:#D3BA83;
-  --glass:rgba(255,255,255,.5); --glass-strong:rgba(255,255,255,.72);
-  --hairline:rgba(90,70,20,.14); --hairline-hi:rgba(90,70,20,.28);
-  --ink:#2A2013; --ink2:#54452C; --muted:#6E5E3E;
-  --accent:#8A5406; --accent-2:#8A6D1F; --on-accent:#FFF8E6;
-  --ok:#15803D; --bad:#DC2626; --warn:#B45309; --info:#4338CA;
-  --rx:#0369A1; --tx:#BE123C; --shadow:rgba(140,110,50,.25); --scheme:light;
-}
-[data-theme="gold-dark"]{
-  --bg:#181410; --blob1:#8A6D1F; --blob2:#5C4A15; --blob3:#C9A227;
-  --glass:rgba(255,220,150,.055); --glass-strong:rgba(255,220,150,.10);
-  --hairline:rgba(255,225,170,.15); --hairline-hi:rgba(255,225,170,.32);
-  --ink:#F5EEDC; --ink2:#D9CCAA; --muted:#A2947A;
-  --accent:#D9AE3E; --accent-2:#B98A2C; --on-accent:#241A05;
-  --ok:#4ADE80; --bad:#F87171; --warn:#FB923C; --info:#818CF8;
-  --rx:#38BDF8; --tx:#F472B6; --shadow:rgba(15,10,2,.6); --scheme:dark;
-}
-[data-theme="noir"]{
-  --bg:#121110; --blob1:#3A342B; --blob2:#C9A227; --blob3:#26221C;
-  --glass:rgba(255,240,210,.045); --glass-strong:rgba(255,240,210,.09);
-  --hairline:rgba(240,230,210,.13); --hairline-hi:rgba(240,230,210,.3);
-  --ink:#EDE9E1; --ink2:#C9C2B4; --muted:#8F887A;
-  --accent:#C9A227; --accent-2:#E0BE55; --on-accent:#1C1605;
-  --ok:#4ADE80; --bad:#F87171; --warn:#FB923C; --info:#93A6F7;
-  --rx:#7DD3FC; --tx:#F9A8D4; --shadow:rgba(0,0,0,.65); --scheme:dark;
-}
-[data-theme="tokyonight"]{
-  --bg:#1A1B26; --blob1:#3D59A1; --blob2:#BB9AF7; --blob3:#2AC3DE;
-  --glass:rgba(160,180,255,.06); --glass-strong:rgba(160,180,255,.11);
-  --hairline:rgba(180,195,255,.15); --hairline-hi:rgba(180,195,255,.32);
-  --ink:#C0CAF5; --ink2:#9AA5CE; --muted:#8891BF;
-  --accent:#7AA2F7; --accent-2:#BB9AF7; --on-accent:#10121C;
-  --ok:#9ECE6A; --bad:#F7768E; --warn:#E0AF68; --info:#7DCFFF;
-  --rx:#2AC3DE; --tx:#FF9E64; --shadow:rgba(5,6,15,.6); --scheme:dark;
-}
-[data-theme="neo"]{
-  --bg:#070C10; --blob1:#00B8D4; --blob2:#123B4F; --blob3:#7C4DFF;
-  --glass:rgba(0,229,255,.05); --glass-strong:rgba(0,229,255,.1);
-  --hairline:rgba(120,240,255,.16); --hairline-hi:rgba(120,240,255,.34);
-  --ink:#E6FBFF; --ink2:#A9D9E4; --muted:#6E93A0;
-  --accent:#00E5FF; --accent-2:#7C4DFF; --on-accent:#002229;
-  --ok:#34D399; --bad:#FB7185; --warn:#FBBF24; --info:#818CF8;
-  --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(0,10,15,.65); --scheme:dark;
-}
-[data-theme="mint"]{
-  --bg:#DEEAE2; --blob1:#8FD9B8; --blob2:#A9E4DC; --blob3:#AEDCC4;
-  --glass:rgba(255,255,255,.5); --glass-strong:rgba(255,255,255,.72);
-  --hairline:rgba(10,70,45,.14); --hairline-hi:rgba(10,70,45,.28);
-  --ink:#0E2E22; --ink2:#2C5044; --muted:#456B5D;
-  --accent:#115E59; --accent-2:#0F7A4B; --on-accent:#F0FFFA;
-  --ok:#047857; --bad:#E11D48; --warn:#A16207; --info:#4338CA;
-  --rx:#2563EB; --tx:#B45309; --shadow:rgba(60,110,90,.25); --scheme:light;
-}
-[data-theme="catppuccin"]{
-  --bg:#1E1E2E; --blob1:#89B4FA; --blob2:#CBA6F7; --blob3:#F5C2E7;
-  --glass:rgba(200,190,255,.06); --glass-strong:rgba(200,190,255,.11);
-  --hairline:rgba(205,214,244,.15); --hairline-hi:rgba(205,214,244,.3);
-  --ink:#CDD6F4; --ink2:#A6ADC8; --muted:#9399B2;
-  --accent:#89B4FA; --accent-2:#CBA6F7; --on-accent:#11111B;
-  --ok:#A6E3A1; --bad:#F38BA8; --warn:#F9E2AF; --info:#74C7EC;
-  --rx:#89DCEB; --tx:#FAB387; --shadow:rgba(8,8,18,.6); --scheme:dark;
 }
 
 /* ════════════════════════════ ТОКЕНЫ: ПРОИЗВОДНЫЙ СЛОЙ ════════════════════════════ */
@@ -919,7 +857,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         <h3>Тема оформления</h3>
         <div class="theme-grid" id="theme-grid"></div>
         <div class="custom-row" id="custom-row">
-          <div class="field"><label for="cu-accent">Акцент</label><input type="color" id="cu-accent" value="#38BDF8"></div>
+          <div class="field"><label for="cu-accent">Акцент</label><input type="color" id="cu-accent" value="#A8896B"></div>
           <div class="field"><label for="cu-bg">Фон</label><input type="color" id="cu-bg" value="#04141A"></div>
           <div class="field"><label for="cu-text">Текст</label><input type="color" id="cu-text" value="#E7F9F5"></div>
           <button class="btn" id="custom-apply"><svg><use href="#ic-check"/></svg>Применить свою</button>
@@ -1158,19 +1096,12 @@ const API={
 
 /* ════════════════════════════ ТЕМЫ (пресеты + custom-движок) ════════════════════════════ */
 const THEMES={
-  'abyss-dark':  {label:'Глубина',        bg:'#04141A',accent:'#38BDF8',ink:'#E7F9F5',dark:1},
-  'abyss-light': {label:'Глубина светлая',bg:'#DDE8E7',accent:'#075985',ink:'#0E2E33',dark:0},
-  'gold-light':  {label:'Gold светлая',   bg:'#ECE4D3',accent:'#8A5406',ink:'#2A2013',dark:0},
-  'gold-dark':   {label:'Gold тёмная',    bg:'#181410',accent:'#D9AE3E',ink:'#F5EEDC',dark:1},
-  'noir':        {label:'Noir',           bg:'#121110',accent:'#C9A227',ink:'#EDE9E1',dark:1},
-  'tokyonight':  {label:'Tokyo Night',    bg:'#1A1B26',accent:'#7AA2F7',ink:'#C0CAF5',dark:1},
-  'neo':         {label:'Cyber',          bg:'#070C10',accent:'#00E5FF',ink:'#E6FBFF',dark:1},
-  'mint':        {label:'Mint',           bg:'#DEEAE2',accent:'#115E59',ink:'#0E2E22',dark:0},
-  'catppuccin':  {label:'Catppuccin',     bg:'#1E1E2E',accent:'#89B4FA',ink:'#CDD6F4',dark:1}
+  'dark':  {label:'Тёмная',  bg:'#14110E',accent:'#ECE8E2',ink:'#ECE8E2',dark:1},
+  'light': {label:'Светлая', bg:'#F4F2EE',accent:'#2A2420',ink:'#1C1917',dark:0}
 };
 const THEME_KEY='invnet-theme-v3';
-let CUR_THEME='abyss-dark';
-let CUSTOM={accent:'#38BDF8',bg:'#04141A',text:'#E7F9F5'};
+let CUR_THEME='dark';
+let CUSTOM={accent:'#A8896B',bg:'#14110E',text:'#ECE8E2'};
 function _lum(hex){ const c=(hex||'#000').replace('#','');
   const [r,g,b]=[0,2,4].map(i=>parseInt(c.substr(i,2),16)/255);
   return .2126*r+.7152*g+.0722*b; }
@@ -1228,7 +1159,7 @@ function applyTheme(id,custom){
     document.documentElement.dataset.theme='custom';
     document.querySelector('meta[name=theme-color]').setAttribute('content',CUSTOM.bg);
   } else {
-    if(!THEMES[id]) id='abyss-dark';
+    if(!THEMES[id]) id='dark';
     clearCustomVars();
     document.documentElement.dataset.theme=id;
     document.querySelector('meta[name=theme-color]').setAttribute('content',THEMES[id].bg);
@@ -1245,19 +1176,16 @@ function applyTheme(id,custom){
 function initTheme(){
   let saved=null;
   try{ saved=JSON.parse(localStorage.getItem(THEME_KEY)||'null'); }catch(e){}
-  if(!saved){ // миграция со старой панели (ключ v2: light/dark/noir/…)
+  if(!saved){ // миграция со старой панели (ключ v2: light/dark/…)
     try{
       const old=JSON.parse(localStorage.getItem('vpn-xor-theme-v2')||'null');
-      if(old&&old.theme){
-        const map={light:'gold-light',dark:'gold-dark'};
-        saved={theme:map[old.theme]||old.theme,custom:old.custom};
-        if(saved.theme!=='custom'&&!THEMES[saved.theme]) saved=null;
-      }
+      if(old&&old.theme) saved={theme:old.theme,custom:old.custom};
     }catch(e){}
   }
   if(saved&&saved.custom&&saved.custom.bg) CUSTOM=saved.custom;
-  const id=saved&&saved.theme?saved.theme
-    : (matchMedia('(prefers-color-scheme: light)').matches?'abyss-light':'abyss-dark');
+  let id=saved&&saved.theme;
+  // тем осталось две: старый/неизвестный пресет → выбираем по системной теме
+  if(!id || (id!=='custom' && !THEMES[id])) id=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
   applyTheme(id);
 }
 function themeItem(id,t){
