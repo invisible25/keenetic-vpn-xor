@@ -51,7 +51,9 @@ sample_quality() {
     rtt=$(echo "$out"  | sed -n 's#.* = [0-9.]*/\([0-9.]*\)/.*#\1#p' | head -1)
     [ -z "$loss" ] && loss=100          # ping не отработал = считаем потерей
     qf="$QDIR/q-$pr.log"
-    echo "$(date +%s) ${rtt:-} $loss" >> "$qf"
+    # rtt пустым не пишем: "<ts>  100" (двойной пробел) даёт в quality awk $2=100 $3=""
+    # → loss читается как 0, а не как 100. Плейсхолдер "-" — quality уже ждёт именно его.
+    echo "$(date +%s) ${rtt:--} $loss" >> "$qf"
     ln=$(wc -l < "$qf" 2>/dev/null || echo 0)
     [ "$ln" -gt "$QMAX" ] 2>/dev/null && { tail -n "$QMAX" "$qf" > "$qf.tmp" 2>/dev/null && mv "$qf.tmp" "$qf"; }
   done

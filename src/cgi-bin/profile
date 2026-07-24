@@ -16,6 +16,7 @@ F=$DIR/${NAME}.ovpn
 . /opt/share/invnet/invnet-lib.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
+  csrf_guard
   [ -f "$F" ] || { echo '{"error":"not found"}'; exit 0; }
   BODY=$(head -c 200000)
 

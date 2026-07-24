@@ -6,6 +6,8 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard
 
 NAME=$(echo "$QUERY_STRING" | sed -n 's/.*name=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
 ON=$(echo "$QUERY_STRING" | sed -n 's/.*on=\([^&]*\).*/\1/p' | tr -cd '01')

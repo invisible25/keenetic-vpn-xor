@@ -21,7 +21,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # false: два тега подряд иначе могут отменить незавершённый деплой Pages НА
+  # ПОЛПУТИ — фид останется от предыдущего тега при зелёной галочке на новом.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -30,9 +32,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Определить версию
         id: ver
+        env:
+          # через env, не интерполяцией прямо в run: — иначе это script injection
+          # (ручной запуск позволяет любому с доступом к Actions вписать сюда `; rm ...`)
+          VERSION_IN: ${{ github.event.inputs.version }}
         run: |
-          V="${{ github.event.inputs.version }}"
-          [ -n "$V" ] || V="${GITHUB_REF_NAME#v}"
+          V="$VERSION_IN"
+          if [ -z "$V" ]; then
+            case "$GITHUB_REF" in
+              refs/tags/v*) V="${GITHUB_REF_NAME#v}" ;;
+              *) echo "::error::ручной запуск не с тега — укажи version (X.Y.Z)"; exit 1 ;;
+            esac
+          fi
+          echo "$V" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::версия '$V' не похожа на X.Y.Z"; exit 1; }
           echo "version=$V" >> "$GITHUB_OUTPUT"
       - name: Собрать opkg-фид
         run: sh opkg/build-feed.sh opkg/feed "${{ steps.ver.outputs.version }}"

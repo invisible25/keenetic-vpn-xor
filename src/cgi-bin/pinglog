@@ -2,11 +2,13 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+. /opt/share/invnet/invnet-lib.sh
 
 LOG=/opt/var/log/invnet-pingcheck.log
 PIDF=/opt/var/run/invnet-pingcheck.pid
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
+  csrf_guard
   BODY=$(head -c 256)
   ACTION=$(echo "$BODY" | tr '&' '\n' | grep '^action=' | sed 's/^action=//' | tr -cd 'a-z')
   if [ "$ACTION" = "clear" ]; then

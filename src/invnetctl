@@ -53,7 +53,12 @@ slot_of() { cat "$RUN/$1.slot" 2>/dev/null; }
 pid_of() { cat "$RUN/$1.pid" 2>/dev/null; }
 
 is_running() {
-  P=$(pid_of "$1"); [ -n "$P" ] && kill -0 "$P" 2>/dev/null
+  # /opt/var/run переживает перезагрузку (persistent-раздел) — pid-файл может
+  # пережить процесс, чей PID после ребута выдан чему-то другому. kill -0 сам по
+  # себе это не отличит, поэтому дополнительно сверяем, что это правда openvpn.
+  P=$(pid_of "$1"); [ -n "$P" ] || return 1
+  kill -0 "$P" 2>/dev/null || return 1
+  grep -qa openvpn "/proc/$P/cmdline" 2>/dev/null
 }
 
 used_slots() { cat "$RUN"/*.slot 2>/dev/null; }
@@ -517,7 +522,13 @@ _M
     run=false
     _p=$(pid_of "$pr"); [ -n "$_p" ] && kill -0 "$_p" 2>/dev/null && run=true
 
-    slot=$(slot_of "$pr"); [ -z "$slot" ] && slot="-1"
+    # санитизация перед --argjson: битый .slot (гонка записи) или неожиданное
+    # значение .enabled/.schedule.enabled в мете иначе валит jq для ОДНОГО профиля,
+    # а echo ',' перед вызовом уже напечатан — весь ответ status ломается на всех
+    case "$en"    in true|false) : ;; *) en=false ;; esac
+    case "$sched" in true|false) : ;; *) sched=false ;; esac
+    slot=$(slot_of "$pr")
+    case "$slot" in ''|*[!0-9]*) slot="-1" ;; esac
     ip=""
     [ "$run" = true ] && [ "$slot" != "-1" ] && \
       ip=$(ip -br -4 addr show "tun_invnet$slot" 2>/dev/null | awk '{print $3}')

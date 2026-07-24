@@ -25,6 +25,7 @@ is_valid_cidr() {
 . /opt/share/invnet/invnet-lib.sh
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
+  csrf_guard
   BODY=$(head -c 65536)
   ACTION=$(echo "$BODY" | tr '&' '\n' | grep '^action=' | sed 's/^action=//' | tr -cd 'a-z')
   CIDR=$(echo "$BODY" | tr '&' '\n' | grep '^cidr=' | sed 's/^cidr=//' | sed 's/%2F/\//g; s/%2f/\//g; s/+/ /g' | tr -cd '0-9./')

@@ -3,6 +3,7 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+. /opt/share/invnet/invnet-lib.sh
 
 PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
 [ -z "$PROFILE" ] && { echo devices; exit 0; }
@@ -10,6 +11,7 @@ META=/opt/etc/openvpn/profile-meta/${PROFILE}.json
 mkdir -p /opt/etc/openvpn/profile-meta
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
+  csrf_guard
   BODY=$(head -c 32)
   case "$BODY" in *all*) M=all ;; *) M=devices ;; esac
   OLD=$([ -f "$META" ] && cat "$META" || echo '{}')

@@ -30,6 +30,7 @@ trap 'rm -f "$TMP" "$WANPOL.tmp"; rmdir "$LOCK" 2>/dev/null' EXIT
 jq -e '.' "$WANPOL" >/dev/null 2>&1 || echo '[]' > "$WANPOL"
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
+  csrf_guard
   BODY=$(head -c 8192)
   TMP=$(mktemp)
   # строгая валидация IPv4 (якоря ^$) — мусор/инъекц-паттерны не попадут в конфиг

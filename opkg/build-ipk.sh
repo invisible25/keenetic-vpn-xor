@@ -15,7 +15,10 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/.." && pwd)
 SRC="$REPO/src"
 VERSION="${1:-$(sed -n 's/^INVNET_VERSION=\([0-9.]*\).*/\1/p' "$REPO/install.sh" | head -1)}"
-[ -n "$VERSION" ] || VERSION=1.6.0
+# раньше при неудаче парсинга тут молча подставлялась константа 1.6.0 — если она
+# НИЖЕ уже опубликованной версии, opkg просто проигнорирует такой пакет как downgrade,
+# и "успешный" релиз никуда не доедет. Лучше падать явно.
+[ -n "$VERSION" ] || { echo "не удалось определить версию из $REPO/install.sh (INVNET_VERSION=)" >&2; exit 1; }
 OUT="${2:-$HERE/out}"
 PKG="invnet_${VERSION}_all.ipk"
 
@@ -42,6 +45,14 @@ inst invnetctl      opt/sbin/invnetctl 755
 inst invnet.conf    opt/etc/lighttpd/invnet.conf 644          # conffile
 inst invnet-lib.sh  opt/share/invnet/invnet-lib.sh 644
 inst index.html     opt/share/invnet/index.html 644
+# версия в подвале сайдбара = версия пакета (иначе панель врёт про свою версию).
+# Проверяем результат: sed при несовпадении паттерна тихо возвращает 0 и оставляет
+# файл нетронутым — без grep-проверки пакет собрался бы "зелёным" со старой версией в UI.
+FOOT="$DATA/opt/share/invnet/index.html"
+grep -q 'INVISIBLE NET · v' "$FOOT" || { echo "не нашёл подпись версии в index.html" >&2; exit 1; }
+VESC=$(printf '%s' "$VERSION" | sed 's/[&\\#]/\\&/g')
+sed -i "s#\(INVISIBLE NET · v\)[0-9][^<]*#\1$VESC#" "$FOOT"
+grep -q "INVISIBLE NET · v${VERSION}<" "$FOOT" || { echo "версия не подставилась в index.html" >&2; exit 1; }
 inst logo.svg       opt/share/invnet/logo.svg 644
 inst logo-mark.svg  opt/share/invnet/logo-mark.svg 644
 mkdir -p "$DATA/opt/share/invnet/fonts" "$DATA/opt/share/invnet/cgi-bin"

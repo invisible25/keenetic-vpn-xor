@@ -12,6 +12,7 @@ DIR=/opt/etc/openvpn/profiles
 mkdir -p "$DIR"
 
 . /opt/share/invnet/invnet-lib.sh
+csrf_guard
 
 NAME=$(echo "$BODY" | tr '&' '\n' | grep '^name=' | head -1 | sed 's/^name=//')
 CONTENT=$(echo "$BODY" | tr '&' '\n' | grep '^content=' | head -1 | sed 's/^content=//')

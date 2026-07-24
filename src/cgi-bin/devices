@@ -41,7 +41,10 @@ else
       if (mac == "00:00:00:00:00:00") next
       if (iface == "eth3" || iface == "eth2.4") next
       selected = (index(sel, " " ip " ") > 0) ? "true" : "false"
-      printf "%s{\"ip\":\"%s\",\"mac\":\"%s\",\"name\":\"\",\"iface\":\"%s\",\"selected\":%s}", (NR==2?"":","), ip, mac, iface, selected
+      # разделитель по числу НАПЕЧАТАННЫХ записей (n), а не по NR — иначе первая
+      # арп-запись, отсеянная фильтрами выше, оставляет висячую "," в начале JSON
+      n++
+      printf "%s{\"ip\":\"%s\",\"mac\":\"%s\",\"name\":\"\",\"iface\":\"%s\",\"selected\":%s}", (n==1?"":","), ip, mac, iface, selected
     }
   ' /proc/net/arp
   echo

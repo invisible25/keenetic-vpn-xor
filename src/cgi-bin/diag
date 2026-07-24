@@ -7,6 +7,8 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard   # без этого чужой сайт мог фоновым fetch() гонять пинг/трассировку через роутер
 
 TOOL=$(echo "$QUERY_STRING"  | sed -n 's/.*tool=\([^&]*\).*/\1/p'  | tr -cd 'a-z')
 # target: только буквы/цифры/точка/дефис/двоеточие (хост или IP) — режем всё остальное (анти-инъекция)

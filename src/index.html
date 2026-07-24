@@ -3,9 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#04141A">
+<meta name="theme-color" content="#14110E">
 <title>Invisible Net — VPN</title>
 <link rel="icon" type="image/svg+xml" href="logo-mark.svg">
+<script>
+/* Тема ставится ДО стилей: initTheme() внизу файла отработал бы уже после отрисовки, и
+   у пользователя светлой темы страница успевала мигнуть тёмной (плюс 0.4с transition на
+   body). Здесь только раскладка атрибутов — вся логика остаётся в initTheme(). */
+(function(){try{
+  var KNOWN={dark:1,light:0,'gold-dark':1,keenetic:0,'abyss-dark':1,catppuccin:1};
+  var ALIAS={noir:'gold-dark','gold-light':'light',mint:'light','abyss-light':'light',
+             tokyonight:'abyss-dark',neo:'abyss-dark'};
+  var s=JSON.parse(localStorage.getItem('invnet-theme-v3')||'null')||{};
+  var id=s.theme, dark;
+  if(id==='custom'){
+    var bg=(s.custom&&s.custom.bg)||'#14110E', c=bg.replace('#','');
+    dark=(0.2126*parseInt(c.substr(0,2),16)+0.7152*parseInt(c.substr(2,2),16)
+         +0.0722*parseInt(c.substr(4,2),16))/255<0.45;
+  } else {
+    if(id&&!(id in KNOWN)&&ALIAS[id]) id=ALIAS[id];
+    if(!id||!(id in KNOWN)) id=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+    dark=!!KNOWN[id];
+  }
+  var r=document.documentElement;
+  r.dataset.theme=id; r.dataset.scheme=dark?'dark':'light'; r.style.colorScheme=dark?'dark':'light';
+}catch(e){}})();
+</script>
 <style>
 /* ════════════════════════════ ШРИФТЫ (self-host, вариативные) ════════════════════════════ */
 @font-face{font-family:'Onest';font-style:normal;font-weight:400 800;font-display:swap;
@@ -51,6 +74,55 @@
   --ok:#2F7D5B; --bad:#BF463C; --warn:#8A5A17; --info:#4E5A6E;
   --rx:#3F7A6B; --tx:#9C6239; --shadow:rgba(60,50,40,.16);
   --scheme:light;
+}
+
+/* Фирменная тема INVISIBLE NET: charcoal + warm gold прямо из logo.svg
+   (#0A0A0A/#1F1F1F/#3A3A3A, #E8D5A8→#C9A876→#8B6F47, cloud dancer #F0EEE6).
+   warn уведён в насыщенный оранжевый (27°/81%) — рядом с приглушённым золотом
+   (36°/43%) жёлтый статус «внимание» иначе сливается с акцентом. */
+[data-theme="gold-dark"]{
+  --bg:#12110F; --blob1:#8B6F47; --blob2:#3A3A3A; --blob3:#C9A876;
+  --glass:rgba(240,238,230,.05); --glass-strong:rgba(240,238,230,.10);
+  --hairline:rgba(240,238,230,.13); --hairline-hi:rgba(240,238,230,.3);
+  --ink:#F0EEE6; --ink2:#D9D5C8; --muted:#9A9184;
+  --accent:#C9A876; --accent-2:#E8D5A8; --on-accent:#1F1F1F;
+  --ok:#5FBE86; --bad:#F0736A; --warn:#E9822F; --info:#8FA2C4;
+  --rx:#7FB6D9; --tx:#E091A6; --shadow:rgba(0,0,0,.65);
+  --scheme:dark;
+}
+/* «Keenetic» — палитра снята со штатной веб-морды роутера (styles-*.css KeeneticOS):
+   фирменный синий #0097DC, тёмно-синие панели #1B2434/#2E3D57, светлый фон #F5FAFC.
+   Сам #0097DC даёт на светлом лишь 3.0:1 — для текста мало, поэтому он ушёл в accent-2
+   (свечение/подложки), а accent — родной кинетиковский тёмный синий #1C6C9A (5.3:1). */
+[data-theme="keenetic"]{
+  --bg:#F4F7FA; --blob1:#77BCE4; --blob2:#C1DDED; --blob3:#CCE6F5;
+  --glass:rgba(255,255,255,.62); --glass-strong:rgba(255,255,255,.82);
+  --hairline:rgba(46,61,87,.14); --hairline-hi:rgba(46,61,87,.26);
+  --ink:#1B2434; --ink2:#2E3D57; --muted:#5C6470;
+  --accent:#1C6C9A; --accent-2:#0097DC; --on-accent:#FFFFFF;
+  --ok:#137946; --bad:#B23A26; --warn:#8A6A0E; --info:#2C4661;
+  --rx:#1C6C9A; --tx:#A85A20; --shadow:rgba(46,61,87,.18);
+  --scheme:light;
+}
+[data-theme="abyss-dark"]{
+  --bg:#04141A; --blob1:#0D9488; --blob2:#0EA5E9; --blob3:#155E75;
+  --glass:rgba(150,240,225,.06); --glass-strong:rgba(150,240,225,.11);
+  --hairline:rgba(170,235,225,.19); --hairline-hi:rgba(170,235,225,.34);
+  --ink:#E7F9F5; --ink2:#BADFD8; --muted:#7FA8A0;
+  --accent:#38BDF8; --accent-2:#2DD4BF; --on-accent:#04222B;
+  --ok:#34D399; --bad:#FB7185; --warn:#FBBF24; --info:#818CF8;
+  --rx:#60A5FA; --tx:#F472B6; --shadow:rgba(1,12,14,.6);
+  --scheme:dark;
+}
+[data-theme="catppuccin"]{
+  --bg:#1E1E2E; --blob1:#89B4FA; --blob2:#CBA6F7; --blob3:#F5C2E7;
+  --glass:rgba(200,190,255,.06); --glass-strong:rgba(200,190,255,.11);
+  --hairline:rgba(205,214,244,.15); --hairline-hi:rgba(205,214,244,.3);
+  --ink:#CDD6F4; --ink2:#A6ADC8; --muted:#9399B2;
+  --accent:#89B4FA; --accent-2:#CBA6F7; --on-accent:#11111B;
+  --ok:#A6E3A1; --bad:#F38BA8; --warn:#F9E2AF; --info:#74C7EC;
+  --rx:#89DCEB; --tx:#FAB387; --shadow:rgba(8,8,18,.6);
+  --scheme:dark;
 }
 
 /* ════════════════════════════ ТОКЕНЫ: ПРОИЗВОДНЫЙ СЛОЙ ════════════════════════════ */
@@ -135,7 +207,8 @@ main{min-width:0}
 .tab.active{background:var(--glass-strong);color:var(--ink);
   box-shadow:inset 2px 0 0 var(--accent)}
 .tab .nbadge{margin-left:auto;min-width:19px;height:19px;padding:0 5px;border-radius:999px;
-  background:var(--bad);color:#fff;font:700 .62rem/19px var(--f-mono);text-align:center;display:none}
+  /* текст цветом фона темы, а не #fff: на светлом --bad белым выходит 2.3–3.3:1 (мимо AA) */
+  background:var(--bad);color:var(--bg);font:700 .62rem/19px var(--f-mono);text-align:center;display:none}
 .tab .nbadge.show{display:block}
 .sfoot{padding:14px 10px 4px;font:500 .6rem var(--f-mono);color:var(--muted);letter-spacing:.06em}
 
@@ -504,7 +577,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 /* диагностика */
 .diag-tools{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
 .diag-tools .input{flex:1;min-width:200px}
-.diag-tools .xsel-wrap,.diag-tools>select{min-width:190px}
+.diag-tools .xsel{min-width:190px}   /* обёртка themed-select называется .xsel */
 .diag-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .exrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--hairline);flex-wrap:wrap}
 .exrow:first-child{border-top:none}
@@ -572,7 +645,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .tpick-item:hover{background:var(--glass-strong);color:var(--ink)}
 .tpick-item.act{color:var(--ink)}
 .tpick-prev{width:46px;height:30px;border-radius:8px;flex:none;position:relative;overflow:hidden;
-  border:1px solid rgba(255,255,255,.14)}
+  border:1px solid var(--hairline-hi)}   /* на светлых темах белая рамка сливалась с фоном */
 .tpick-prev .pa{position:absolute;right:5px;bottom:5px;width:12px;height:12px;border-radius:50%}
 .tpick-prev .pt{position:absolute;left:6px;top:3px;font:800 12px var(--f-disp);line-height:1}
 .tpick-item .pn{flex:1;min-width:0;font-weight:700;font-size:var(--t-sm);
@@ -648,7 +721,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <button class="tab" data-tab="log" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-journal"/></svg>Журнал<span class="nbadge" id="nav-log-badge"></span></button>
       <button class="tab" data-tab="settings" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-gear"/></svg>Настройки</button>
     </nav>
-    <div class="sfoot">INVISIBLE NET · v2.0.0-beta</div>
+    <!-- версию подставляет build-ipk.sh из INVNET_VERSION при сборке пакета -->
+    <div class="sfoot">INVISIBLE NET · v1.7.0</div>
   </aside>
 
   <main>
@@ -858,8 +932,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         <div class="theme-grid" id="theme-grid"></div>
         <div class="custom-row" id="custom-row">
           <div class="field"><label for="cu-accent">Акцент</label><input type="color" id="cu-accent" value="#A8896B"></div>
-          <div class="field"><label for="cu-bg">Фон</label><input type="color" id="cu-bg" value="#04141A"></div>
-          <div class="field"><label for="cu-text">Текст</label><input type="color" id="cu-text" value="#E7F9F5"></div>
+          <div class="field"><label for="cu-bg">Фон</label><input type="color" id="cu-bg" value="#14110E"></div>
+          <div class="field"><label for="cu-text">Текст</label><input type="color" id="cu-text" value="#ECE8E2"></div>
           <button class="btn" id="custom-apply"><svg><use href="#ic-check"/></svg>Применить свою</button>
         </div>
       </div>
@@ -1095,10 +1169,23 @@ const API={
 };
 
 /* ════════════════════════════ ТЕМЫ (пресеты + custom-движок) ════════════════════════════ */
+/* NB: состав ключей продублирован в инлайн-скрипте в <head> (анти-FOUC) — менять оба места. */
 const THEMES={
-  'dark':  {label:'Тёмная',  bg:'#14110E',accent:'#ECE8E2',ink:'#ECE8E2',dark:1},
-  'light': {label:'Светлая', bg:'#F4F2EE',accent:'#2A2420',ink:'#1C1917',dark:0}
+  'dark':       {label:'Тёмная',       bg:'#14110E',accent:'#ECE8E2',ink:'#ECE8E2',dark:1},
+  'light':      {label:'Светлая',      bg:'#F4F2EE',accent:'#2A2420',ink:'#1C1917',dark:0},
+  'gold-dark':  {label:'Invisible Net',bg:'#12110F',accent:'#C9A876',ink:'#F0EEE6',dark:1},
+  'keenetic':   {label:'Keenetic',     bg:'#F4F7FA',accent:'#1C6C9A',ink:'#1B2434',dark:0},
+  'abyss-dark': {label:'Глубина',      bg:'#04141A',accent:'#38BDF8',ink:'#E7F9F5',dark:1},
+  'catppuccin': {label:'Catppuccin',   bg:'#1E1E2E',accent:'#89B4FA',ink:'#CDD6F4',dark:1}
 };
+const hasTheme=id=>Object.prototype.hasOwnProperty.call(THEMES,id);   // 'constructor' не тема
+/* Пресеты прежних панелей, которых больше нет → ближайший из оставшихся. Карты РАЗНЫЕ:
+   один и тот же id значил разное. В v1.5.0 (ключ vpn-xor-theme-v2) mint — тёмная, neo —
+   янтарь на чёрном; в beta (ключ invnet-theme-v3) mint — светлая, neo — циан. */
+const THEME_ALIAS_V3={'noir':'gold-dark','gold-light':'light','mint':'light',
+  'abyss-light':'light','tokyonight':'abyss-dark','neo':'abyss-dark'};
+const THEME_ALIAS_V2={'noir':'gold-dark','gold':'gold-dark','mint':'dark',
+  'neo':'gold-dark','tokyonight':'abyss-dark','dark':'dark','light':'light'};
 const THEME_KEY='invnet-theme-v3';
 let CUR_THEME='dark';
 let CUSTOM={accent:'#A8896B',bg:'#14110E',text:'#ECE8E2'};
@@ -1159,14 +1246,14 @@ function applyTheme(id,custom){
     document.documentElement.dataset.theme='custom';
     document.querySelector('meta[name=theme-color]').setAttribute('content',CUSTOM.bg);
   } else {
-    if(!THEMES[id]) id='dark';
+    if(!hasTheme(id)) id='dark';
     clearCustomVars();
     document.documentElement.dataset.theme=id;
     document.querySelector('meta[name=theme-color]').setAttribute('content',THEMES[id].bg);
   }
   // color-scheme литералом (var() в color-scheme браузеры игнорируют → нативные
   // контролы/скроллбары иначе светлые на тёмной теме)
-  const isDark=id==='custom'?_lum(CUSTOM.bg)<.45:!!THEMES[id].dark;
+  const isDark=id==='custom'?_lum(CUSTOM.bg)<.45:!!THEMES[id].dark;   // id уже нормализован выше
   document.documentElement.style.colorScheme=isDark?'dark':'light';
   document.documentElement.dataset.scheme=isDark?'dark':'light';   // для тонировки блобов и пр.
   CUR_THEME=id;
@@ -1174,18 +1261,19 @@ function applyTheme(id,custom){
   renderThemePicker(); renderThemeGrid();
 }
 function initTheme(){
-  let saved=null;
+  let saved=null, alias=THEME_ALIAS_V3;
   try{ saved=JSON.parse(localStorage.getItem(THEME_KEY)||'null'); }catch(e){}
-  if(!saved){ // миграция со старой панели (ключ v2: light/dark/…)
+  if(!saved){ // миграция со старой панели (ключ v2: свой набор id, часть совпадает по имени)
     try{
       const old=JSON.parse(localStorage.getItem('vpn-xor-theme-v2')||'null');
-      if(old&&old.theme) saved={theme:old.theme,custom:old.custom};
+      if(old&&old.theme){ saved={theme:old.theme,custom:old.custom}; alias=THEME_ALIAS_V2; }
     }catch(e){}
   }
   if(saved&&saved.custom&&saved.custom.bg) CUSTOM=saved.custom;
   let id=saved&&saved.theme;
-  // тем осталось две: старый/неизвестный пресет → выбираем по системной теме
-  if(!id || (id!=='custom' && !THEMES[id])) id=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+  if(id&&id!=='custom'&&!hasTheme(id)&&alias[id]) id=alias[id];   // убранный пресет → ближайший
+  // совсем неизвестный или первый заход → по системной теме
+  if(!id || (id!=='custom' && !hasTheme(id))) id=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
   applyTheme(id);
 }
 function themeItem(id,t){
@@ -1763,7 +1851,7 @@ const WD_KEY='invnet-wd-seen';
 let NAV_BADGE=0;
 function setNavBadge(n){
   const b=$('#nav-log-badge');
-  b.textContent=n>99?'99':n; b.classList.toggle('show',n>0);
+  b.textContent=n>=99?'99+':n; b.classList.toggle('show',n>0);
 }
 let WD_FEED_SIG='';
 function renderWdFeed(lines){
@@ -2402,7 +2490,7 @@ async function loadQuality(){
   arr.sort((a,b)=>a.name.localeCompare(b.name));
   const pct=v=>v>=99.95?'100':v.toFixed(1);
   box.innerHTML=arr.map(q=>{
-    const rtt=q.avg_rtt, loss=+q.loss_pct||0, up=+q.uptime_pct||0;
+    const rtt=q.avg_rtt==null?null:+q.avg_rtt||0, loss=+q.loss_pct||0, up=+q.uptime_pct||0;
     const rc=rtt==null?'':rtt<120?'q-good':rtt<250?'q-warn':'q-bad';
     const lc=loss<1?'q-good':loss<10?'q-warn':'q-bad';
     const uc=up>=99?'q-good':up>=90?'q-warn':'q-bad';
@@ -2410,7 +2498,7 @@ async function loadQuality(){
       '<span class="qm"><small>пинг</small><b class="'+rc+'">'+(rtt==null?'—':rtt+' мс')+'</b></span>'+
       '<span class="qm"><small>потери</small><b class="'+lc+'">'+(loss<10?loss.toFixed(1):Math.round(loss))+'%</b></span>'+
       '<span class="qm"><small>аптайм 24ч</small><b class="'+uc+'">'+pct(up)+'%</b></span>'+
-      '<span class="qm"><small>замеров</small><b>'+q.samples+'</b></span></div>';
+      '<span class="qm"><small>замеров</small><b>'+(+q.samples||0)+'</b></span></div>';
   }).join('');
 }
 $('#exit-recheck').addEventListener('click',runExitChecks);
@@ -2486,7 +2574,7 @@ async function loadSysinfo(){
   if(mesh.length){ mrow.hidden=false;
     $('#sys-mesh').innerHTML=mesh.map(m=>'<div class="meshm"><span class="dot'+(m.online?' live':'')+'"></span>'+
       '<span class="mm-n">'+esc(m.name)+'</span>'+
-      (m.online?'<span class="mm-i">'+esc(m.fw||'')+(m.speed?' · '+m.speed+' Мбит/с':'')+'</span>'
+      (m.online?'<span class="mm-i">'+esc(m.fw||'')+(m.speed?' · '+(+m.speed||0)+' Мбит/с':'')+'</span>'
                :'<span class="mm-i q-bad">не в сети</span>')+'</div>').join('');
   } else mrow.hidden=true;
 }

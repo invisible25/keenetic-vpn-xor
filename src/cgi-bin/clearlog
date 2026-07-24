@@ -2,10 +2,12 @@
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: text/plain; charset=utf-8\r\n\r\n"
-for sf in /opt/var/run/invnet/*.slot; do
-  [ -f "$sf" ] || continue
-  pr=$(basename "$sf" .slot)
-  : > "/opt/var/log/invnet-$pr.log" 2>/dev/null
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard
+# глобом по ВСЕМ логам, а не только по .slot запущенных — иначе логи остановленных/
+# удалённых профилей кнопка не берёт (тот же гэп, что чинили в rotate_logs v1.4.2)
+for f in /opt/var/log/invnet-*.log; do
+  [ -f "$f" ] && : > "$f" 2>/dev/null
 done
 : > /opt/var/log/invnet.log 2>/dev/null
 : > /opt/var/log/invnet-action.log 2>/dev/null
