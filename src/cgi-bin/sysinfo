@@ -9,6 +9,8 @@ V=$(curl -s -m4 "$RCI/show/version" 2>/dev/null)
 S=$(curl -s -m4 "$RCI/show/system" 2>/dev/null)
 W0=$(curl -s -m3 "$RCI/show/interface/WifiMaster0" 2>/dev/null)   # радио 2.4 ГГц
 W1=$(curl -s -m3 "$RCI/show/interface/WifiMaster1" 2>/dev/null)   # радио 5 ГГц
+MWS=$(curl -s -m3 "$RCI/show/mws/member" 2>/dev/null)            # mesh-участники (если контроллер)
+echo "$MWS" | jq -e 'type=="array"' >/dev/null 2>&1 || MWS='[]'
 LOAD=$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null | tr ' ' '/')
 
 # Температура CPU — best-effort. thermal_zone есть на aarch64 (Giga/Hopper); hwmon — запасной.
@@ -65,8 +67,12 @@ case "$OPKGUSED"  in ''|*[!0-9]*) OPKGUSED=0  ;; esac
 printf '%s\n%s\n' "$V" "$S" | jq -s \
   --arg load "$LOAD" --arg temp "$TEMP" --arg cpumodel "$CPUMODEL" \
   --arg cores "$CORES" --arg w24 "$WIFI24" --arg w5 "$WIFI5" \
-  --arg opkgtotal "$OPKGTOTAL" --arg opkgused "$OPKGUSED" '
+  --arg opkgtotal "$OPKGTOTAL" --arg opkgused "$OPKGUSED" \
+  --argjson mws "$MWS" '
   def num(x): if (x // "") == "" then null else (x | tonumber? // null) end;
+  # VPN-компоненты прошивки → дружественные имена (что роутер умеет из коробки)
+  def vpnname: {"openvpn":"OpenVPN","wireguard":"WireGuard","sstp":"SSTP","openconnect":"OpenConnect",
+                "zerotier":"ZeroTier","proxy":"Proxy","ipsec":"IPsec","l2tp":"L2TP"};
   (.[0] // {}) as $v | (.[1] // {}) as $s |
   ($s.memory // "" | split("/")) as $mem |
   {
@@ -90,6 +96,13 @@ printf '%s\n%s\n' "$V" "$S" | jq -s \
     wifi24temp: num($w24),
     wifi5temp:  num($w5),
     opkgused:   num($opkgused),
-    opkgtotal:  num($opkgtotal)
+    opkgtotal:  num($opkgtotal),
+    components: ([ (($v.ndw // {}).components // "" | split(",")[]) | vpnname[.] | select(.) ]),
+    mesh:       ([ $mws[]? | select(.model) | {
+                    name:   .model,
+                    fw:     (.fw // ""),
+                    online: ((.fw // "") != ""),
+                    speed:  ((.backhaul.txrate // .backhaul.speed // 0) | tonumber? // 0)
+                  } ])
   }
 ' 2>/dev/null || echo '{"model":"","error":"rci"}'

@@ -576,6 +576,14 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .exrow .exip{font-family:var(--f-mono);color:var(--ink)}
 .exrow .exgeo{color:var(--muted)}
 .exrow .exok{color:var(--ok);font-weight:700} .exrow .exleak{color:var(--bad);font-weight:700}
+.qsub{font-weight:400;font-size:var(--t-xs);color:var(--muted);float:right}
+.qrow{display:flex;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--hairline);flex-wrap:wrap}
+.qrow:first-child{border-top:none}
+.qrow .qn{font-weight:800;min-width:110px;flex:1}
+.qrow .qm{display:flex;flex-direction:column;min-width:74px}
+.qrow .qm small{font:500 var(--t-xs) var(--f-text);color:var(--muted)}
+.qrow .qm b{font-family:var(--f-mono);font-size:var(--t-md);color:var(--ink)}
+.q-good{color:var(--ok)!important} .q-warn{color:var(--warn)!important} .q-bad{color:var(--bad)!important}
 /* ════════════════════════════ НАСТРОЙКИ ════════════════════════════ */
 .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:14px}
 .tsw{display:flex;flex-direction:column;gap:7px;padding:10px;border-radius:var(--r-md);
@@ -595,6 +603,15 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
 .setrow .stext b{display:block;font-size:var(--t-md)}
 .setrow .stext span{font-size:var(--t-sm);color:var(--muted)}
 .sysgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sysextra{margin-top:12px;padding-top:12px;border-top:1px solid var(--hairline)}
+.sysextra>small{display:block;color:var(--muted);font-size:var(--t-xs);margin-bottom:7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 var(--t-xs) var(--f-text);padding:3px 9px;border-radius:99px;
+  border:1px solid var(--hairline-hi);color:var(--ink2);background:var(--glass)}
+.cmuted{color:var(--muted)}
+.meshm{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:var(--t-sm)}
+.meshm .mm-n{font-weight:700;color:var(--ink)}
+.meshm .mm-i{color:var(--muted);font-family:var(--f-mono);font-size:var(--t-xs)}
 .sysgrid .mi{padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-soft);border:1px solid var(--hairline)}
 .sysgrid .mi small{display:block;font:600 .58rem var(--f-text);color:var(--muted);
   text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
@@ -846,6 +863,10 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
     <section class="view" data-view="diag">
       <div class="vhead"><h2>Диагностика</h2></div>
       <div class="card glass" style="margin-bottom:14px">
+        <h3>Качество каналов <span class="qsub">среднее за 24 ч</span></h3>
+        <div id="quality-list"><div class="empty"><svg><use href="#ic-diag"/></svg><b>Пока нет данных</b><span>watchdog копит статистику по активным туннелям (замер раз в 30 с)</span></div></div>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
         <h3>Проверка выхода в интернет</h3>
         <p class="hint">Сравнивает внешний IP через туннель и напрямую через WAN — видно, что трафик реально уходит в VPN и в какой стране выход. Если IP совпадают — трафик мимо туннеля (утечка).</p>
         <div id="exit-checks"><div class="empty"><svg><use href="#ic-globe"/></svg><b>Нажмите «Проверить»</b><span>для активных туннелей</span></div></div>
@@ -923,6 +944,8 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
           <div class="mi"><small>Аптайм</small><b id="sys-uptime">—</b></div>
           <div class="mi"><small>Load average</small><b id="sys-load">—</b></div>
         </div>
+        <div class="sysextra"><small>VPN-компоненты прошивки</small><div class="chips" id="sys-components"><span class="cmuted">—</span></div></div>
+        <div class="sysextra" id="sys-mesh-row" hidden><small>Mesh-система</small><div id="sys-mesh"></div></div>
       </div>
     </section>
   </main>
@@ -1093,6 +1116,9 @@ function fmtRate(bps){ bps=+bps||0;
         if(q.direct==='1') return new Promise(res=>setTimeout(()=>res(J(
           {ip:'217.174.236.144',country:'TM',city:'Ashgabat',region:'Ashgabat',org:'AS20661 Turkmentelecom',dev:'eth3',direct:true})),700));
         return new Promise(res=>setTimeout(()=>res(J(CHECKIP[q.profile]||{ip:'64.31.20.9',country:'US',city:'Washington',region:'DC',org:'AS46475 Limestone Networks',dev:'tun_invnet0'})),900)); }
+      case 'quality': return J([
+        {name:'XOR',samples:2871,avg_rtt:214,loss_pct:0.4,uptime_pct:99.9,last_ts:Math.floor(Date.now()/1000)-20,last_loss:0},
+        {name:'Claude',samples:1440,avg_rtt:181,loss_pct:2.1,uptime_pct:97.8,last_ts:Math.floor(Date.now()/1000)-25,last_loss:0}]);
       case 'diag':{
         const tgt=q.target||'—', via=q.via==='wan'?' (через eth3)':q.via?(' (через tun_invnet0)'):'';
         const head=(q.tool==='dns'?'nslookup '+tgt:q.tool==='trace'?'traceroute '+tgt+via:'ping '+tgt+via)+'\n----------------------------------------\n';
@@ -1104,7 +1130,9 @@ function fmtRate(bps){ bps=+bps||0;
       case 'sysinfo': return J({model:'Giga (KN-1012)',hw_id:'KN-1012',os_title:'5.1.1',os_release:'5.01.C.1.0-0',
         os_sandbox:'preview',os_date:'3 Jul 2026',arch:'aarch64',cpu:'',cpumodel:'MT7981',cpucores:2,cputemp:61,
         wifi24temp:52,wifi5temp:52,cpuload:7,memtotal:524288,memfree:58360,memused:303876,
-        opkgused:134424,opkgtotal:13211924,uptime:693421,loadavg:'0.14/0.08/0.05'});
+        opkgused:134424,opkgtotal:13211924,uptime:693421,loadavg:'0.14/0.08/0.05',
+        components:['OpenVPN','WireGuard','SSTP','OpenConnect','Proxy'],
+        mesh:[{name:'AX3000T (KN-3812)',fw:'5.1.1',online:true,speed:960},{name:'Buddy 5 (KN-3310)',fw:'',online:false,speed:0}]});
       case 'log': return T('2026-07-18 22:59:01 [XOR] Initialization Sequence Completed\n2026-07-18 22:59:00 [XOR] TUN/TAP device tun_invnet2 opened\n2026-07-18 22:58:49 [XOR] TLS: soft reset\n2026-07-18 22:41:03 [Claude] Initialization Sequence Completed');
       case 'pinglog':{
         if(opt&&opt.method==='POST'){ PINGLINES=[]; return J({ok:true}); }
@@ -2437,10 +2465,30 @@ async function runDiag(tool){
   try{ out.textContent=(await API.text('diag',{tool,target,via}))||'(пустой ответ)'; }
   catch(e){ out.textContent='ошибка запроса diag'; }
 }
+async function loadQuality(){
+  const box=$('#quality-list'); let arr=[];
+  try{ arr=await API.json('quality'); }catch(e){}
+  if(!Array.isArray(arr)||!arr.length){
+    box.innerHTML='<div class="empty"><svg><use href="#ic-diag"/></svg><b>Пока нет данных</b>'+
+      '<span>watchdog копит статистику по активным туннелям (замер раз в 30 с)</span></div>'; return; }
+  arr.sort((a,b)=>a.name.localeCompare(b.name));
+  const pct=v=>v>=99.95?'100':v.toFixed(1);
+  box.innerHTML=arr.map(q=>{
+    const rtt=q.avg_rtt, loss=+q.loss_pct||0, up=+q.uptime_pct||0;
+    const rc=rtt==null?'':rtt<120?'q-good':rtt<250?'q-warn':'q-bad';
+    const lc=loss<1?'q-good':loss<10?'q-warn':'q-bad';
+    const uc=up>=99?'q-good':up>=90?'q-warn':'q-bad';
+    return '<div class="qrow"><span class="qn">'+esc(q.name)+'</span>'+
+      '<span class="qm"><small>пинг</small><b class="'+rc+'">'+(rtt==null?'—':rtt+' мс')+'</b></span>'+
+      '<span class="qm"><small>потери</small><b class="'+lc+'">'+(loss<10?loss.toFixed(1):Math.round(loss))+'%</b></span>'+
+      '<span class="qm"><small>аптайм 24ч</small><b class="'+uc+'">'+pct(up)+'%</b></span>'+
+      '<span class="qm"><small>замеров</small><b>'+q.samples+'</b></span></div>';
+  }).join('');
+}
 $('#exit-recheck').addEventListener('click',runExitChecks);
 $$('[data-diag]').forEach(b=>b.addEventListener('click',()=>runDiag(b.dataset.diag)));
 $('#diag-target').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); runDiag('ping'); } });
-ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); };
+ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); loadQuality(); };
 
 /* ════════════════════════════ ЖУРНАЛ ════════════════════════════ */
 let LOG_TIMER=null;
@@ -2501,6 +2549,18 @@ async function loadSysinfo(){
       +Math.round(d.opkgused/d.opkgtotal*100)+'%' : '—';
   $('#sys-uptime').textContent=d.uptime?fmtUp(d.uptime):'—';
   $('#sys-load').textContent=v(d.loadavg);
+  // VPN-компоненты прошивки (чипы)
+  const comp=Array.isArray(d.components)?d.components:[];
+  $('#sys-components').innerHTML=comp.length?comp.map(c=>'<span class="chip">'+esc(c)+'</span>').join('')
+    :'<span class="cmuted">нет данных</span>';
+  // mesh-система (если роутер — контроллер)
+  const mesh=Array.isArray(d.mesh)?d.mesh:[], mrow=$('#sys-mesh-row');
+  if(mesh.length){ mrow.hidden=false;
+    $('#sys-mesh').innerHTML=mesh.map(m=>'<div class="meshm"><span class="dot'+(m.online?' live':'')+'"></span>'+
+      '<span class="mm-n">'+esc(m.name)+'</span>'+
+      (m.online?'<span class="mm-i">'+esc(m.fw||'')+(m.speed?' · '+m.speed+' Мбит/с':'')+'</span>'
+               :'<span class="mm-i q-bad">не в сети</span>')+'</div>').join('');
+  } else mrow.hidden=true;
 }
 async function loadAutostart(){
   try{

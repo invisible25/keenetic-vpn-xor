@@ -1,0 +1,30 @@
+#!/bin/sh
+# Качество каналов: агрегат сэмплов watchdog за 24 ч.
+# Источник: /opt/var/lib/invnet/q-<profile>.log, строки "<epoch> <rtt> <loss>".
+# Отдаёт [{name,samples,avg_rtt,loss_pct,uptime_pct,last_ts,last_loss}].
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+
+QDIR=/opt/var/lib/invnet
+NOW=$(date +%s)
+
+{
+  for f in "$QDIR"/q-*.log; do
+    [ -f "$f" ] || continue
+    pr=$(basename "$f" .log); pr=${pr#q-}
+    awk -v pr="$pr" -v now="$NOW" '
+      { ts=$1+0; rtt=$2; loss=$3+0
+        if (now-ts > 86400) next                 # только последние 24ч
+        n++; sumloss+=loss
+        if (loss < 100 && rtt != "" && rtt != "-") { rn++; sumrtt+=rtt }
+        if (loss < 100) up++
+        lastts=ts; lastloss=loss
+      }
+      END{
+        if (n==0) exit
+        printf "{\"name\":\"%s\",\"samples\":%d,\"avg_rtt\":%s,\"loss_pct\":%.1f,\"uptime_pct\":%.1f,\"last_ts\":%d,\"last_loss\":%d}\n",
+          pr, n, (rn>0 ? sprintf("%.0f", sumrtt/rn) : "null"), sumloss/n, up*100/n, lastts, lastloss
+      }' "$f"
+  done
+} | jq -sc '.' 2>/dev/null || echo '[]'

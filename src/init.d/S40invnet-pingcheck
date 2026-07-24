@@ -9,6 +9,9 @@ MGR=/opt/sbin/invnetctl
 META=/opt/etc/openvpn/profile-meta
 PROFILES=/opt/etc/openvpn/profiles
 RUN=/opt/var/run/invnet
+QDIR=/opt/var/lib/invnet          # сэмплы качества канала: q-<profile>.log = "<epoch> <rtt> <loss>"
+QMAX=2880                         # хранить сутки при тике 30с (2880×30с = 24ч)
+QCONF=/opt/etc/openvpn/invnet-qping.conf   # цель пинга (по умолчанию 1.1.1.1)
 
 rotate_if_big() {  # rotate_if_big <file> [max_bytes] [keep_bytes]
   f="$1"; max="${2:-1048576}"; keep="${3:-262144}"
@@ -28,6 +31,30 @@ rotate_logs() {
     rotate_if_big "$f"
   done
   rotate_if_big "/opt/var/log/invnet-web.err"
+}
+
+# Замер качества канала: по каждому ЗАПУЩЕННОМУ туннелю пингуем цель ЧЕРЕЗ туннель
+# (bind к tun_invnet<slot>), пишем rtt/потери. Данные для вкладки «Диагностика».
+# Пассивно — на логику перезапуска (kill -0) не влияет.
+sample_quality() {
+  mkdir -p "$QDIR"
+  target=$(tr -cd '0-9.' < "$QCONF" 2>/dev/null); [ -z "$target" ] && target=1.1.1.1
+  for slotf in "$RUN"/*.slot; do
+    [ -f "$slotf" ] || continue
+    pr=$(basename "$slotf" .slot)
+    PID=$(cat "$RUN/$pr.pid" 2>/dev/null)
+    { [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; } || continue     # только живые
+    dev="tun_invnet$(cat "$slotf" 2>/dev/null)"
+    ip link show "$dev" >/dev/null 2>&1 || continue
+    out=$(ping -c 3 -W 2 -I "$dev" "$target" 2>/dev/null)
+    loss=$(echo "$out" | sed -n 's/.*[^0-9]\([0-9]\{1,3\}\)% packet loss.*/\1/p' | head -1)
+    rtt=$(echo "$out"  | sed -n 's#.* = [0-9.]*/\([0-9.]*\)/.*#\1#p' | head -1)
+    [ -z "$loss" ] && loss=100          # ping не отработал = считаем потерей
+    qf="$QDIR/q-$pr.log"
+    echo "$(date +%s) ${rtt:-} $loss" >> "$qf"
+    ln=$(wc -l < "$qf" 2>/dev/null || echo 0)
+    [ "$ln" -gt "$QMAX" ] 2>/dev/null && { tail -n "$QMAX" "$qf" > "$qf.tmp" 2>/dev/null && mv "$qf.tmp" "$qf"; }
+  done
 }
 
 watchdog_loop() {
@@ -52,6 +79,7 @@ watchdog_loop() {
     # раз в тик и для iptables, и для ip rule/маршрутов (их хук не покрывает).
     . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_assert_all
     "$MGR" apply >/dev/null 2>&1
+    sample_quality      # замер качества каналов (после перезапусков — по реально живым)
     sleep 30
   done
 }
