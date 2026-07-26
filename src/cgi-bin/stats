@@ -1,13 +1,27 @@
 #!/bin/sh
-# Суммарный трафик по всем активным tun_invnet*.
+# Трафик по активным tun_invnet*: суммарный + разбивка по слотам.
+# Разбивка (dev) нужна герою «Обзора»: скорость встречных полос на каждой линии
+# считается по ЕЁ туннелю. На общей сумме анимация врала бы про строку — линия
+# простаивающего профиля бежала бы ровно так же, как у грузящего канал.
+# Поля rx/tx/up сохранены как были: старый фронт продолжает работать.
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
-RX=0; TX=0
-for dev in $(ls /sys/class/net 2>/dev/null | grep '^tun_invnet'); do
-  r=$(cat /sys/class/net/$dev/statistics/rx_bytes 2>/dev/null); t=$(cat /sys/class/net/$dev/statistics/tx_bytes 2>/dev/null)
-  RX=$((RX + ${r:-0})); TX=$((TX + ${t:-0}))
+RX=0; TX=0; PER=""; UP=false
+for dev in /sys/class/net/tun_invnet*; do
+  [ -d "$dev" ] || continue                       # глоб не раскрылся — туннелей нет
+  slot=${dev##*/tun_invnet}
+  case "$slot" in ''|*[!0-9]*) continue ;; esac   # только штатные имена, слот идёт в JSON-ключ
+  r=$(cat "$dev/statistics/rx_bytes" 2>/dev/null)
+  t=$(cat "$dev/statistics/tx_bytes" 2>/dev/null)
+  r=${r:-0}; t=${t:-0}
+  # sysfs может отдать пусто/мусор на исчезающем интерфейсе — иначе получим битый JSON
+  case "$r" in ''|*[!0-9]*) r=0 ;; esac
+  case "$t" in ''|*[!0-9]*) t=0 ;; esac
+  UP=true
+  RX=$((RX + r)); TX=$((TX + t))
+  [ -n "$PER" ] && PER="$PER,"
+  PER="$PER\"$slot\":{\"rx\":$r,\"tx\":$t}"
 done
-UP=false; ls /sys/class/net 2>/dev/null | grep -q '^tun_invnet' && UP=true
-printf '{"rx":%s,"tx":%s,"up":%s}' "$RX" "$TX" "$UP"
+printf '{"rx":%s,"tx":%s,"up":%s,"dev":{%s}}' "$RX" "$TX" "$UP" "$PER"

@@ -411,14 +411,33 @@ main{min-width:0}
 .tw-tag{font:700 .58rem var(--f-mono);letter-spacing:.12em;padding:2px 8px;border-radius:6px;border:1px solid}
 .tw-tag.xor{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .tw-tag.vpn{color:var(--info);border-color:color-mix(in srgb,var(--info) 45%,transparent)}
-/* бегущий пунктир — двигаем ::before через transform (композитно), не background-position (перерисовка) */
-.tw-line{width:100%;height:2px;border-radius:2px;overflow:hidden;position:relative}
-.tw-line::before{content:"";position:absolute;inset:0;left:-12px;width:calc(100% + 12px);
-  background:repeating-linear-gradient(90deg,var(--wc) 0 5px,transparent 5px 12px);
-  background-size:12px 100%;animation:wire .8s linear infinite}
-.tw-line.xor{--wc:var(--accent)} .tw-line.vpn{--wc:var(--info)}
-@keyframes wire{to{transform:translateX(12px)}}
-@media(prefers-reduced-motion:reduce){.tw-line::before{animation:none}}
+/* ЖИВОЙ ПОТОК. Вместо одного декоративного пунктира — две встречные полосы:
+   верхняя это отдача (устройства → сервер, бежит вправо), нижняя — приём
+   (сервер → устройства, бежит влево). Цвета — те же --tx/--rx, что и в графике
+   трафика: «синее» и «зелёное» значат одно и то же в обоих местах экрана.
+   Темп и яркость задаёт JS (paintFlow) инлайн-переменными --d/--o по РЕАЛЬНОЙ
+   скорости этого туннеля — анимация здесь показание, а не украшение; простаивающий
+   канал еле дышит, гружёный бежит. Полосы дублируются текстом в aria-label.
+   Двигаем ::before через transform (композитно), а не background-position —
+   иначе перерисовка на каждом кадре; сдвиг ровно на период узора = бесшовный цикл. */
+.tw-flow{width:100%;display:flex;flex-direction:column;gap:4px}
+.tw-lane{height:2px;border-radius:2px;position:relative;overflow:hidden;
+  background:color-mix(in srgb,var(--lc) 16%,transparent)}
+.tw-lane::before{content:"";position:absolute;top:0;bottom:0;left:-14px;right:-14px;
+  background:repeating-linear-gradient(90deg,var(--lc) 0 6px,transparent 6px 14px);
+  opacity:var(--o,.34);animation:flow-fwd var(--d,2.6s) linear infinite;
+  transition:opacity .8s var(--ease)}
+.tw-lane.up{--lc:var(--tx)}
+.tw-lane.down{--lc:var(--rx)}
+.tw-lane.down::before{animation-name:flow-back}
+@keyframes flow-fwd{to{transform:translateX(14px)}}
+@keyframes flow-back{to{transform:translateX(-14px)}}
+/* уважение к prefers-reduced-motion: узор остаётся (направление читается по цвету
+   и подписи), но не движется */
+@media(prefers-reduced-motion:reduce){
+  .tw-lane::before{animation:none;opacity:.5}
+  .tw-lane::before{transition:none}
+}
 @media(max-width:560px){
   .topo-row{grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr)}
   .tn-ic{width:30px;height:30px} .tn-ic svg{width:15px;height:15px}
@@ -1094,7 +1113,12 @@ function fmtRate(bps){ bps=+bps||0;
         return T((r.length?'ACTIVE':'INACTIVE')+'\ncount='+r.length+'\nrunning='+r.join(',')); }
       case 'stats':{ const s=(Date.now()-t0)/1000;
         const rx=Math.floor(4200000*s+2500000*Math.sin(s/9)*s/9), tx=Math.floor(1100000*s+700000*Math.cos(s/13)*s/13);
-        return J({rx:Math.max(0,rx),tx:Math.max(0,tx),up:Math.floor(s)}); }
+        // разбивка по слотам: XOR(2) грузит канал, Claude(0) почти простаивает —
+        // так в демо видно, что полосы бегут с РАЗНОЙ скоростью, а не синхронно
+        const R=Math.max(0,rx), X=Math.max(0,tx);
+        return J({rx:R,tx:X,up:Math.floor(s),
+          dev:{2:{rx:Math.floor(R*.88),tx:Math.floor(X*.9)},
+               0:{rx:Math.floor(R*.12),tx:Math.floor(X*.1)}}}); }
       case 'profiles': return J(PROFILES);
       case 'profile':
         if(opt&&opt.method==='POST') return J({ok:true,name:q.name||'XOR',restarted:false});
@@ -1552,7 +1576,9 @@ async function loadStatusBasic(){
 LOADERS.push(loadStatusBasic);
 
 /* ════════════════════════════ СОСТОЯНИЕ ════════════════════════════ */
-const STATE={profiles:[],wans:[],checkip:{},toggling:null,watchdog:null};
+const STATE={profiles:[],wans:[],checkip:{},toggling:null,watchdog:null,
+  rate:{},        // slot -> {rxr,txr} Б/с, из разбивки stats.dev; питает анимацию потока
+  rateRaw:null};  // предыдущий сырой снимок счётчиков + время, для дельты
 const TOGGLE_BUSY={};
 let PROFILES_SIG='';
 function plural(n,f){ n=Math.abs(n)%100; const n1=n%10;
@@ -1689,30 +1715,75 @@ $('#tiles').addEventListener('keydown',e=>{
    HTML-раскладка: подписи не клипаются, длинные — обрезаются ellipsis'ом */
 const FLAGS={'Финляндия':'🇫🇮','Норвегия':'🇳🇴','Германия':'🇩🇪','США':'🇺🇸','Нидерланды':'🇳🇱',
   'Швеция':'🇸🇪','Франция':'🇫🇷','Великобритания':'🇬🇧','Турция':'🇹🇷','Туркменистан':'🇹🇲'};
+/* Разметка строки — только каркас; всё изменчивое проставляет topoPatch.
+   Разделение нужно из-за анимации: пересборка innerHTML сбрасывает CSS-анимацию
+   в начало, а renderTopo зовётся на каждом опросе (5с) и при каждом тумблере —
+   поток дёргался бы на глазах. */
+let TOPO_SIG='';
+function topoRowHtml(p){
+  const xor=!!XOR_CACHE[p.name], kind=xor?'xor':'vpn';
+  return '<div class="topo-row" data-p="'+esc(p.name)+'">'+
+    '<div class="tn"><span class="tn-ic"><svg><use href="#ic-device"/></svg></span>'+
+      '<span class="tn-tx"><small class="t-src"></small><b class="t-wan"></b></span></div>'+
+    '<div class="topo-wire"><span class="tw-tag '+kind+'">'+(xor?'XOR':'VPN')+'</span>'+
+      '<span class="tw-flow" role="img">'+
+        '<span class="tw-lane up"></span><span class="tw-lane down"></span></span></div>'+
+    '<div class="tn"><span class="tn-ic exit '+kind+'"><svg><use href="#ic-globe"/></svg></span>'+
+      '<span class="tn-tx"><b class="t-host"></b><span class="t-exit"></span></span></div>'+
+  '</div>';
+}
+function topoPatch(row,p){
+  const host=(p.remote||'').split(' ')[0]||'—';
+  const src=p.mode==='all'?'весь LAN'
+    :(p.devices_count+' '+plural(p.devices_count,['устр-во','устр-ва','устр-в']));
+  row.querySelector('.t-src').textContent=src;
+  row.querySelector('.t-wan').textContent=wanLabel(p.wan);
+  row.querySelector('.t-host').textContent=p.name+' · '+host;
+  const ex=row.querySelector('.t-exit'), ci=STATE.checkip[p.name];
+  const key=ci?JSON.stringify(['ci',ci.country||'',ci.ip||'']):'btn';
+  if(ex.dataset.k===key) return;               // не трогаем DOM, если ничего не поменялось
+  ex.dataset.k=key;
+  ex.innerHTML=ci
+    ? '<small class="exitc">'+(FLAGS[ci.country]||'')+' '+esc(ci.country||'выход')+
+      (ci.ip?' <span class="cip">'+esc(ci.ip)+'</span>':'')+'</small>'
+    : '<button class="tn-check" data-checkip="'+esc(p.name)+'">проверить выход →</button>';
+}
 function renderTopo(){
   const run=STATE.profiles.filter(p=>p.running);
   const wrap=$('#topo');
-  if(!run.length){ wrap.hidden=true; wrap.innerHTML=''; return; }
+  if(!run.length){ TOPO_SIG=''; wrap.hidden=true; wrap.innerHTML=''; return; }
   wrap.hidden=false;
-  wrap.innerHTML=run.map(p=>{
-    const host=(p.remote||'').split(' ')[0]||'—';
-    const ci=STATE.checkip[p.name];
-    const xor=!!XOR_CACHE[p.name];
-    const kind=xor?'xor':'vpn';
-    const src=p.mode==='all'?'весь LAN':(p.devices_count+' '+plural(p.devices_count,['устр-во','устр-ва','устр-в']));
-    const exit=ci
-      ? '<small class="exitc">'+(FLAGS[ci.country]||'')+' '+esc(ci.country||'выход')+
-        (ci.ip?' <span class="cip">'+esc(ci.ip)+'</span>':'')+'</small>'
-      : '<button class="tn-check" data-checkip="'+esc(p.name)+'">проверить выход →</button>';
-    return '<div class="topo-row">'+
-      '<div class="tn"><span class="tn-ic"><svg><use href="#ic-device"/></svg></span>'+
-        '<span class="tn-tx"><small>'+esc(src)+'</small><b>'+esc(wanLabel(p.wan))+'</b></span></div>'+
-      '<div class="topo-wire"><span class="tw-tag '+kind+'">'+(xor?'XOR':'VPN')+'</span>'+
-        '<span class="tw-line '+kind+'"></span></div>'+
-      '<div class="tn"><span class="tn-ic exit '+kind+'"><svg><use href="#ic-globe"/></svg></span>'+
-        '<span class="tn-tx"><b>'+esc(p.name)+' · '+esc(host)+'</b>'+exit+'</span></div>'+
-    '</div>';
-  }).join('');
+  // каркас зависит только от состава строк и вида туннеля (XOR/VPN) — остальное патчится
+  const sig=JSON.stringify(run.map(p=>[p.name,XOR_CACHE[p.name]?1:0]));
+  if(sig!==TOPO_SIG){ TOPO_SIG=sig; wrap.innerHTML=run.map(topoRowHtml).join(''); }
+  const rows=wrap.querySelectorAll('.topo-row');
+  run.forEach((p,i)=>{ const row=rows[i]; if(row) topoPatch(row,p); });
+  paintFlow();
+}
+
+/* Скорость → темп бега. Лог-шкала: разрыв между простоем и 200 КБ/с должен читаться,
+   между 8 и 10 МБ/с — нет. Кламп снизу, иначе на быстром канале полоса мельтешит. */
+function flowDur(bps){
+  const d=2.6/(1+Math.log10(1+Math.max(0,+bps||0)/2048));
+  return Math.max(.5,Math.min(2.6,d)).toFixed(2)+'s';
+}
+function flowOpa(bps){
+  return (.3+Math.min(.5,Math.log10(1+Math.max(0,+bps||0)/2048)*.19)).toFixed(2);
+}
+function setVar(el,name,val){ if(el.style.getPropertyValue(name)!==val) el.style.setProperty(name,val); }
+function paintFlow(){
+  const wrap=$('#topo'); if(!wrap||wrap.hidden) return;
+  const by={}; STATE.profiles.forEach(p=>{ if(p.running) by[p.name]=p; });
+  wrap.querySelectorAll('.topo-row').forEach(row=>{
+    const p=by[row.dataset.p]; if(!p) return;    // имя профиля берём из dataset, не строим селектор
+    const r=STATE.rate[p.slot]||{rxr:0,txr:0};
+    const up=row.querySelector('.tw-lane.up'), dn=row.querySelector('.tw-lane.down');
+    // переприсваивание duration перезапускает анимацию — пишем только при реальном изменении
+    setVar(up,'--d',flowDur(r.txr)); setVar(up,'--o',flowOpa(r.txr));
+    setVar(dn,'--d',flowDur(r.rxr)); setVar(dn,'--o',flowOpa(r.rxr));
+    row.querySelector('.tw-flow').setAttribute('aria-label',
+      'поток данных: приём '+fmtRate(r.rxr)+', отдача '+fmtRate(r.txr));
+  });
 }
 $('#topo').addEventListener('click',e=>{
   const b=e.target.closest('[data-checkip]'); if(!b) return;
@@ -1781,7 +1852,27 @@ async function loadStats(){
   $('#rx').textContent=fmtBytes(d.rx); $('#tx').textContent=fmtBytes(d.tx);
   $('#up').textContent=fmtUp(d.up);
   $('#rx-rate').textContent=fmtRate(rxr); $('#tx-rate').textContent=fmtRate(txr);
+  updateRates(d.dev,now);
   renderChart();
+  paintFlow();
+}
+/* Скорость по каждому туннелю отдельно (stats.dev, ключ = слот). Тот же кламп на
+   отрицательную дельту, что и для суммы: счётчики интерфейса обнуляются при
+   пересоздании tun, иначе получили бы выброс в минус. Старый роутер без поля dev
+   просто не даёт разбивки — полосы тогда идут в базовом (простойном) темпе. */
+function updateRates(dev,now){
+  if(!dev||typeof dev!=='object'){ STATE.rate={}; STATE.rateRaw=null; return; }
+  const prev=STATE.rateRaw, next={t:now,v:{}}, out={};
+  for(const slot of Object.keys(dev)){
+    const c=dev[slot]||{}, rx=+c.rx||0, tx=+c.tx||0;
+    next.v[slot]={rx,tx};
+    const p=prev&&prev.v[slot];
+    if(p){
+      const dt=Math.max(.5,(now-prev.t)/1000);
+      out[slot]={rxr:Math.max(0,(rx-p.rx)/dt),txr:Math.max(0,(tx-p.tx)/dt)};
+    } else out[slot]={rxr:0,txr:0};
+  }
+  STATE.rateRaw=next; STATE.rate=out;
 }
 function niceMax(v){ if(v<=1024) return 1024; return Math.pow(2,Math.ceil(Math.log2(v))); }
 function renderChart(){
