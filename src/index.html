@@ -11,7 +11,7 @@
    у пользователя светлой темы страница успевала мигнуть тёмной (плюс 0.4с transition на
    body). Здесь только раскладка атрибутов — вся логика остаётся в initTheme(). */
 (function(){try{
-  var KNOWN={dark:1,light:0,'gold-dark':1,keenetic:0,'abyss-dark':1,catppuccin:1};
+  var KNOWN={dark:1,light:0,'gold-dark':1,keenetic:0,'keenetic-dark':1,'abyss-dark':1,catppuccin:1};
   var ALIAS={noir:'gold-dark','gold-light':'light',mint:'light','abyss-light':'light',
              tokyonight:'abyss-dark',neo:'abyss-dark'};
   var s=JSON.parse(localStorage.getItem('invnet-theme-v3')||'null')||{};
@@ -90,7 +90,7 @@
   --rx:#7FB6D9; --tx:#E091A6; --shadow:rgba(0,0,0,.65);
   --scheme:dark;
 }
-/* «Keenetic» — палитра снята со штатной веб-морды роутера (styles-*.css KeeneticOS):
+/* «Keenetic светлая» — палитра снята со штатной веб-морды роутера (styles-*.css KeeneticOS):
    фирменный синий #0097DC, тёмно-синие панели #1B2434/#2E3D57, светлый фон #F5FAFC.
    Сам #0097DC даёт на светлом лишь 3.0:1 — для текста мало, поэтому он ушёл в accent-2
    (свечение/подложки), а accent — родной кинетиковский тёмный синий #1C6C9A (5.3:1). */
@@ -103,6 +103,24 @@
   --ok:#137946; --bad:#B23A26; --warn:#8A6A0E; --info:#2C4661;
   --rx:#1C6C9A; --tx:#A85A20; --shadow:rgba(46,61,87,.18);
   --scheme:light;
+}
+/* «Keenetic тёмная» — снята из блока `:root .dark` той же прошивки (штатный тёмный режим).
+   --bg — кинетиковский --menu-background #161C27 (не --background #1B2434): стекло поверх
+   него композитится ровно в #1E2633, т.е. в его же цвет карточки, а hairline'ы ложатся на
+   родные --stroke #2E3D57 и --scrollbar-thumb #3D5073. На тёмном фирменный #0097DC даёт
+   5.25:1 и наконец работает как accent (в светлой теме не проходил — там #1C6C9A).
+   ok — родной --indicator-online #7DCE70, rx/tx — линии графика «Интернет» (#77BCE4/#03B25A);
+   ok взят отдельным от tx намеренно: у Keenetic это два разных зелёных (112° и 150°), иначе
+   точка «работает» и линия отдачи в одной плитке слились бы в один цвет. */
+[data-theme="keenetic-dark"]{
+  --bg:#161C27; --blob1:#1C6C9A; --blob2:#3D5073; --blob3:#0097DC;
+  --glass:rgba(160,200,245,.06); --glass-strong:rgba(160,200,245,.11);
+  --hairline:rgba(150,190,245,.16); --hairline-hi:rgba(150,190,245,.3);
+  --ink:#D2DAE6; --ink2:#A3AEBE; --muted:#8A94A4;
+  --accent:#0097DC; --accent-2:#77BCE4; --on-accent:#06080B;
+  --ok:#7DCE70; --bad:#FF6565; --warn:#FFBB57; --info:#8DA2CE;
+  --rx:#77BCE4; --tx:#03B25A; --shadow:rgba(6,8,11,.66);
+  --scheme:dark;
 }
 [data-theme="abyss-dark"]{
   --bg:#04141A; --blob1:#0D9488; --blob2:#0EA5E9; --blob3:#155E75;
@@ -1174,7 +1192,8 @@ const THEMES={
   'dark':       {label:'Тёмная',       bg:'#14110E',accent:'#ECE8E2',ink:'#ECE8E2',dark:1},
   'light':      {label:'Светлая',      bg:'#F4F2EE',accent:'#2A2420',ink:'#1C1917',dark:0},
   'gold-dark':  {label:'Invisible Net',bg:'#12110F',accent:'#C9A876',ink:'#F0EEE6',dark:1},
-  'keenetic':   {label:'Keenetic',     bg:'#F4F7FA',accent:'#1C6C9A',ink:'#1B2434',dark:0},
+  'keenetic':   {label:'Keenetic светлая',bg:'#F4F7FA',accent:'#1C6C9A',ink:'#1B2434',dark:0},
+  'keenetic-dark':{label:'Keenetic тёмная',bg:'#161C27',accent:'#0097DC',ink:'#D2DAE6',dark:1},
   'abyss-dark': {label:'Глубина',      bg:'#04141A',accent:'#38BDF8',ink:'#E7F9F5',dark:1},
   'catppuccin': {label:'Catppuccin',   bg:'#1E1E2E',accent:'#89B4FA',ink:'#CDD6F4',dark:1}
 };
