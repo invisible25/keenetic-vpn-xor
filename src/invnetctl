@@ -120,6 +120,26 @@ wan_gw() {
   echo "$_gw"
 }
 
+# ---- лок на профиль: сериализует start_one/stop_one ОДНОГО профиля ----
+# Без него параллельные invnetctl (напр. CGI форкает stop-one, а через пару секунд
+# следом start-one — оба процесса независимы) дерутся за pid/slot/tun-интерфейс:
+# старый openvpn может ещё не умереть (в т.ч. застрять в D-state после kill -9),
+# а start_one() тем временем форсированно удаляет "чужой" tun и поднимает новый
+# процесс на том же имени — старый получает fd в bad state и уходит в busy-loop
+# записи ошибки в лог (живой инцидент 88.1, 2026-07-27). mkdir — атомарный лок,
+# по образцу apply(); срыв по таймауту — чтобы не зависнуть навсегда, если
+# держатель лока сам застрял.
+PLOCK_TIMEOUT=45
+profile_lock() {
+  _lk="$RUN/$1.lock"; _n=0
+  while ! mkdir "$_lk" 2>/dev/null; do
+    _n=$((_n+1))
+    [ "$_n" -ge "$PLOCK_TIMEOUT" ] && { echo "[$1] лок занят >${PLOCK_TIMEOUT}с — снимаю принудительно" >&2; rmdir "$_lk" 2>/dev/null; break; }
+    sleep 1
+  done
+}
+profile_unlock() { rmdir "$RUN/$1.lock" 2>/dev/null; }
+
 # ---- запуск одного профиля ----
 start_one() {
   PROFILE=$1
@@ -127,7 +147,12 @@ start_one() {
   [ -f "$CFG" ] || { echo "[$PROFILE] нет конфига"; return 1; }
   is_running "$PROFILE" && return 0
 
-  SLOT=$(alloc_slot "$PROFILE") || { echo "[$PROFILE] нет свободных слотов"; return 1; }
+  profile_lock "$PROFILE"
+  # пока ждали лок, состояние могло смениться (stop_one уже добил процесс и
+  # снял слот, либо параллельный start_one уже поднял профиль) — перепроверяем
+  if is_running "$PROFILE"; then profile_unlock "$PROFILE"; return 0; fi
+
+  SLOT=$(alloc_slot "$PROFILE") || { echo "[$PROFILE] нет свободных слотов"; profile_unlock "$PROFILE"; return 1; }
   DEV="tun_invnet$SLOT"
   PIDF="$RUN/$PROFILE.pid"
   LOGF="$LOGDIR/invnet-$PROFILE.log"
@@ -198,16 +223,34 @@ start_one() {
     --persist-tun \
     $WAN_ARGS \
     --up "$UP" --down "$DOWN"
+  profile_unlock "$PROFILE"
   echo "[$PROFILE] start slot=$SLOT dev=$DEV"
 }
 
 # ---- остановка одного профиля ----
 stop_one() {
   PROFILE=$1
+  profile_lock "$PROFILE"
   SLOT=$(slot_of "$PROFILE")
   P=$(pid_of "$PROFILE")
   [ -n "$P" ] && kill "$P" 2>/dev/null
-  i=0; while [ -n "$P" ] && kill -0 "$P" 2>/dev/null; do i=$((i+1)); [ "$i" -ge 6 ] && kill -9 "$P" 2>/dev/null; sleep 1; done
+  # Ждём РЕАЛЬНОЙ смерти процесса (kill -0 подтверждает не только память о pid,
+  # но и что это до сих пор живой процесс), не просто факта отправки kill -9.
+  # После kill -9 процесс может уйти в D-state (блокирующий syscall на битом
+  # tun/диске) — kill -0 продолжит видеть его, пока ядро само не отпустит.
+  # Бесконечно ждать нельзя (аппаратная проблема — D-state навсегда), поэтому
+  # верхний потолок ~45с; если не дождались — идём дальше принудительно, но
+  # громко предупреждаем в лог (тот, кто держит интерфейс, может ещё быть жив).
+  i=0
+  while [ -n "$P" ] && kill -0 "$P" 2>/dev/null; do
+    i=$((i+1))
+    [ "$i" -ge 6 ] && kill -9 "$P" 2>/dev/null
+    if [ "$i" -ge 45 ]; then
+      echo "[$PROFILE] pid=$P не завершился за ${i}с (похоже на D-state) — снимаю интерфейс принудительно" >&2
+      break
+    fi
+    sleep 1
+  done
   rm -f "$RUN/$PROFILE.pid"
   if [ -n "$SLOT" ]; then
     TABLE=$((101 + SLOT))
@@ -222,8 +265,69 @@ stop_one() {
     ip link show "$DEV" >/dev/null 2>&1 && ip link delete "$DEV" 2>/dev/null
   fi
   rm -f "$RUN/$PROFILE.slot"
+  profile_unlock "$PROFILE"
   echo "[$PROFILE] stop"
 }
+
+# ---- реконсиляция ip rule без гэпа (make-before-break) ----
+# apply_one/apply_routes/apply_wan_policy раньше чистили всю полосу приоритетов и
+# заново отстраивали её циклом add — между del и последним add у устройства/CIDR
+# не было ни одного правила (окно 100-400мс на реальных списках, каждый add — форк),
+# пакет мог проскочить мимо kill-switch на fwmark-политики Keenetic/main-таблицу.
+# Вместо этого: 1) один снимок ip rule на весь apply() (полосы функций не
+# пересекаются — 39/40, 50+slot/70+slot, 60-69 — общий снимок безопасен для всех);
+# 2) хеш желаемого состояния + живой счётчик правил — если оба совпадают с прошлым
+# успешным прогоном, вообще ничего не трогаем (устраняет почти все окна — обычные
+# тики watchdog раз в 30с, когда ничего не менялось); живой счётчик обязателен
+# отдельно от хеша: $RUN — persistent-раздел (переживает ребут), а ip rule в ядре —
+# нет, без этой проверки kill-switch после ребута тихо остался бы не восстановлен;
+# 3) если отличается — СНАЧАЛА добавить недостающее, ПОТОМ убрать лишнее: хотя бы
+# одно правило существует непрерывно, в т.ч. при смене режима profile devices↔all
+# (это две разные полосы — новая появляется раньше, чем старая исчезает).
+rules_snapshot() { RULES_NOW=$(ip rule show 2>/dev/null); }
+
+# Тело правил на приоритете $1 (без "N:\t"), по строке на правило.
+# " [detached]" вырезаем: ядро добавляет эту пометку для правила, чей iif сейчас
+# не поднят (br1 в бридже без клиентов). С ней строка не совпала бы с желаемой
+# (лишний add-дубликат), а `ip rule del` с этим словом в аргументах — синтаксическая
+# ошибка, и правило не удалялось бы никогда. Без пометки del отрабатывает штатно.
+rule_lines_at() {
+  [ -n "$RULES_NOW" ] || rules_snapshot
+  printf '%s\n' "$RULES_NOW" \
+    | awk -v p="$1:" '$1==p{ $1=""; sub(/^ +/,""); sub(/ \[detached\]/,""); print }'
+}
+rule_count_at() { rule_lines_at "$1" | grep -c .; }
+
+# Добавить то, чего нет среди текущих правил на приоритете $1, но есть в файле
+# желаемых строк $2 (одна строка — одно правило, БЕЗ приоритета в строке).
+# set -- разбивает строку на позиционные параметры так же надёжно, как явное
+# квотирование поле-за-полем в прежнем коде — просто число полей заранее неизвестно.
+rule_add_missing() {
+  _prio=$1; _wantfile=$2
+  _cur="$RUN/.rc_cur.$$"
+  rule_lines_at "$_prio" > "$_cur"
+  grep -vxFf "$_cur" "$_wantfile" 2>/dev/null | while IFS= read -r _w; do
+    [ -z "$_w" ] && continue
+    set -- $_w
+    ip rule add "$@" priority "$_prio" 2>/dev/null
+  done
+  rm -f "$_cur"
+}
+
+# Убрать то, что сейчас есть на приоритете $1, но чего больше нет в файле
+# желаемых строк $2. Вызывать ТОЛЬКО после rule_add_missing на всех полосах,
+# которые в этом прогоне получают новые правила — иначе получим обратный
+# (небезопасный) порядок break-before-make.
+rule_remove_stale() {
+  _prio=$1; _wantfile=$2
+  rule_lines_at "$_prio" | grep -vxFf "$_wantfile" 2>/dev/null | while IFS= read -r _c; do
+    [ -z "$_c" ] && continue
+    set -- $_c
+    ip rule del "$@" priority "$_prio" 2>/dev/null
+  done
+}
+
+hashof() { md5sum 2>/dev/null | awk '{print $1}'; }
 
 # ---- разложить ip rule для одного профиля (по его meta + глобальным CIDR) ----
 apply_one() {
@@ -232,26 +336,46 @@ apply_one() {
   DEV="tun_invnet$SLOT"; TABLE=$((101 + SLOT))
   ip link show "$DEV" >/dev/null 2>&1 || return 0
 
-  # default в таблицу профиля — атомарно (replace), без flush: иначе между
-  # flush и add таблица пуста → пакет привязанного устройства утекает мимо VPN.
+  # default в таблицу профиля — атомарно (replace), без flush; дёшево — переутверждаем
+  # безусловно, без хеш-гейта (иначе между flush и add таблица пуста → утечка мимо VPN).
   ip route replace default dev "$DEV" table "$TABLE" 2>/dev/null
   ip route replace blackhole default table "$TABLE" metric 9999 2>/dev/null  # kill-switch fallback
 
-  # очистить старые from/to правила этого профиля и заново.
   # Приоритеты ниже 100 — чтобы перебить fwmark-правила Keenetic (политики доступа, prio 100-110).
   P_DEV=$((50 + SLOT)); P_ALL=$((70 + SLOT))
-  while ip rule del priority "$P_DEV" 2>/dev/null; do :; done
-  while ip rule del priority "$P_ALL" 2>/dev/null; do :; done
-
   MODE=$(meta_get "$PROFILE" '.mode'); [ -z "$MODE" ] && MODE=devices
+
+  WF_ALL="$RUN/.want_all.$PROFILE"; WF_DEV="$RUN/.want_dev.$PROFILE"
+  : > "$WF_ALL"; : > "$WF_DEV"
   if [ "$MODE" = "all" ]; then
-    for L in $LANIF; do ip rule add iif "$L" lookup "$TABLE" priority "$P_ALL" 2>/dev/null; done
+    for L in $LANIF; do echo "from all iif $L lookup $TABLE"; done > "$WF_ALL"
   else
-    meta_get "$PROFILE" '.devices[]?' | while read -r ip; do
-      ip=$(echo "$ip" | tr -d '[:space:]'); [ -z "$ip" ] && continue
-      ip rule add from "$ip" lookup "$TABLE" priority "$P_DEV" 2>/dev/null
-    done
+    # sed, а НЕ `tr -d '[:space:]'`: tr работает на всём потоке и схлопнул бы
+    # переводы строк — весь список адресов слипся бы в одну мусорную строку
+    # (в прежнем коде tr стоял внутри while read, т.е. построчно).
+    meta_get "$PROFILE" '.devices[]?' | sed 's/[[:space:]]//g' | grep -v '^$' | sort -u \
+      | awk -v t="$TABLE" '{print "from " $0 " lookup " t}' > "$WF_DEV"
   fi
+
+  EXP_ALL=$(grep -c . "$WF_ALL"); EXP_DEV=$(grep -c . "$WF_DEV")
+  NEWHASH=$(cat "$WF_ALL" "$WF_DEV" | hashof)
+  HF="$RUN/$PROFILE.applyhash"
+  OLDHASH=$(cat "$HF" 2>/dev/null)
+
+  if [ "$NEWHASH" = "$OLDHASH" ] \
+     && [ "$(rule_count_at "$P_ALL")" = "$EXP_ALL" ] \
+     && [ "$(rule_count_at "$P_DEV")" = "$EXP_DEV" ]; then
+    rm -f "$WF_ALL" "$WF_DEV"
+    return 0   # желаемое не менялось, живое состояние ему соответствует
+  fi
+
+  rule_add_missing "$P_ALL" "$WF_ALL"
+  rule_add_missing "$P_DEV" "$WF_DEV"
+  rule_remove_stale "$P_ALL" "$WF_ALL"
+  rule_remove_stale "$P_DEV" "$WF_DEV"
+
+  rm -f "$WF_ALL" "$WF_DEV"
+  echo "$NEWHASH" > "$HF"
 }
 
 # ---- rp_filter: ослабить строгую reverse-path проверку на канале (1→2 loose) ----
@@ -290,54 +414,79 @@ rpf_restore_unused() {
 # привязку устройства к VPN (prio 50) → исключение работает даже для VPN-устройства.
 # Иначе (.direct≠true) → подсеть В VPN через primary-профиль (prio 40).
 apply_routes() {
-  while ip rule del priority 40 2>/dev/null; do :; done
-  while ip rule del priority 39 2>/dev/null; do :; done
   _t=230; while [ "$_t" -le 238 ]; do ip route flush table "$_t" 2>/dev/null; _t=$((_t+1)); done
   ip route flush table "$HOLD_TABLE" 2>/dev/null   # снять прошлое blackhole-удержание
-  [ -f "$ROUTES_FILE" ] || return 0
 
-  # ── ПРЯМЫЕ маршруты-исключения: <cidr> через физический WAN, минуя VPN ──
-  # таблицы 230+j (j по числу разных WAN-каналов исключений), правила prio 39.
-  j=0
-  for w in $(jq -r '.[] | select(.enabled != false and .direct == true) | .wan // empty' "$ROUTES_FILE" 2>/dev/null | sort -u); do
-    [ -z "$w" ] && continue
-    ip link show "$w" >/dev/null 2>&1 || continue
-    [ "$j" -gt 8 ] && break
-    DT=$((230 + j)); j=$((j+1))
-    rpf_ensure_loose "$w"
-    GW=$(wan_gw "$w")
-    if [ -n "$GW" ]; then ip route replace default via "$GW" dev "$w" table "$DT" 2>/dev/null
-    else ip route replace default dev "$w" table "$DT" 2>/dev/null; fi
-    jq -r --arg w "$w" '.[] | select(.enabled != false and .direct == true and ((.wan // "") == $w)) | .cidr' "$ROUTES_FILE" 2>/dev/null | while read -r cidr; do
-      cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
-      ip rule add to "$cidr" lookup "$DT" priority 39 2>/dev/null
+  WF39="$RUN/.want39"; WF40="$RUN/.want40"
+  : > "$WF39"; : > "$WF40"
+
+  if [ -f "$ROUTES_FILE" ]; then
+    # ── ПРЯМЫЕ маршруты-исключения: <cidr> через физический WAN, минуя VPN ──
+    # таблицы 230+j (j по числу разных WAN-каналов исключений), правила prio 39.
+    j=0
+    for w in $(jq -r '.[] | select(.enabled != false and .direct == true) | .wan // empty' "$ROUTES_FILE" 2>/dev/null | sort -u); do
+      [ -z "$w" ] && continue
+      ip link show "$w" >/dev/null 2>&1 || continue
+      [ "$j" -gt 8 ] && break
+      DT=$((230 + j)); j=$((j+1))
+      rpf_ensure_loose "$w"
+      GW=$(wan_gw "$w")
+      if [ -n "$GW" ]; then ip route replace default via "$GW" dev "$w" table "$DT" 2>/dev/null
+      else ip route replace default dev "$w" table "$DT" 2>/dev/null; fi
+      jq -r --arg w "$w" '.[] | select(.enabled != false and .direct == true and ((.wan // "") == $w)) | .cidr' "$ROUTES_FILE" 2>/dev/null \
+      | while read -r cidr; do
+          cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
+          echo "from all to $cidr lookup $DT"
+        done >> "$WF39"
     done
-  done
 
-  # ── маршруты ЧЕРЕЗ VPN: через primary (минимальный slot) активный профиль ──
-  PRIMARY=""; MINSLOT=99
-  for sf in "$RUN"/*.slot; do
-    [ -f "$sf" ] || continue
-    pr=$(basename "$sf" .slot); s=$(cat "$sf")
-    is_running "$pr" || continue
-    [ "$s" -lt "$MINSLOT" ] && { MINSLOT=$s; PRIMARY=$pr; }
-  done
-  VPN_CIDRS=$(jq -r '.[] | select(.enabled != false and ((.direct // false) != true)) | .cidr' "$ROUTES_FILE" 2>/dev/null)
-  [ -z "$VPN_CIDRS" ] && return 0
-  if [ -n "$PRIMARY" ]; then
-    TABLE=$((101 + MINSLOT))                  # есть живой туннель → подсети идут в VPN
-  else
-    # НЕТ живого туннеля-носителя (все профили выкл/удалены): держим VPN-маршруты в
-    # blackhole, а НЕ выпускаем мимо VPN через обычный WAN (это была бы утечка — трафик
-    # к «VPN-only» подсетям светился бы в открытый канал). Осиротевший маршрут остаётся
-    # «в силе» так же, как kill-switch держит устройства (prio 40, отдельная таблица).
-    TABLE=$HOLD_TABLE
-    ip route replace blackhole default table "$HOLD_TABLE" 2>/dev/null
+    # ── маршруты ЧЕРЕЗ VPN: через primary (минимальный slot) активный профиль ──
+    PRIMARY=""; MINSLOT=99
+    for sf in "$RUN"/*.slot; do
+      [ -f "$sf" ] || continue
+      pr=$(basename "$sf" .slot); s=$(cat "$sf")
+      is_running "$pr" || continue
+      [ "$s" -lt "$MINSLOT" ] && { MINSLOT=$s; PRIMARY=$pr; }
+    done
+    VPN_CIDRS=$(jq -r '.[] | select(.enabled != false and ((.direct // false) != true)) | .cidr' "$ROUTES_FILE" 2>/dev/null)
+    if [ -n "$VPN_CIDRS" ]; then
+      if [ -n "$PRIMARY" ]; then
+        TABLE=$((101 + MINSLOT))                # есть живой туннель → подсети идут в VPN
+      else
+        # НЕТ живого туннеля-носителя (все профили выкл/удалены): держим VPN-маршруты в
+        # blackhole, а НЕ выпускаем мимо VPN через обычный WAN (это была бы утечка — трафик
+        # к «VPN-only» подсетям светился бы в открытый канал). Осиротевший маршрут остаётся
+        # «в силе» так же, как kill-switch держит устройства (prio 40, отдельная таблица).
+        TABLE=$HOLD_TABLE
+        ip route replace blackhole default table "$HOLD_TABLE" 2>/dev/null
+      fi
+      printf '%s\n' "$VPN_CIDRS" | while read -r cidr; do
+        cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
+        echo "from all to $cidr lookup $TABLE"
+      done >> "$WF40"
+    fi
   fi
-  printf '%s\n' "$VPN_CIDRS" | while read -r cidr; do
-    cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
-    ip rule add to "$cidr" lookup "$TABLE" priority 40 2>/dev/null
-  done
+
+  EXP39=$(grep -c . "$WF39"); EXP40=$(grep -c . "$WF40")
+  # хеш уже включает table для VPN-CIDR (PRIMARY/HOLD_TABLE) — это часть строки в WF40
+  NEWHASH=$(cat "$WF39" "$WF40" | hashof)
+  HF="$RUN/.routes.applyhash"
+  OLDHASH=$(cat "$HF" 2>/dev/null)
+
+  if [ "$NEWHASH" = "$OLDHASH" ] \
+     && [ "$(rule_count_at 39)" = "$EXP39" ] \
+     && [ "$(rule_count_at 40)" = "$EXP40" ]; then
+    rm -f "$WF39" "$WF40"
+    return 0
+  fi
+
+  rule_add_missing 39 "$WF39"
+  rule_add_missing 40 "$WF40"
+  rule_remove_stale 39 "$WF39"
+  rule_remove_stale 40 "$WF40"
+
+  rm -f "$WF39" "$WF40"
+  echo "$NEWHASH" > "$HF"
 }
 
 # ---- WAN-политика: устройства → физический WAN-канал, минуя VPN ----
@@ -346,32 +495,64 @@ apply_routes() {
 # правило/основной маршрут (как «использовать соединение» без failover Keenetic).
 # NAT/FORWARD ставит invnet-fw.sh (assert_wanpol), персистентность — через NDM-хук.
 apply_wan_policy() {
+  _t=240; while [ "$_t" -le 249 ]; do ip route flush table "$_t" 2>/dev/null; _t=$((_t+1)); done
+
+  WF_ALL="$RUN/.want_wanpol"
+  : > "$WF_ALL"
+  if [ -f "$WANPOL" ]; then
+    i=0
+    jq -c '.[] | select(.enabled != false)' "$WANPOL" 2>/dev/null | while read -r e; do
+      WIF=$(echo "$e" | jq -r '.wan // ""')
+      if [ -z "$WIF" ] || ! ip link show "$WIF" >/dev/null 2>&1; then i=$((i+1)); continue; fi
+      PRIO=$((60 + i)); [ "$PRIO" -gt 69 ] && break   # бэнд 60..69 (≤10 каналов)
+      TBL=$((240 + i))
+      rpf_ensure_loose "$WIF"   # ослабить строгий rp_filter на канале (с откатом)
+      GW=$(wan_gw "$WIF")
+      if [ -n "$GW" ]; then
+        ip route replace default via "$GW" dev "$WIF" table "$TBL" 2>/dev/null
+      else
+        ip route replace default dev "$WIF" table "$TBL" 2>/dev/null
+      fi
+      echo "$e" | jq -r '.devices[]?' | while read -r d; do
+        d=$(echo "$d" | tr -d '[:space:]'); [ -z "$d" ] && continue
+        echo "$PRIO from $d lookup $TBL"
+      done
+      i=$((i+1))
+    done > "$WF_ALL"
+  fi
+
+  EXP_TOTAL=$(grep -c . "$WF_ALL")
+  NEWHASH=$(hashof < "$WF_ALL")
+  HF="$RUN/.wanpol.applyhash"
+  OLDHASH=$(cat "$HF" 2>/dev/null)
+
+  LIVE_TOTAL=0
   p=60
   while [ "$p" -le 69 ]; do
-    while ip rule del priority "$p" 2>/dev/null; do :; done
+    LIVE_TOTAL=$((LIVE_TOTAL + $(rule_count_at "$p")))
     p=$((p+1))
   done
-  _t=240; while [ "$_t" -le 249 ]; do ip route flush table "$_t" 2>/dev/null; _t=$((_t+1)); done
-  [ -f "$WANPOL" ] || return 0
-  i=0
-  jq -c '.[] | select(.enabled != false)' "$WANPOL" 2>/dev/null | while read -r e; do
-    WIF=$(echo "$e" | jq -r '.wan // ""')
-    if [ -z "$WIF" ] || ! ip link show "$WIF" >/dev/null 2>&1; then i=$((i+1)); continue; fi
-    PRIO=$((60 + i)); [ "$PRIO" -gt 69 ] && break   # бэнд 60..69 (≤10 каналов)
-    TBL=$((240 + i))
-    rpf_ensure_loose "$WIF"   # ослабить строгий rp_filter на канале (с откатом)
-    GW=$(wan_gw "$WIF")
-    if [ -n "$GW" ]; then
-      ip route replace default via "$GW" dev "$WIF" table "$TBL" 2>/dev/null
-    else
-      ip route replace default dev "$WIF" table "$TBL" 2>/dev/null
-    fi
-    echo "$e" | jq -r '.devices[]?' | while read -r d; do
-      d=$(echo "$d" | tr -d '[:space:]'); [ -z "$d" ] && continue
-      ip rule add from "$d" lookup "$TBL" priority "$PRIO" 2>/dev/null
-    done
-    i=$((i+1))
+
+  if [ "$NEWHASH" = "$OLDHASH" ] && [ "$LIVE_TOTAL" = "$EXP_TOTAL" ]; then
+    rm -f "$WF_ALL"
+    return 0
+  fi
+
+  # разложить по 10 файлам-приоритетам (первое поле WF_ALL — приоритет записи),
+  # затем сначала все add, потом все remove — без kill-switch здесь без разницы
+  # порядка между записями, но одинаковый принцип упрощает код и хелперы.
+  p=60
+  while [ "$p" -le 69 ]; do
+    awk -v p="$p" '$1==p{$1="";sub(/^ +/,"");print}' "$WF_ALL" > "$RUN/.want_wp_$p"
+    p=$((p+1))
   done
+  p=60
+  while [ "$p" -le 69 ]; do rule_add_missing "$p" "$RUN/.want_wp_$p"; p=$((p+1)); done
+  p=60
+  while [ "$p" -le 69 ]; do rule_remove_stale "$p" "$RUN/.want_wp_$p"; rm -f "$RUN/.want_wp_$p"; p=$((p+1)); done
+
+  rm -f "$WF_ALL"
+  echo "$NEWHASH" > "$HF"
 }
 
 # ---- reconcile: факт → желаемое ----
@@ -400,6 +581,7 @@ apply() {
     _n=$((_n+1)); [ "$_n" -ge 30 ] && { rmdir "$LOCK" 2>/dev/null; break; }
     sleep 1
   done
+  rules_snapshot   # один снимок ip rule на весь вызов — полосы функций не пересекаются
   for sf in "$RUN"/*.slot; do
     [ -f "$sf" ] || continue
     apply_one "$(basename "$sf" .slot)"
