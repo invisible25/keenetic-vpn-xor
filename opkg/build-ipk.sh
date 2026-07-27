@@ -19,6 +19,13 @@ VERSION="${1:-$(sed -n 's/^INVNET_VERSION=\([0-9.]*\).*/\1/p' "$REPO/install.sh"
 # НИЖЕ уже опубликованной версии, opkg просто проигнорирует такой пакет как downgrade,
 # и "успешный" релиз никуда не доедет. Лучше падать явно.
 [ -n "$VERSION" ] || { echo "не удалось определить версию из $REPO/install.sh (INVNET_VERSION=)" >&2; exit 1; }
+# Сверка с install.sh, когда версия пришла аргументом (так её передаёт воркфлоу из тега).
+# Без неё забытый бамп INVNET_VERSION давал «зелёный» релиз, где пакет и подвал панели
+# показывают новую версию, а вложенный install.sh печатает старую.
+INST_VER=$(sed -n 's/^INVNET_VERSION=\([0-9.]*\).*/\1/p' "$REPO/install.sh" | head -1)
+if [ -n "$INST_VER" ] && [ "$INST_VER" != "$VERSION" ]; then
+  echo "версия рассинхронизирована: аргумент/тег $VERSION, install.sh $INST_VER" >&2; exit 1
+fi
 OUT="${2:-$HERE/out}"
 PKG="invnet_${VERSION}_all.ipk"
 

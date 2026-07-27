@@ -12,4 +12,8 @@ if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
   echo "нельзя удалить запущенный профиль: сначала выключи тумблер"; exit 1
 fi
 rm -f /opt/etc/openvpn/profiles/${NAME}.ovpn /opt/etc/openvpn/profile-meta/${NAME}.json
+# Хвосты тоже: осиротевший .slot продолжал занимать один из 8 слотов в alloc_slot до
+# ближайшего reconcile, а q-<name>.log ещё сутки держал удалённый профиль в «Качестве каналов».
+rm -f "/opt/var/run/invnet/${NAME}.slot" "/opt/var/run/invnet/${NAME}.pid" \
+      "/opt/var/log/invnet-${NAME}.log" "/opt/var/lib/invnet/q-${NAME}.log"
 echo "удалён: $NAME"

@@ -9,6 +9,12 @@ PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 
+# Состояния не меняет, но по классу это то же, что diag: заставляет роутер сходить наружу
+# (до 5 внешних HTTPS по 6с) и держит CGI-слоты. Без заслона любая страница в LAN могла
+# гонять эти запросы фоном.
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard
+
 PROFILE=$(echo "$QUERY_STRING" | sed -n 's/.*profile=\([^&]*\).*/\1/p' | tr -cd 'A-Za-z0-9._-')
 DIRECT=$(echo "$QUERY_STRING" | sed -n 's/.*direct=\([^&]*\).*/\1/p' | tr -cd '01')
 

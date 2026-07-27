@@ -23,6 +23,15 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   NEW_NAME=$(echo "$BODY" | tr '&' '\n' | grep '^name=' | head -1 | sed 's/^name=//')
   CONTENT=$(echo "$BODY" | tr '&' '\n' | grep '^content=' | head -1 | sed 's/^content=//')
 
+  # Коллизию имени проверяем ДО записи содержимого: раньше конфиг уже лежал на диске,
+  # когда пользователь получал отказ «name already exists», и применялся при рестарте.
+  if [ -n "$NEW_NAME" ]; then
+    NEW_NAME=$(urldecode "$NEW_NAME" | tr -cd 'A-Za-z0-9._-' | head -c 32)
+    if [ -n "$NEW_NAME" ] && [ "$NEW_NAME" != "$NAME" ] && [ -f "$DIR/${NEW_NAME}.ovpn" ]; then
+      echo '{"error":"name already exists"}'; exit 0
+    fi
+  fi
+
   if [ -n "$CONTENT" ]; then
     CONTENT=$(urldecode "$CONTENT")
     echo "$CONTENT" | grep -qE '^remote ' || { echo '{"error":"no remote line"}'; exit 0; }
@@ -30,19 +39,28 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     chmod 600 "$F"
   fi
 
-  if [ -n "$NEW_NAME" ]; then
-    NEW_NAME=$(urldecode "$NEW_NAME" | tr -cd 'A-Za-z0-9._-' | head -c 32)
-    if [ -n "$NEW_NAME" ] && [ "$NEW_NAME" != "$NAME" ]; then
-      [ -f "$DIR/${NEW_NAME}.ovpn" ] && { echo '{"error":"name already exists"}'; exit 0; }
+  RUN=/opt/var/run/invnet
+  OLD_NAME="$NAME"
+  if [ -n "$NEW_NAME" ] && [ "$NEW_NAME" != "$NAME" ]; then
       mv "$F" "$DIR/${NEW_NAME}.ovpn"
       [ -f "$META" ] && mv "$META" "/opt/etc/openvpn/profile-meta/${NEW_NAME}.json"
+      # Runtime-файлы переименовываем ВМЕСТЕ с профилем. Без этого PIDF ниже указывал на
+      # несуществующий файл: работающий openvpn не перезапускался, а watchdog видел мету
+      # нового имени без pid, считал процесс мёртвым и поднимал ВТОРОЙ openvpn на новом слоте —
+      # два процесса, два tun, два MASQUERADE, причём старый с конфигом, которого уже нет.
+      for _e in pid slot; do
+        [ -f "$RUN/${OLD_NAME}.${_e}" ] && mv "$RUN/${OLD_NAME}.${_e}" "$RUN/${NEW_NAME}.${_e}"
+      done
+      [ -f "/opt/var/log/invnet-${OLD_NAME}.log" ] &&
+        mv "/opt/var/log/invnet-${OLD_NAME}.log" "/opt/var/log/invnet-${NEW_NAME}.log"
+      [ -f "/opt/var/lib/invnet/q-${OLD_NAME}.log" ] &&
+        mv "/opt/var/lib/invnet/q-${OLD_NAME}.log" "/opt/var/lib/invnet/q-${NEW_NAME}.log"
       # active-profile rename
       ACTIVE=$(cat /opt/etc/openvpn/active-profile 2>/dev/null | tr -d '[:space:]')
       [ "$ACTIVE" = "$NAME" ] && echo "$NEW_NAME" > /opt/etc/openvpn/active-profile
       NAME="$NEW_NAME"
       F="$DIR/${NAME}.ovpn"
       META=/opt/etc/openvpn/profile-meta/${NAME}.json
-    fi
   fi
 
   # Если профиль запущен — рестартуем (multi-profile path)

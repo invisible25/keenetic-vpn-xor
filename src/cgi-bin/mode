@@ -15,7 +15,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   BODY=$(head -c 32)
   case "$BODY" in *all*) M=all ;; *) M=devices ;; esac
   OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
-  echo "$OLD" | jq --arg m "$M" '. + {mode: $m}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
+  echo "$OLD" | jq --arg m "$M" '. + {mode: $m}' > "$META.tmp" 2>/dev/null \
+  && jq -e '.' "$META.tmp" >/dev/null 2>&1 && mv "$META.tmp" "$META" || rm -f "$META.tmp"
   ( /opt/sbin/invnetctl apply >/dev/null 2>&1 & )
 fi
 [ -f "$META" ] && jq -r '.mode // "devices"' "$META" 2>/dev/null || echo devices

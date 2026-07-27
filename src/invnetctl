@@ -42,7 +42,9 @@ is_enabled() { [ "$(meta_get "$1" '.enabled')" = "true" ]; }
 
 set_meta_enabled() {
   if [ -f "$META/$1.json" ]; then
-    jq ".enabled=$2" "$META/$1.json" > "$META/$1.json.tmp" 2>/dev/null && mv "$META/$1.json.tmp" "$META/$1.json"
+    jq ".enabled=$2" "$META/$1.json" > "$META/$1.json.tmp" 2>/dev/null \
+    && jq -e '.' "$META/$1.json.tmp" >/dev/null 2>&1 \
+    && mv "$META/$1.json.tmp" "$META/$1.json" || rm -f "$META/$1.json.tmp"
   else
     echo "{\"enabled\":$2}" > "$META/$1.json"
   fi

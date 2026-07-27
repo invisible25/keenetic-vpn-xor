@@ -23,7 +23,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   DEVICES_JSON=$(awk 'BEGIN{printf "["} {if(NR>1)printf ","; printf "\"%s\"", $0} END{printf "]"}' "$TMP")
   rm -f "$TMP"
   OLD=$([ -f "$META" ] && cat "$META" || echo '{}')
-  echo "$OLD" | jq --argjson d "$DEVICES_JSON" '. + {devices: $d}' > "$META.tmp" 2>/dev/null && mv "$META.tmp" "$META"
+  echo "$OLD" | jq --argjson d "$DEVICES_JSON" '. + {devices: $d}' > "$META.tmp" 2>/dev/null \
+  && jq -e '.' "$META.tmp" >/dev/null 2>&1 && mv "$META.tmp" "$META" || rm -f "$META.tmp"
   # одно устройство — одна цель: убрать эти IP из WAN-политики (если были там)
   WANPOL=/opt/etc/openvpn/invnet-wan-policy.conf
   if [ -f "$WANPOL" ] && [ "$DEVICES_JSON" != "[]" ]; then

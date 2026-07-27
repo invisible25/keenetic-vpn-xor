@@ -15,10 +15,11 @@ for dev in /sys/class/net/tun_invnet*; do
   case "$slot" in ''|*[!0-9]*) continue ;; esac   # только штатные имена, слот идёт в JSON-ключ
   r=$(cat "$dev/statistics/rx_bytes" 2>/dev/null)
   t=$(cat "$dev/statistics/tx_bytes" 2>/dev/null)
-  r=${r:-0}; t=${t:-0}
-  # sysfs может отдать пусто/мусор на исчезающем интерфейсе — иначе получим битый JSON
-  case "$r" in ''|*[!0-9]*) r=0 ;; esac
-  case "$t" in ''|*[!0-9]*) t=0 ;; esac
+  # Не читается (интерфейс сносится, EBUSY) — ПРОПУСКАЕМ устройство, а не подставляем ноль.
+  # С нулём фронт считал следующую дельту как «весь объём за один тик», niceMax растягивал
+  # шкалу до гигабайт в секунду, и график оставался плоским все 120 точек буфера (~2 минуты).
+  case "$r" in ''|*[!0-9]*) continue ;; esac
+  case "$t" in ''|*[!0-9]*) continue ;; esac
   UP=true
   RX=$((RX + r)); TX=$((TX + t))
   [ -n "$PER" ] && PER="$PER,"

@@ -38,7 +38,14 @@ rotate_logs() {
 # Пассивно — на логику перезапуска (kill -0) не влияет.
 sample_quality() {
   mkdir -p "$QDIR"
-  target=$(tr -cd '0-9.' < "$QCONF" 2>/dev/null); [ -z "$target" ] && target=1.1.1.1
+  # tr -cd '0-9.' из хостнейма делает мусор («ping.example.com» → «..»), который непуст,
+  # поэтому дефолт не подставлялся и ВСЕ сэмплы качества навсегда шли как 100% потерь.
+  # Принимаем только то, что похоже на IPv4; иначе — дефолт.
+  target=$(tr -cd '0-9.' < "$QCONF" 2>/dev/null)
+  case "$target" in
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*) case "$target" in *..*|*.) target=1.1.1.1 ;; esac ;;
+    *) target=1.1.1.1 ;;
+  esac
   for slotf in "$RUN"/*.slot; do
     [ -f "$slotf" ] || continue
     pr=$(basename "$slotf" .slot)
@@ -88,7 +95,20 @@ watchdog_loop() {
 
 case "$1" in
   start)
-    [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null && exit 0
+    # Сверка cmdline обязательна: /opt/var/run переживает перезагрузку, и PID из старого
+    # pid-файла с высокой вероятностью занят ЧУЖИМ процессом — тогда kill -0 успешен, и
+    # watchdog молча не стартует. А без него нет ротации логов (именно её отсутствие забило
+    # раздел на 12.5ГБ), нет возврата правил после перестроек NDM и нет перезапуска упавших
+    # туннелей. S31 и S41 такую сверку уже делают, здесь её не было.
+    if [ -f "$PIDF" ]; then
+      _p=$(cat "$PIDF" 2>/dev/null)
+      case "$_p" in ''|*[!0-9]*) _p="" ;; esac
+      if [ -n "$_p" ] && kill -0 "$_p" 2>/dev/null &&
+         grep -qa 'S40invnet-pingcheck' "/proc/$_p/cmdline" 2>/dev/null; then
+        exit 0
+      fi
+      rm -f "$PIDF"                     # стейл-файл, иначе он и дальше будет вводить в заблуждение
+    fi
     mkdir -p "$RUN"
     watchdog_loop &
     echo $! > "$PIDF"

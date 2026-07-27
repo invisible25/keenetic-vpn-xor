@@ -797,7 +797,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <button class="tab" data-tab="settings" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-gear"/></svg>Настройки</button>
     </nav>
     <!-- версию подставляет build-ipk.sh из INVNET_VERSION при сборке пакета -->
-    <div class="sfoot">INVISIBLE NET · v1.7.0</div>
+    <div class="sfoot">INVISIBLE NET · v1.7.1</div>
   </aside>
 
   <main>
@@ -1258,6 +1258,9 @@ const API_TIMEOUT=12000;
 function apiFetch(ep,params,opt){
   const url='cgi-bin/'+ep+(params?'?'+new URLSearchParams(params):'');
   const o=Object.assign({cache:'no-store'},opt||{});
+  // Доказательство same-origin для csrf_guard: <img>, <form> и навигация заголовки ставить
+  // не умеют, а кросс-origin fetch с кастомным заголовком уходит в preflight и не проходит.
+  o.headers=Object.assign({'X-Invnet':'1'},o.headers||{});
   if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout) o.signal=AbortSignal.timeout(API_TIMEOUT);
   return fetch(url,o).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r; });
 }
@@ -1505,6 +1508,13 @@ function enhanceSelect(sel,opts){
     wrap._btn=btn; wrap._pop=pop;
     btn.addEventListener('click',e=>{ e.stopPropagation(); toggleXsel(wrap); });
     btn.addEventListener('keydown',e=>xselKey(e,wrap));
+    // уход фокуса из группы = закрыть: иначе попап оставался висеть, aria-expanded врал,
+    // а отложенная перестройка (_dirty) не догонялась и подпись селекта замерзала
+    wrap.addEventListener('focusout',e=>{
+      if(!wrap.classList.contains('open')) return;
+      if(e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+      closeAllXsel();
+    });
     pop.addEventListener('click',e=>{
       const o=e.target.closest('.xsel-opt'); if(!o||o.classList.contains('dis')) return;
       pickXsel(wrap,o.dataset.val);
@@ -1560,6 +1570,9 @@ function closeAllXsel(){ $$('.xsel.open').forEach(w=>{ w.classList.remove('open'
 }); }
 function pickXsel(wrap,val){
   const sel=wrap.querySelector('select');
+  // опция могла исчезнуть, пока попап был открыт (профиль остановлен/удалён): присвоение
+  // несуществующего value даёт selectedIndex=-1, кнопка становится пустой и молча не работает
+  if(![...sel.options].some(o=>o.value===val)){ closeAllXsel(); return; }
   const changed=sel.value!==val;
   wrap.classList.remove('open','up');
   wrap._btn.setAttribute('aria-expanded','false');
@@ -1576,7 +1589,13 @@ function xselKey(e,wrap){
     const hl=wrap._pop.querySelector('.xsel-opt.hl'); if(hl) pickXsel(wrap,hl.dataset.val);
     return;
   }
-  if(e.key==='Escape'){ if(open){ e.preventDefault(); closeAllXsel(); } return; }
+  // stopPropagation обязателен: preventDefault всплытие не гасит, и документный обработчик
+  // закрывал ВЕСЬ редактор профиля. Открыл список «WAN-канал», нажал Escape чтобы свернуть
+  // выпадашку — модалка закрывалась, несохранённые правки .ovpn пропадали без предупреждения.
+  if(e.key==='Escape'){ if(open){ e.preventDefault(); e.stopPropagation(); closeAllXsel(); } return; }
+  // Tab уводит фокус, но попап оставался висеть с aria-expanded="true", а отложенная
+  // перестройка (_dirty) не догонялась никогда — подпись селекта замерзала навсегда
+  if(e.key==='Tab' && open){ closeAllXsel(); return; }
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){
     e.preventDefault();
     if(!open){ toggleXsel(wrap); return; }
@@ -1663,7 +1682,7 @@ async function loadStatusBasic(){
 LOADERS.push(loadStatusBasic);
 
 /* ════════════════════════════ СОСТОЯНИЕ ════════════════════════════ */
-const STATE={profiles:[],wans:[],checkip:{},toggling:null,watchdog:null,
+const STATE={profiles:[],wans:[],checkip:{},toggling:{},watchdog:null,
   rate:{},          // slot -> {rxr,txr} Б/с, из разбивки stats.dev; питает анимацию потока
   rateRaw:null,     // предыдущий сырой снимок счётчиков + время, для дельты
   rateKnown:false}; // отдаёт ли роутер разбивку вообще (старая версия stats — нет)
@@ -1680,7 +1699,10 @@ async function loadWans(){ try{ STATE.wans=await API.json('wans'); }catch(e){} }
 
 /* ════════════════════════════ XOR-ДЕТЕКТ (scramble в .ovpn) ════════════════════════════ */
 let XOR_CACHE={};
+// JSON.parse("null") исключения НЕ бросает, а дальше `p.name in null` роняет ensureXorFlags
+// и renderHero целиком — поэтому проверяем тип, а не только ловим исключение
 try{ XOR_CACHE=JSON.parse(sessionStorage.getItem('invnet-xor-cache')||'{}'); }catch(e){}
+if(!XOR_CACHE||typeof XOR_CACHE!=='object') XOR_CACHE={};
 let XOR_FETCHING=false;
 async function ensureXorFlags(){
   if(XOR_FETCHING) return;
@@ -1689,11 +1711,15 @@ async function ensureXorFlags(){
   XOR_FETCHING=true;
   try{
     for(const p of miss){
+      // continue, а не break: с break один сбойный профиль обрывал весь цикл, XOR_CACHE
+      // оставался пустым, и панель ЗАНИЖАЛА защиту — чипы XOR пропадали с плиток, бейдж
+      // «XOR-обфускация активна» гас, туннели помечались как обычный VPN. Держалось до F5,
+      // потому что ensureXorFlags зовётся только при смене состава профилей.
       try{ const d=await API.json('profile',{name:p.name});
         XOR_CACHE[p.name]=/(^|\n)\s*scramble\b/.test(d.content||''); }
-      catch(e){ break; }
+      catch(e){ continue; }
     }
-    sessionStorage.setItem('invnet-xor-cache',JSON.stringify(XOR_CACHE));
+    try{ sessionStorage.setItem('invnet-xor-cache',JSON.stringify(XOR_CACHE)); }catch(e){}
     renderHero(); renderTiles(); renderTopo();
   } finally { XOR_FETCHING=false; }
 }
@@ -1737,9 +1763,10 @@ function renderAllOverview(){
 /* герой-статус */
 function renderHero(){
   const h=$('#big-status'), sub=$('#active-profile');
-  if(STATE.toggling){
-    h.innerHTML='<span class="spinner"></span> '+(STATE.toggling.dir?'запуск':'остановка')+
-      ' · '+esc(STATE.toggling.name)+'…';
+  const tg=anyToggling();
+  if(tg){
+    h.innerHTML='<span class="spinner"></span> '+(tg.n>1?'переключение · '+tg.n+' профиля…'
+      :(tg.dir?'запуск':'остановка')+' · '+esc(tg.name)+'…');
   } else {
     const run=STATE.profiles.filter(p=>p.running);
     h.innerHTML=run.length
@@ -1922,17 +1949,30 @@ $('#topo').addEventListener('click',e=>{
 });
 
 /* ════════════════════════════ ТУМБЛЕР (оптимистичный + фоновый poll) ════════════════════════════ */
+/* STATE.toggling — словарь, а не один слот на всю панель. Со скаляром любой завершившийся
+   тумблер обнулял индикатор чужого: включили A (подъём ~15с), через секунду выключили B —
+   B завершался первым и герой писал «Активно N туннелей», пока A ещё поднимался. */
+function setToggling(name,dir){ STATE.toggling[name]=dir; }
+function clearToggling(name){ delete STATE.toggling[name]; }
+function anyToggling(){ const k=Object.keys(STATE.toggling);
+  return k.length?{name:k[0],dir:STATE.toggling[k[0]],n:k.length}:null; }
+/* Число попыток и шаг: первые 8 по 1200мс (быстрый отклик на обычный старт), дальше по 3000мс.
+   Итог ≈49с на включение (штатный подъём XOR с remote-random — 10–20с, прежние 19.5с давали
+   красную ошибку на исправном туннеле) и ≈16с на выключение. Текст тоста считается из этих же
+   чисел, иначе он опять разъедется с реальностью. */
+const TOG_LIMIT=on=>on?21:10;
+function budgetSec(on){ return Math.round((1500+7*1200+(TOG_LIMIT(on)-8)*3000)/1000); }
 async function profileToggle(name,on){
   if(TOGGLE_BUSY[name]) return;
   TOGGLE_BUSY[name]=true;
-  STATE.toggling={name,dir:on};
+  setToggling(name,on);
   const p=STATE.profiles.find(x=>x.name===name);
   if(p) p.enabled=on;                    // оптимистично
   renderHero(); renderTiles();
   const fail=msg=>{
     // сбой — откатываем оптимистику, иначе тумблер навсегда «залипнет» в ложном статусе
     if(p) p.enabled=!on;
-    delete TOGGLE_BUSY[name]; STATE.toggling=null; PROFILES_SIG='';
+    delete TOGGLE_BUSY[name]; clearToggling(name); PROFILES_SIG='';
     renderHero(); renderTiles();
     toast(msg,'error');
   };
@@ -1944,9 +1984,7 @@ async function profileToggle(name,on){
   }
   catch(e){ fail('Ошибка запроса connect'); return; }
   let tries=0;
-  // Бюджет ожидания. Подъём XOR с remote-random — штатные 10–20с (перебор серверов), поэтому
-  // прежние 19.5с регулярно давали красную ошибку на туннеле, который поднимался следом.
-  const LIMIT=on?40:14;
+  const LIMIT=TOG_LIMIT(on);
   const check=async()=>{
     tries++;
     let done=false, arr=null;
@@ -1955,7 +1993,7 @@ async function profileToggle(name,on){
       done=t&&!!t.running===!!on;
     }catch(e){}
     if(done||tries>=LIMIT){
-      delete TOGGLE_BUSY[name]; STATE.toggling=null;
+      delete TOGGLE_BUSY[name]; clearToggling(name);
       if(arr){
         // не затираем оптимистику других профилей, ещё находящихся в процессе переключения
         arr.forEach(np=>{ if(np.name!==name && TOGGLE_BUSY[np.name]){
@@ -1963,9 +2001,12 @@ async function profileToggle(name,on){
         STATE.profiles=arr; PROFILES_SIG=JSON.stringify(arr);
       }
       renderAllOverview();
+      // срок в тексте считаем из бюджета, а не пишем константой: раньше стояло «за 20 с»,
+      // а после подъёма LIMIT до 40 попыток реальное ожидание стало ~48 с — тост врал
       toast(done?(on?'Туннель «'+name+'» запущен':'Туннель «'+name+'» остановлен')
-               :'«'+name+'»: статус не сменился за 20 с — смотрите Журнал', done?'ok':'error');
-    } else setTimeout(check,1200);
+               :'«'+name+'»: статус не сменился за '+budgetSec(on)+' с — смотрите Журнал',
+            done?'ok':'error');
+    } else setTimeout(check, tries<8?1200:3000);   // backoff: тот же бюджет вдвое меньшим числом запросов
   };
   setTimeout(check,1500);
 }
@@ -1976,21 +2017,35 @@ let STATS_BUF=[];
 try{ STATS_BUF=(JSON.parse(sessionStorage.getItem(BUF_KEY)||'[]')||[])
   .filter(p=>Date.now()-p.t<11*60*1000); }catch(e){}
 async function loadStats(){
-  const d=await API.json('stats');
+  let d;
+  // Отдельный catch обязателен: раньше исключение (теперь его даёт любой 5xx и таймаут)
+  // обрывало функцию ДО updateRates/paintFlow, скорости оставались прежними, и полосы
+  // продолжали бежать по протухшим данным — притом что пилюля «online» права, ведь
+  // status-то отвечает. Ровно то утверждение о трафике, ради которого делался body.stale.
+  try{ d=await API.json('stats'); }
+  catch(e){
+    STATE.rateKnown=false; STATE.rate={}; STATE.rateRaw=null;
+    $('#rx-rate').textContent='—'; $('#tx-rate').textContent='—'; $('#up').textContent='—';
+    paintFlow(); return;
+  }
   const now=Date.now(), last=STATS_BUF[STATS_BUF.length-1];
+  // +d.rx||0 ДО вычисления дельты: Math.max(0,NaN) возвращает NaN, а не 0, и один неполный
+  // ответ уносил NaN в буфер, оттуда в niceMax и в путь SVG — график пропадал целиком
+  const dRx=+d.rx||0, dTx=+d.tx||0;
   let rxr=0,txr=0;
   if(last){
     const dt=Math.max(.5,(now-last.t)/1000);
-    rxr=Math.max(0,(d.rx-last.rx)/dt);      // кламп: счётчики сбрасываются при рестарте туннеля
-    txr=Math.max(0,(d.tx-last.tx)/dt);
+    rxr=Math.max(0,(dRx-last.rx)/dt);      // кламп: счётчики сбрасываются при рестарте туннеля
+    txr=Math.max(0,(dTx-last.tx)/dt);
   }
-  STATS_BUF.push({t:now,rx:+d.rx||0,tx:+d.tx||0,rxr,txr});
+  STATS_BUF.push({t:now,rx:dRx,tx:dTx,rxr,txr});
   if(STATS_BUF.length>BUF_MAX) STATS_BUF=STATS_BUF.slice(-BUF_MAX);
   try{ sessionStorage.setItem(BUF_KEY,JSON.stringify(STATS_BUF)); }catch(e){}
-  $('#rx').textContent=fmtBytes(d.rx); $('#tx').textContent=fmtBytes(d.tx);
+  $('#rx').textContent=fmtBytes(dRx); $('#tx').textContent=fmtBytes(dTx);
   // up — булев флаг «есть хоть один tun», через fmtUp он давал вечные «0ч 0м».
-  // Секунды приходят в отдельном поле uptime; старый роутер его не отдаёт — тогда честное «—».
-  $('#up').textContent=(typeof d.uptime==='number'&&d.uptime>=0)?fmtUp(d.uptime):'—';
+  // Секунды приходят в отдельном поле uptime; строго >0 — при нуле поднятых туннелей CGI
+  // отдаёт uptime:0, и «0ч 0м» было бы тем же враньём, ради которого поле и заводили.
+  $('#up').textContent=(typeof d.uptime==='number'&&d.uptime>0)?fmtUp(d.uptime):'—';
   $('#rx-rate').textContent=fmtRate(rxr); $('#tx-rate').textContent=fmtRate(txr);
   updateRates(d.dev,now);
   renderChart();
@@ -2118,11 +2173,15 @@ async function pollWatchdog(){
   const lines=d.lines||[];
   renderWdFeed(lines);
   if(!lines.length) return;
-  const lastSeen=localStorage.getItem(WD_KEY);
+  // Storage может быть запрещён политикой браузера/приватным режимом: без try необработанный
+  // реджект валил pollWatchdog каждые 30с и лента с бейджем замирали после первого тика
+  let lastSeen=null;
+  try{ lastSeen=localStorage.getItem(WD_KEY); }catch(e){ return; }
   const lastLine=lines[lines.length-1];
-  if(lastSeen===null){ localStorage.setItem(WD_KEY,lastLine); return; }  // первый запуск — тихо
+  const remember=v=>{ try{ localStorage.setItem(WD_KEY,v); }catch(e){} };
+  if(lastSeen===null){ remember(lastLine); return; }  // первый запуск — тихо
   const idx=lines.lastIndexOf(lastSeen);
-  localStorage.setItem(WD_KEY,lastLine);
+  remember(lastLine);
   if(idx<0) return;                                    // лог очищен/ротирован — тихо
   const fresh=lines.slice(idx+1).filter(l=>/перезапуск/.test(l));
   if(!fresh.length) return;
@@ -2137,6 +2196,7 @@ async function pollWatchdog(){
 
 /* ════════════════════════════ ПРОФИЛИ: СПИСОК ════════════════════════════ */
 let MODAL_OPEN=false, MODAL_NAME='', SCHED_OPEN=null;
+let MODAL_WAN_OK=false, MODAL_WAN_WAS='';   // загрузился ли список WAN и что было в мете
 function renderProfilesView(){
   if(MODAL_OPEN||SCHED_OPEN) return;         // не рушим открытый редактор/сетку
   const list=$('#profile-list');
@@ -2243,9 +2303,18 @@ async function editProfile(name){
   $('#m-mode').textContent=d.mode==='all'?'весь LAN':'выбранные устройства';
   $('#m-devcount').textContent=(d.devices_count??'—')+'';
   $('#m-name').value=name;
-  $('#m-wan-select').innerHTML='<option value="">авто (системный default)</option>'+
-    STATE.wans.map(w=>'<option value="'+esc(w.iface)+'"'+(w.iface===d.wan?' selected':'')+'>'+
+  // Если список WAN не загрузился (NDM перестраивается, cgi-bin/wans отвалился), в селекте
+  // оставалась одна опция «авто», выбранный канал профиля было негде показать — и «Сохранить»
+  // безусловно слал wan='', стирая привязку. По §6 CLAUDE.md профиль без WAN на мульти-WAN
+  // это главная причина «туннель не поднимается». Теперь текущее значение подставляется
+  // отдельной опцией, а сам факт неудачи запоминается и блокирует отправку profile-wan.
+  MODAL_WAN_OK=STATE.wans.length>0;
+  MODAL_WAN_WAS=d.wan||'';
+  let wopts='<option value="">авто (системный default)</option>';
+  if(!MODAL_WAN_OK && d.wan) wopts+='<option value="'+esc(d.wan)+'" selected>'+esc(d.wan)+' (список каналов недоступен)</option>';
+  wopts+=STATE.wans.map(w=>'<option value="'+esc(w.iface)+'"'+(w.iface===d.wan?' selected':'')+'>'+
       esc(w.label||w.iface)+(w.default?' · default':'')+(w.connected===false?' · нет линка':'')+'</option>').join('');
+  $('#m-wan-select').innerHTML=wopts;
   enhanceSelect($('#m-wan-select'));
   $('#m-content').value=d.content||'';
   MODAL_RETURN=document.activeElement;
@@ -2279,7 +2348,11 @@ $('#m-save').addEventListener('click',async()=>{
   if(!/^[A-Za-z0-9._-]+$/.test(newName)) return toast('Имя: латиница, цифры, точка, дефис','error');
   const btn=$('#m-save'); btn.disabled=true;
   try{
-    await API.post('profile-wan',{name:MODAL_NAME},'wan='+encodeURIComponent($('#m-wan-select').value));
+    // WAN шлём только если список каналов реально загрузился И значение изменилось —
+    // иначе одно нажатие «Сохранить» при отвалившемся cgi-bin/wans стирало привязку
+    const wnew=$('#m-wan-select').value;
+    if(MODAL_WAN_OK && wnew!==MODAL_WAN_WAS)
+      await API.post('profile-wan',{name:MODAL_NAME},'wan='+encodeURIComponent(wnew));
     const r=await API.post('profile',{name:MODAL_NAME},
       'name='+encodeURIComponent(newName)+'&content='+encodeURIComponent(content)).then(x=>x.json());
     if(r.error) throw new Error(r.error);
@@ -2435,7 +2508,7 @@ async function toggleSchedule(name,card){
 }
 
 /* ════════════════════════════ УСТРОЙСТВА ════════════════════════════ */
-let DEVS=[], DEV_MODE='devices';
+let DEVS=[], DEV_MODE='devices', DEVS_LOADED=false;
 function devTarget(){
   const v=$('#dev-profile').value;
   if(v.startsWith('wan:')){
@@ -2467,9 +2540,12 @@ function renderDevs(){
       '<div class="dsub">'+esc(d.ip)+' · '+esc(d.mac||'—')+'</div></div>'+
       (d.iface?'<span class="ib">'+esc(d.iface)+'</span>':'')+'</label>';
   }).join('')
-  : '<div class="empty"><svg><use href="#ic-device"/></svg><b>'+
-    (q?'Ничего не найдено':'Устройств не видно')+'</b><span>'+
-    (q?'уточните запрос':'hotspot Кинетика не вернул активных устройств')+'</span></div>';
+  : !DEVS_LOADED
+    ? '<div class="empty"><svg><use href="#ic-alert"/></svg><b>Список недоступен</b>'+
+      '<span>роутер не отдал устройства — сохранение выключено, чтобы не стереть привязки</span></div>'
+    : '<div class="empty"><svg><use href="#ic-device"/></svg><b>'+
+      (q?'Ничего не найдено':'Устройств не видно')+'</b><span>'+
+      (q?'уточните запрос':'hotspot Кинетика не вернул активных устройств')+'</span></div>';
 }
 async function loadDevs(){
   const t=devTarget();
@@ -2483,9 +2559,23 @@ async function loadDevs(){
     setModeButtons(DEV_MODE);
     setDevSectionOff(DEV_MODE==='all');
   } else setDevSectionOff(false);
-  try{ DEVS=await API.json('devices',t); }
-  catch(e){ DEVS=[]; }
+  // Отказ CGI НЕ равен «устройств нет». Раньше обе ситуации давали пустой DEVS и нейтральную
+  // плашку, кнопка «Сохранить выбор» оставалась активной — и один клик отправлял пустой набор,
+  // стирая ВСЕ привязки профиля к устройствам (тост при этом зелёный, «0 устройств»).
+  try{ DEVS=await API.json('devices',t); DEVS_LOADED=Array.isArray(DEVS); }
+  catch(e){ DEVS=[]; DEVS_LOADED=false; }
+  if(!Array.isArray(DEVS)){ DEVS=[]; DEVS_LOADED=false; }
+  $('#dev-save').disabled=!DEVS_LOADED;
   renderDevs();
+}
+/* Режим «весь LAN»: список устройств не просто гасится визуально, а реально выключается.
+   inert убирает из порядка табуляции и блокирует активацию, чего pointer-events:none не делал —
+   по «отключённому» списку спокойно ходили табом, щёлкали чекбоксы и жали «Сохранить выбор». */
+function setDevSectionOff(off){
+  const s=$('#devices-section'); if(!s) return;
+  s.classList.toggle('muted-section',off);
+  if(off) s.setAttribute('inert',''); else s.removeAttribute('inert');
+  s.setAttribute('aria-disabled',off?'true':'false');
 }
 function setModeButtons(m){
   const d=$('#mode-devices'), a=$('#mode-all');
