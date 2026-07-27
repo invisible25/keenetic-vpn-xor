@@ -24,4 +24,26 @@ for dev in /sys/class/net/tun_invnet*; do
   [ -n "$PER" ] && PER="$PER,"
   PER="$PER\"$slot\":{\"rx\":$r,\"tx\":$t}"
 done
-printf '{"rx":%s,"tx":%s,"up":%s,"dev":{%s}}' "$RX" "$TX" "$UP" "$PER"
+
+# Аптайм самого старого живого туннеля, СЕКУНДАМИ. Поле up булево и таким остаётся (контракт),
+# но панель показывала его через форматтер длительности и потому вечно писала «0ч 0м».
+# Возраст берём от времени старта процесса: поле 22 в /proc/<pid>/stat — это момент запуска
+# в тиках от загрузки системы, вычитаем его из аптайма системы. USER_HZ на этих ядрах = 100.
+UPTIME=0
+SYS=$(cut -d' ' -f1 /proc/uptime 2>/dev/null); SYS=${SYS%%.*}
+case "$SYS" in ''|*[!0-9]*) SYS=0 ;; esac
+if [ "$SYS" -gt 0 ]; then
+  for pf in /opt/var/run/invnet/*.pid; do
+    [ -f "$pf" ] || continue
+    pid=$(cat "$pf" 2>/dev/null)
+    case "$pid" in ''|*[!0-9]*) continue ;; esac
+    kill -0 "$pid" 2>/dev/null || continue
+    grep -qa openvpn "/proc/$pid/cmdline" 2>/dev/null || continue   # pid мог переиспользоваться
+    st=$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null)
+    case "$st" in ''|*[!0-9]*) continue ;; esac
+    age=$((SYS - st / 100))
+    [ "$age" -lt 0 ] && age=0
+    [ "$age" -gt "$UPTIME" ] && UPTIME=$age
+  done
+fi
+printf '{"rx":%s,"tx":%s,"up":%s,"uptime":%s,"dev":{%s}}' "$RX" "$TX" "$UP" "$UPTIME" "$PER"

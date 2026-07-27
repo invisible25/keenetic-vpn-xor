@@ -176,6 +176,12 @@
 
 /* ════════════════════════════ БАЗА ════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0}
+/* Атрибут hidden обязан побеждать. Без !important он проигрывает ЛЮБОМУ классу с display
+   (.icobtn{display:grid}, .badge{display:inline-flex}, .topo{display:flex}) — правило браузера
+   имеет ту же специфичность и идёт раньше. Из-за этого кнопка «Назад» висела на экране всегда,
+   бейдж «XOR-обфускация активна» показывался даже при выключенных туннелях (ложное утверждение
+   о безопасности), а скрытая топология оставляла под шапкой пустую полосу с бордюром. */
+[hidden]{display:none!important}
 html{font-size:16px}  /* color-scheme ставится литералом в applyTheme (var() тут игнорируется) */
 body{min-height:100dvh;background:var(--bg);color:var(--ink);
   font-family:var(--f-text);line-height:1.5;overflow-x:hidden;transition:background var(--dur-3) var(--ease)}
@@ -298,7 +304,12 @@ main{min-width:0}
   color:var(--muted);padding:8px 10px 4px}
 .xsel-opt{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--r-sm);
   font-size:var(--t-sm);color:var(--ink2);cursor:pointer;min-height:38px}
-.xsel-opt:hover,.xsel-opt.hl{background:var(--glass-strong);color:var(--ink)}
+.xsel-opt:hover{background:var(--glass-strong);color:var(--ink)}
+/* Клавиатурная позиция — обводкой, а не подложкой. Подложка glass-strong давала к фону
+   поповера 1.17–1.33:1 во всех темах при требуемых 3:1, то есть указателя фактически не было;
+   --accent на обводке даёт 4.68:1 минимум. Реальный фокус тут не двигается (он на кнопке). */
+.xsel-opt.hl{background:var(--glass-strong);color:var(--ink);
+  outline:2px solid var(--accent);outline-offset:-2px}
 .xsel-opt.sel{color:var(--ink);font-weight:700}
 .xsel-opt.sel::after{content:"";width:15px;height:15px;flex:none;margin-left:auto;
   -webkit-mask:var(--chk) center/contain no-repeat;mask:var(--chk) center/contain no-repeat;
@@ -319,12 +330,18 @@ main{min-width:0}
 .tgl::before{content:"";position:absolute;inset:-10px}  /* тач-зона до 46×46, вид не меняется */
 .tgl::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
   background:var(--muted);transition:all var(--dur-2) var(--ease)}
-.tgl.on{background:var(--accent);border-color:transparent}
-.tgl.on::after{left:23px;background:var(--on-accent)}
+/* «включено» = --ok, а НЕ --accent. В нейтральных темах accent намеренно равен цвету текста
+   (dark: и accent, и ink = #ECE8E2) — включённый тумблер оказывался белым овалом среди белого
+   текста, то есть главный орган управления не показывал своё состояние. --ok зелёный во всех
+   7 темах, а ручка цветом --bg контрастна к нему везде, потому что bg всегда у края шкалы. */
+.tgl.on{background:var(--ok);border-color:transparent}
+.tgl.on::after{left:23px;background:var(--bg)}
 .tgl.busy{opacity:.6;pointer-events:none}
 
 /* статусы: пульс — кольцо на transform/opacity (композитно), не box-shadow (перерисовка каждый кадр) */
-.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);opacity:.55;flex:none;position:relative}
+/* выключённый: без opacity — с ней точка давала 2.26–2.86:1 к карточке во всех темах,
+   мимо порога 3:1 для графических объектов. Сдержанность держит сам серый --muted (4.65–6.34) */
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none;position:relative}
 .dot.live{background:var(--ok);opacity:1;box-shadow:0 0 11px var(--ok)}
 .dot.pending{background:var(--warn);opacity:1}
 .dot.live::after,.dot.pending::after{content:"";position:absolute;inset:-4px;border-radius:50%;
@@ -390,8 +407,8 @@ main{min-width:0}
    HTML-раскладка — текст не клипается, обрезается ellipsis'ом */
 .topo{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);
   display:flex;flex-direction:column;gap:12px}
-.topo-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,120px) minmax(0,1.25fr);
-  align-items:center;gap:4px}
+.topo-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(88px,132px) minmax(0,1.25fr);
+  align-items:center;gap:6px}
 .tn{display:flex;align-items:center;gap:10px;min-width:0}
 .tn-ic{width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;
   border:1px solid var(--hairline-hi);background:var(--glass-soft);color:var(--ink2)}
@@ -421,25 +438,41 @@ main{min-width:0}
    Двигаем ::before через transform (композитно), а не background-position —
    иначе перерисовка на каждом кадре; сдвиг ровно на период узора = бесшовный цикл. */
 .tw-flow{width:100%;display:flex;flex-direction:column;gap:4px}
-.tw-lane{height:2px;border-radius:2px;position:relative;overflow:hidden;
-  background:color-mix(in srgb,var(--lc) 16%,transparent)}
+/* 3px и дорожка 40%: на 2px/16% дорожка давала 1.22–1.42:1 к карточке, а штрих в покое
+   1.42–1.66 — то есть несущий смысл элемент жил в диапазоне «его не видно». */
+.tw-lane{height:3px;border-radius:3px;position:relative;overflow:hidden;
+  background:color-mix(in srgb,var(--lc) 40%,transparent)}
 .tw-lane::before{content:"";position:absolute;top:0;bottom:0;left:-14px;right:-14px;
   background:repeating-linear-gradient(90deg,var(--lc) 0 6px,transparent 6px 14px);
-  opacity:var(--o,.34);animation:flow-fwd var(--d,2.6s) linear infinite;
-  transition:opacity .8s var(--ease)}
-.tw-lane.up{--lc:var(--tx)}
+  opacity:var(--o,.55);animation:flow-fwd var(--d,3.2s) linear infinite;
+  animation-play-state:var(--ps,paused);
+  transition:opacity var(--dur-3) linear}
 .tw-lane.down{--lc:var(--rx)}
+.tw-lane.up{--lc:var(--tx)}
 .tw-lane.down::before{animation-name:flow-back}
 @keyframes flow-fwd{to{transform:translateX(14px)}}
 @keyframes flow-back{to{transform:translateX(-14px)}}
-/* уважение к prefers-reduced-motion: узор остаётся (направление читается по цвету
-   и подписи), но не движется */
+/* Цифры рядом с полосами. Без них движение — единственный носитель величины: оно пропадает
+   при prefers-reduced-motion, не проходит 3:1 как графический объект и кодирует смысл цветом.
+   С цифрами полосы становятся усилением показания, а не самим показанием. */
+.tw-rate{display:flex;flex-direction:column;align-items:center;gap:1px;
+  font:600 var(--t-xs) var(--f-mono);line-height:1.25;white-space:nowrap}
+.tw-rate .rrx{color:var(--rx)} .tw-rate .rtx{color:var(--tx)}
+/* панель потеряла связь с роутером — замораживаем поток, иначе самый заметный элемент
+   экрана продолжает показывать трафик по протухшим данным */
+body.stale .tw-lane::before{animation-play-state:paused!important;opacity:.35}
 @media(prefers-reduced-motion:reduce){
-  .tw-lane::before{animation:none;opacity:.5}
-  .tw-lane::before{transition:none}
+  .tw-lane::before{animation:none;opacity:.7;transition:none}
 }
+/* На узком экране три колонки вырождались: при 375px на текстовую колонку оставалось ~81px,
+   то есть «XOR · fi.s…» — смысл блока (куда и через что идёт трафик) пропадал целиком.
+   Перестраиваем в стопку: источник, полоса потока во всю ширину, выход. */
 @media(max-width:560px){
-  .topo-row{grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr)}
+  .topo-row{grid-template-columns:1fr;gap:8px}
+  .topo-wire{flex-direction:row;align-items:center;gap:10px;
+    padding:2px 0 2px 46px}                    /* отступ = иконка 30 + гэп 10, полоса под текстом */
+  .tw-flow{flex:1;min-width:0}
+  .tw-rate{flex-direction:row;gap:8px}
   .tn-ic{width:30px;height:30px} .tn-ic svg{width:15px;height:15px}
   .tn-tx b{font-size:var(--t-sm)}
 }
@@ -557,7 +590,10 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   font-size:var(--t-sm);margin-bottom:12px}
 .warn-note.show{display:flex}
 .warn-note svg{width:15px;height:15px;flex:none;margin-top:1px}
-.muted-section{opacity:.45;pointer-events:none}
+/* только вид: реальное отключение делает атрибут inert (см. loadDevs) — pointer-events:none
+   гасит мышь, но не клавиатуру, и по «отключённому» списку спокойно ходили табом, щёлкали
+   чекбоксы и жали «Сохранить выбор», то есть работало то, что помечено неработающим */
+.muted-section{opacity:.45}
 .dev-tools{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
 .dev-tools .search{position:relative;flex:1;min-width:180px}
 .dev-tools .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);
@@ -704,7 +740,12 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   .topbar .tbrand{display:flex}
 }
 @media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  /* iteration-count обязателен третьим: без него бесконечные анимации (pulse-ring у точек
+     статуса, shine у скелетонов, rot у спиннеров) получают период 0.01мс и продолжают
+     крутиться, сэмплируя случайную фазу каждый кадр, — вместо остановки выходит дрожание,
+     ровно то, от чего пользователь и защищается этой настройкой. */
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important}
 }
 </style>
 </head>
@@ -1041,7 +1082,9 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   </div>
 </div>
 
-<div id="toast" role="status" aria-live="polite"></div>
+<!-- toast — чисто визуальный контейнер: с role="status" каждое сообщение объявлялось дважды,
+     сначала отсюда, потом из #sr-alert, куда его дублирует toast() -->
+<div id="toast"></div>
 <div id="sr-alert" role="alert" aria-live="assertive" class="sr-only"></div>
 
 <script>
@@ -1094,8 +1137,10 @@ function fmtRate(bps){ bps=+bps||0;
     {cidr:'10.140.0.0/16', gateway:'',interface:'ISP',interface_label:'Turkmentelecom',metric:'0',comment:'',existing:true}
   ];
   const SCHED={XOR:{enabled:true,actions:[{do:'start',hh:8,mm:0,dow:[1,2,3,4,5]},{do:'stop',hh:23,mm:30,dow:[1,2,3,4,5]}]}};
-  const CHECKIP={XOR:{ip:'83.97.20.115',country:'Финляндия',city:'Хельсинки',region:'Uusimaa',org:'AS205016 HERN Labs',dev:'tun_invnet2'},
-                 Claude:{ip:'185.253.97.4',country:'Норвегия',city:'Осло',region:'Oslo',org:'AS62240 Clouvider',dev:'tun_invnet0'}};
+  // ISO-2, как реально отдаёт ipinfo.io через cgi-bin/checkip. Раньше тут стояли русские
+  // названия — из-за этого демо маскировало баг с флагами, который на роутере был всегда.
+  const CHECKIP={XOR:{ip:'83.97.20.115',country:'FI',city:'Helsinki',region:'Uusimaa',org:'AS205016 HERN Labs',dev:'tun_invnet2'},
+                 Claude:{ip:'185.253.97.4',country:'NO',city:'Oslo',region:'Oslo',org:'AS62240 Clouvider',dev:'tun_invnet0'}};
   let PINGLINES=[
     '2026-07-16 09:12:44 [XOR] пинг потерян (3/3) — перезапуск туннеля',
     '2026-07-16 09:13:02 [XOR] туннель восстановлен',
@@ -1116,7 +1161,7 @@ function fmtRate(bps){ bps=+bps||0;
         // разбивка по слотам: XOR(2) грузит канал, Claude(0) почти простаивает —
         // так в демо видно, что полосы бегут с РАЗНОЙ скоростью, а не синхронно
         const R=Math.max(0,rx), X=Math.max(0,tx);
-        return J({rx:R,tx:X,up:Math.floor(s),
+        return J({rx:R,tx:X,up:true,uptime:Math.floor(s)+4210,
           dev:{2:{rx:Math.floor(R*.88),tx:Math.floor(X*.9)},
                0:{rx:Math.floor(R*.12),tx:Math.floor(X*.1)}}}); }
       case 'profiles': return J(PROFILES);
@@ -1201,10 +1246,25 @@ function fmtRate(bps){ bps=+bps||0;
 })();
 
 /* ════════════════════════════ API ════════════════════════════ */
+/* Два обязательных свойства запроса, которых тут раньше не было:
+   1) ТАЙМАУТ. fetch без него ждёт вечно. Если lighttpd принял соединение, а sh-CGI встал
+      (забился диск, invnetctl ждёт лок), промис не разрешается никогда — а `connect` при этом
+      держит TOGGLE_BUSY, из-за чего loadProfiles выходит на первой строке на КАЖДОМ тике и
+      панель замирает навсегда, оставаясь с виду живой. Лечилось только F5.
+   2) ПРОВЕРКА КОДА. fetch не реджектит 5xx, поэтому HTTP 500 от любого CGI читался как
+      валидный ответ: пилюля продолжала показывать «online», лог показывал HTML страницы
+      ошибки, автозапуск молча определялся как выключенный. */
+const API_TIMEOUT=12000;
+function apiFetch(ep,params,opt){
+  const url='cgi-bin/'+ep+(params?'?'+new URLSearchParams(params):'');
+  const o=Object.assign({cache:'no-store'},opt||{});
+  if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout) o.signal=AbortSignal.timeout(API_TIMEOUT);
+  return fetch(url,o).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r; });
+}
 const API={
-  text:(ep,params)=>fetch('cgi-bin/'+ep+(params?'?'+new URLSearchParams(params):''),{cache:'no-store'}).then(r=>r.text()),
-  json:(ep,params)=>fetch('cgi-bin/'+ep+(params?'?'+new URLSearchParams(params):''),{cache:'no-store'}).then(r=>r.json()),
-  post:(ep,params,body)=>fetch('cgi-bin/'+ep+(params?'?'+new URLSearchParams(params):''),{method:'POST',body:body||''}),
+  text:(ep,params)=>apiFetch(ep,params).then(r=>r.text()),
+  json:(ep,params)=>apiFetch(ep,params).then(r=>r.json()),
+  post:(ep,params,body)=>apiFetch(ep,params,{method:'POST',body:body||''}),
 };
 
 /* ════════════════════════════ ТЕМЫ (пресеты + custom-движок) ════════════════════════════ */
@@ -1426,11 +1486,19 @@ function enhanceSelect(sel,opts){
     wrap.className='xsel'+(opts.compact?' compact':'');
     sel.parentNode.insertBefore(wrap,sel);
     wrap.appendChild(sel);
+    // Нативный select спрятан через opacity — а это НЕ убирает его из порядка табуляции
+    // (убирают только display:none/visibility:hidden/inert). Рядом с каждым кастомным
+    // селектом висела невидимая точка фокуса 1×1px, на «Маршрутах» — по одной на строку;
+    // стрелками там менялось значение, летел change в обработчики, а подпись не менялась.
+    sel.tabIndex=-1; sel.setAttribute('aria-hidden','true');
     const btn=document.createElement('button');
     btn.type='button'; btn.className='xsel-btn';
     btn.setAttribute('aria-haspopup','listbox');
+    btn.setAttribute('aria-expanded','false');
     btn.innerHTML='<span class="xv"></span><svg class="xchev"><use href="#ic-chevron"/></svg>';
-    if(sel.getAttribute('aria-label')) btn.setAttribute('aria-label',sel.getAttribute('aria-label'));
+    // имя поля храним отдельно: если повесить его в aria-label напрямую, оно ПЕРЕКРОЕТ
+    // видимый текст значения, и скринридер назовёт поле, но не скажет, что в нём выбрано
+    wrap._name=sel.getAttribute('aria-label')||'';
     const pop=document.createElement('div');
     pop.className='xsel-pop'; pop.setAttribute('role','listbox');
     wrap.appendChild(btn); wrap.appendChild(pop);
@@ -1452,6 +1520,9 @@ function optHtml(o,sel){
 }
 function buildXsel(wrap){
   const sel=wrap.querySelector('select'), pop=wrap._pop;
+  // перестройка при открытом поповере сбрасывала клавиатурную подсветку, а если тик поллинга
+  // попадал между нажатием и отпусканием — элемент под пальцем подменялся и клик терялся
+  if(wrap.classList.contains('open')){ wrap._dirty=true; return; }
   let html='';
   [...sel.children].forEach(node=>{
     if(node.tagName==='OPTGROUP'){
@@ -1460,8 +1531,12 @@ function buildXsel(wrap){
     } else if(node.tagName==='OPTION'){ html+=optHtml(node,sel); }
   });
   pop.innerHTML=html;
+  wrap._dirty=false;
   const cur=sel.options[sel.selectedIndex];
-  wrap._btn.querySelector('.xv').textContent=cur?cur.textContent:'';
+  const txt=cur?cur.textContent:'';
+  wrap._btn.querySelector('.xv').textContent=txt;
+  // имя поля + выбранное значение вместе, иначе одно из двух теряется для скринридера
+  wrap._btn.setAttribute('aria-label',(wrap._name?wrap._name+': ':'')+(txt||'не выбрано'));
   wrap.classList.toggle('dis',sel.disabled);
   wrap._btn.disabled=sel.disabled;
 }
@@ -1471,6 +1546,7 @@ function toggleXsel(wrap){
   if(!wasOpen && !wrap.querySelector('select').disabled){
     buildXsel(wrap);
     wrap.classList.add('open');
+    wrap._btn.setAttribute('aria-expanded','true');
     const r=wrap.getBoundingClientRect();
     wrap.classList.toggle('up', r.bottom+290>innerHeight && r.top>320);
     const o=wrap._pop.querySelector('.xsel-opt.sel')||wrap._pop.querySelector('.xsel-opt:not(.dis)');
@@ -1478,12 +1554,17 @@ function toggleXsel(wrap){
   }
 }
 function closeAllXsel(){ $$('.xsel.open').forEach(w=>{ w.classList.remove('open','up');
-  w._pop.querySelectorAll('.hl').forEach(o=>o.classList.remove('hl')); }); }
+  w._btn.setAttribute('aria-expanded','false');
+  w._pop.querySelectorAll('.hl').forEach(o=>o.classList.remove('hl'));
+  if(w._dirty) buildXsel(w);          // догоняем опросы, отложенные на время открытия
+}); }
 function pickXsel(wrap,val){
   const sel=wrap.querySelector('select');
   const changed=sel.value!==val;
+  wrap.classList.remove('open','up');
+  wrap._btn.setAttribute('aria-expanded','false');
   sel.value=val; buildXsel(wrap);
-  wrap.classList.remove('open','up'); wrap._btn.focus();
+  wrap._btn.focus();
   if(changed) sel.dispatchEvent(new Event('change',{bubbles:true}));
 }
 function xselKey(e,wrap){
@@ -1571,14 +1652,21 @@ async function loadStatusBasic(){
       count:+((t.match(/count=(\d+)/)||[])[1]||0),
       running:((t.match(/running=(.*)/)||[])[1]||'').split(',').filter(Boolean)};
     setPill(true,'online');   // пилюля = доступность панели; статус VPN — на дашборде
-  }catch(e){ setPill(false,'offline'); }
+    document.body.classList.remove('stale');
+  }catch(e){
+    setPill(false,'offline');
+    // связи нет — данные на экране протухли; глушим поток, иначе самый заметный элемент
+    // страницы продолжает «показывать трафик» по значениям неизвестной давности
+    document.body.classList.add('stale');
+  }
 }
 LOADERS.push(loadStatusBasic);
 
 /* ════════════════════════════ СОСТОЯНИЕ ════════════════════════════ */
 const STATE={profiles:[],wans:[],checkip:{},toggling:null,watchdog:null,
-  rate:{},        // slot -> {rxr,txr} Б/с, из разбивки stats.dev; питает анимацию потока
-  rateRaw:null};  // предыдущий сырой снимок счётчиков + время, для дельты
+  rate:{},          // slot -> {rxr,txr} Б/с, из разбивки stats.dev; питает анимацию потока
+  rateRaw:null,     // предыдущий сырой снимок счётчиков + время, для дельты
+  rateKnown:false}; // отдаёт ли роутер разбивку вообще (старая версия stats — нет)
 const TOGGLE_BUSY={};
 let PROFILES_SIG='';
 function plural(n,f){ n=Math.abs(n)%100; const n1=n%10;
@@ -1713,8 +1801,20 @@ $('#tiles').addEventListener('keydown',e=>{
 
 /* карта выхода: устройства → (обфускация) → сервер и страна выхода.
    HTML-раскладка: подписи не клипаются, длинные — обрезаются ellipsis'ом */
-const FLAGS={'Финляндия':'🇫🇮','Норвегия':'🇳🇴','Германия':'🇩🇪','США':'🇺🇸','Нидерланды':'🇳🇱',
-  'Швеция':'🇸🇪','Франция':'🇫🇷','Великобритания':'🇬🇧','Турция':'🇹🇷','Туркменистан':'🇹🇲'};
+/* Страна приходит из cgi-bin/checkip как ISO-2 код ipinfo.io («FI», «NO»), а не как русское
+   название — прежняя таблица была ключевана по русским названиям, поэтому на живом роутере
+   флаг не показывался НИКОГДА, а посреди русского интерфейса стояло голое «FI».
+   Флаг делаем арифметикой (regional indicator), название — по словарю с фолбэком на код. */
+const CC_RU={FI:'Финляндия',NO:'Норвегия',DE:'Германия',US:'США',NL:'Нидерланды',SE:'Швеция',
+  FR:'Франция',GB:'Великобритания',TR:'Турция',TM:'Туркменистан',RU:'Россия',UA:'Украина',
+  PL:'Польша',CZ:'Чехия',CH:'Швейцария',AT:'Австрия',IT:'Италия',ES:'Испания',LV:'Латвия',
+  LT:'Литва',EE:'Эстония',KZ:'Казахстан',AM:'Армения',GE:'Грузия',AE:'ОАЭ',SG:'Сингапур',
+  JP:'Япония',CA:'Канада',RO:'Румыния',BG:'Болгария',MD:'Молдова',HU:'Венгрия',RS:'Сербия'};
+const isCC=c=>/^[A-Za-z]{2}$/.test(c||'');
+function ccFlag(c){ return isCC(c)
+  ? String.fromCodePoint(...[...c.toUpperCase()].map(ch=>0x1F1E6+ch.charCodeAt(0)-65)) : ''; }
+function ccName(c){ if(!c) return ''; const u=String(c).toUpperCase();
+  return isCC(u)?(CC_RU[u]||u):String(c); }        // не-код (старый ответ) отдаём как есть
 /* Разметка строки — только каркас; всё изменчивое проставляет topoPatch.
    Разделение нужно из-за анимации: пересборка innerHTML сбрасывает CSS-анимацию
    в начало, а renderTopo зовётся на каждом опросе (5с) и при каждом тумблере —
@@ -1726,8 +1826,10 @@ function topoRowHtml(p){
     '<div class="tn"><span class="tn-ic"><svg><use href="#ic-device"/></svg></span>'+
       '<span class="tn-tx"><small class="t-src"></small><b class="t-wan"></b></span></div>'+
     '<div class="topo-wire"><span class="tw-tag '+kind+'">'+(xor?'XOR':'VPN')+'</span>'+
+      // приём сверху — тот же порядок, что в карточке трафика, в итогах и в тултипе графика
       '<span class="tw-flow" role="img">'+
-        '<span class="tw-lane up"></span><span class="tw-lane down"></span></span></div>'+
+        '<span class="tw-lane down"></span><span class="tw-lane up"></span></span>'+
+      '<span class="tw-rate"><b class="rrx">—</b><b class="rtx">—</b></span></div>'+
     '<div class="tn"><span class="tn-ic exit '+kind+'"><svg><use href="#ic-globe"/></svg></span>'+
       '<span class="tn-tx"><b class="t-host"></b><span class="t-exit"></span></span></div>'+
   '</div>';
@@ -1744,7 +1846,7 @@ function topoPatch(row,p){
   if(ex.dataset.k===key) return;               // не трогаем DOM, если ничего не поменялось
   ex.dataset.k=key;
   ex.innerHTML=ci
-    ? '<small class="exitc">'+(FLAGS[ci.country]||'')+' '+esc(ci.country||'выход')+
+    ? '<small class="exitc">'+ccFlag(ci.country)+' '+esc(ccName(ci.country)||'выход')+
       (ci.ip?' <span class="cip">'+esc(ci.ip)+'</span>':'')+'</small>'
     : '<button class="tn-check" data-checkip="'+esc(p.name)+'">проверить выход →</button>';
 }
@@ -1761,28 +1863,55 @@ function renderTopo(){
   paintFlow();
 }
 
-/* Скорость → темп бега. Лог-шкала: разрыв между простоем и 200 КБ/с должен читаться,
-   между 8 и 10 МБ/с — нет. Кламп снизу, иначе на быстром канале полоса мельтешит. */
-function flowDur(bps){
-  const d=2.6/(1+Math.log10(1+Math.max(0,+bps||0)/2048));
-  return Math.max(.5,Math.min(2.6,d)).toFixed(2)+'s';
-}
-function flowOpa(bps){
-  return (.3+Math.min(.5,Math.log10(1+Math.max(0,+bps||0)/2048)*.19)).toFixed(2);
+/* Темп — СТУПЕНЯМИ, а не непрерывной формулой. Смена animation-duration пересчитывает фазу
+   как elapsed/новая_duration, то есть узор телепортируется вбок на величину до полного периода.
+   При живом трафике дельта байт разная на каждом 5-секундном опросе, поэтому непрерывная шкала
+   давала заметный рывок каждой полосы раз в 5 секунд — ровно тогда, когда на неё смотрят.
+   Ступени + гистерезис держат --d неизменным, пока скорость не уйдёт уверенно за границу. */
+const FLOW_STEPS=[[0,'3.2s'],[16384,'2.0s'],[131072,'1.3s'],
+                  [1048576,'.85s'],[8388608,'.55s'],[33554432,'.35s']];
+const FLOW_IDLE=1024;   // ниже этого считаем простоем: полоса ЗАМИРАЕТ, а не «еле дышит» —
+                        // движение должно означать «трафик идёт», иначе анимация врёт
+function flowStep(bps){ let i=0; for(let k=0;k<FLOW_STEPS.length;k++) if(bps>=FLOW_STEPS[k][0]) i=k; return i; }
+function flowStepHyst(el,bps){
+  let i=flowStep(bps); const prev=parseInt(el.dataset.step,10);
+  if(!isNaN(prev)){                       // переходим на соседнюю ступень только с запасом 25%
+    if(i>prev && bps<FLOW_STEPS[prev+1][0]*1.25) i=prev;
+    if(i<prev && bps>FLOW_STEPS[prev][0]*.75)   i=prev;
+  }
+  el.dataset.step=i; return i;
 }
 function setVar(el,name,val){ if(el.style.getPropertyValue(name)!==val) el.style.setProperty(name,val); }
+function setAttr(el,name,val){ if(el.getAttribute(name)!==val) el.setAttribute(name,val); }
+function paintLane(el,bps,known){
+  if(!known){                              // роутер не отдаёт разбивку — молчим, а не выдумываем
+    setVar(el,'--ps','paused'); setVar(el,'--o','.35'); delete el.dataset.step; return;
+  }
+  if(bps<FLOW_IDLE){
+    setVar(el,'--ps','paused'); setVar(el,'--o','.55'); el.dataset.step='0'; return;
+  }
+  const i=flowStepHyst(el,bps);
+  setVar(el,'--ps','running'); setVar(el,'--d',FLOW_STEPS[i][1]);
+  setVar(el,'--o',(.55+i*.07).toFixed(2));
+}
 function paintFlow(){
   const wrap=$('#topo'); if(!wrap||wrap.hidden) return;
   const by={}; STATE.profiles.forEach(p=>{ if(p.running) by[p.name]=p; });
   wrap.querySelectorAll('.topo-row').forEach(row=>{
     const p=by[row.dataset.p]; if(!p) return;    // имя профиля берём из dataset, не строим селектор
+    const known=STATE.rateKnown && Object.prototype.hasOwnProperty.call(STATE.rate,String(p.slot));
     const r=STATE.rate[p.slot]||{rxr:0,txr:0};
-    const up=row.querySelector('.tw-lane.up'), dn=row.querySelector('.tw-lane.down');
-    // переприсваивание duration перезапускает анимацию — пишем только при реальном изменении
-    setVar(up,'--d',flowDur(r.txr)); setVar(up,'--o',flowOpa(r.txr));
-    setVar(dn,'--d',flowDur(r.rxr)); setVar(dn,'--o',flowOpa(r.rxr));
-    row.querySelector('.tw-flow').setAttribute('aria-label',
-      'поток данных: приём '+fmtRate(r.rxr)+', отдача '+fmtRate(r.txr));
+    paintLane(row.querySelector('.tw-lane.down'),r.rxr,known);
+    paintLane(row.querySelector('.tw-lane.up'),  r.txr,known);
+    const rx=known?fmtRate(r.rxr):'—', tx=known?fmtRate(r.txr):'—';
+    const erx=row.querySelector('.rrx'), etx=row.querySelector('.rtx');
+    const srx='↓ '+rx, stx='↑ '+tx;
+    if(erx.textContent!==srx) erx.textContent=srx;
+    if(etx.textContent!==stx) etx.textContent=stx;
+    // имя туннеля в подписи: скринридер читает картинку раньше, чем доходит до хоста справа
+    setAttr(row.querySelector('.tw-flow'),'aria-label', known
+      ? p.name+' — поток данных: приём '+rx+', отдача '+tx
+      : p.name+' — скорость по туннелю недоступна');
   });
 }
 $('#topo').addEventListener('click',e=>{
@@ -1800,15 +1929,24 @@ async function profileToggle(name,on){
   const p=STATE.profiles.find(x=>x.name===name);
   if(p) p.enabled=on;                    // оптимистично
   renderHero(); renderTiles();
-  try{ await API.json('connect',{name,on:on?1:0}); }
-  catch(e){
-    // сбой запроса — откатываем оптимистику, иначе тумблер навсегда «залипнет» в ложном статусе
+  const fail=msg=>{
+    // сбой — откатываем оптимистику, иначе тумблер навсегда «залипнет» в ложном статусе
     if(p) p.enabled=!on;
     delete TOGGLE_BUSY[name]; STATE.toggling=null; PROFILES_SIG='';
     renderHero(); renderTiles();
-    toast('Ошибка запроса connect','error'); return;
+    toast(msg,'error');
+  };
+  try{
+    const res=await API.json('connect',{name,on:on?1:0});
+    // csrf_guard отвечает {"error":"origin"} с кодом 200 — без этой проверки заблокированный
+    // запрос выглядел как успех, и панель молча ждала смены статуса весь бюджет опроса
+    if(res&&res.error){ fail('connect отклонён: '+res.error); return; }
   }
+  catch(e){ fail('Ошибка запроса connect'); return; }
   let tries=0;
+  // Бюджет ожидания. Подъём XOR с remote-random — штатные 10–20с (перебор серверов), поэтому
+  // прежние 19.5с регулярно давали красную ошибку на туннеле, который поднимался следом.
+  const LIMIT=on?40:14;
   const check=async()=>{
     tries++;
     let done=false, arr=null;
@@ -1816,7 +1954,7 @@ async function profileToggle(name,on){
       const t=arr.find(x=>x.name===name);
       done=t&&!!t.running===!!on;
     }catch(e){}
-    if(done||tries>=16){
+    if(done||tries>=LIMIT){
       delete TOGGLE_BUSY[name]; STATE.toggling=null;
       if(arr){
         // не затираем оптимистику других профилей, ещё находящихся в процессе переключения
@@ -1850,7 +1988,9 @@ async function loadStats(){
   if(STATS_BUF.length>BUF_MAX) STATS_BUF=STATS_BUF.slice(-BUF_MAX);
   try{ sessionStorage.setItem(BUF_KEY,JSON.stringify(STATS_BUF)); }catch(e){}
   $('#rx').textContent=fmtBytes(d.rx); $('#tx').textContent=fmtBytes(d.tx);
-  $('#up').textContent=fmtUp(d.up);
+  // up — булев флаг «есть хоть один tun», через fmtUp он давал вечные «0ч 0м».
+  // Секунды приходят в отдельном поле uptime; старый роутер его не отдаёт — тогда честное «—».
+  $('#up').textContent=(typeof d.uptime==='number'&&d.uptime>=0)?fmtUp(d.uptime):'—';
   $('#rx-rate').textContent=fmtRate(rxr); $('#tx-rate').textContent=fmtRate(txr);
   updateRates(d.dev,now);
   renderChart();
@@ -1861,7 +2001,8 @@ async function loadStats(){
    пересоздании tun, иначе получили бы выброс в минус. Старый роутер без поля dev
    просто не даёт разбивки — полосы тогда идут в базовом (простойном) темпе. */
 function updateRates(dev,now){
-  if(!dev||typeof dev!=='object'){ STATE.rate={}; STATE.rateRaw=null; return; }
+  STATE.rateKnown=!!(dev&&typeof dev==='object');
+  if(!STATE.rateKnown){ STATE.rate={}; STATE.rateRaw=null; return; }
   const prev=STATE.rateRaw, next={t:now,v:{}}, out={};
   for(const slot of Object.keys(dev)){
     const c=dev[slot]||{}, rx=+c.rx||0, tx=+c.tx||0;
@@ -1939,7 +2080,7 @@ $('#checkip-btn').addEventListener('click',async()=>{
     const d=await API.json('checkip',{profile:name});
     if(d.error) throw new Error(d.error);
     $('#ci-ip').textContent=d.ip||'—';
-    $('#ci-country').textContent=d.country||'—';
+    $('#ci-country').textContent=d.country?((ccFlag(d.country)+' '+ccName(d.country)).trim()):'—';
     $('#ci-city').textContent=[d.city,d.region].filter(Boolean).join(', ')||'—';
     $('#ci-org').textContent=d.org||'—';
     box.classList.add('show');
@@ -2340,8 +2481,8 @@ async function loadDevs(){
       DEV_MODE=(await API.text('mode',{profile:t.profile})).trim()==='all'?'all':'devices';
     }catch(e){ DEV_MODE='devices'; }
     setModeButtons(DEV_MODE);
-    $('#devices-section').classList.toggle('muted-section',DEV_MODE==='all');
-  } else $('#devices-section').classList.remove('muted-section');
+    setDevSectionOff(DEV_MODE==='all');
+  } else setDevSectionOff(false);
   try{ DEVS=await API.json('devices',t); }
   catch(e){ DEVS=[]; }
   renderDevs();
@@ -2357,7 +2498,7 @@ async function setMode(m){
     await API.post('mode',{profile:t.profile},m);
     DEV_MODE=m;
     setModeButtons(m);
-    $('#devices-section').classList.toggle('muted-section',m==='all');
+    setDevSectionOff(m==='all');
     toast(m==='all'?'Через VPN пойдёт весь LAN':'Через VPN — только выбранные устройства','ok');
     PROFILES_SIG=''; loadProfiles();
   }catch(e){ toast('Ошибка смены режима','error'); }
@@ -2384,6 +2525,11 @@ $('#dev-save').addEventListener('click',async()=>{
   finally{ btn.disabled=false; }
 });
 ON_ENTER.devices=async()=>{
+  // Профили обязательно ДО построения списка целей. Иначе при заходе прямо на #/devices
+  // (перезагрузка или дип-линк) группа «VPN-профили» строилась пустой, браузер выбирал первым
+  // WAN-канал — и «Сохранить выбор» слал save-wan-policy вместо save-devices: пользователь
+  // думал, что привязывает устройства к VPN, а привязывал к каналу МИМО VPN.
+  if(!STATE.profiles.length) await loadProfiles();
   if(!STATE.wans.length) await loadWans();
   fillDevTargets();
   if(window.DEV_TARGET){
@@ -2557,7 +2703,7 @@ async function runExitChecks(){
   box.innerHTML=running.map(p=>'<div class="exrow" data-exn="'+esc(p.name)+'">'+
     '<span class="exn"><span class="spinner"></span>'+esc(p.name)+'</span>'+
     '<span class="expair">проверяю…</span></div>').join('');
-  const geo=d=>(d&&d.ip)?[d.country,d.city].filter(Boolean).join(', '):'';
+  const geo=d=>(d&&d.ip)?[ccName(d.country),d.city].filter(Boolean).join(', '):'';
   for(const p of running){
     const row=box.querySelector('.exrow[data-exn="'+CSS.escape(p.name)+'"]'); if(!row) continue;
     const [vpn,direct]=await Promise.all([
@@ -2742,10 +2888,15 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){
     clearInterval(MAIN_TIMER); MAIN_TIMER=null;
     clearInterval(WD_TIMER); WD_TIMER=null;
+    // автообновление лога тикает своим таймером раз в 3с и раньше не останавливалось вовсе:
+    // свёрнутый браузер на вкладке «Журнал» бесконечно давал 20 запросов в минуту, каждый —
+    // форк /bin/sh и чтение файла до 256КБ. Ровно то, ради чего гасится основной цикл.
+    stopLogAuto();
   } else if(!MAIN_TIMER){
     pollTick(); pollWatchdog();
     MAIN_TIMER=setInterval(pollTick,5000);
     WD_TIMER=setInterval(pollWatchdog,30000);
+    if(CUR_TAB==='log'){ loadLog(); startLogAuto(); }
   }
 });
 </script>
