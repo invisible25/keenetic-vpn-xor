@@ -201,6 +201,34 @@ else
   warn "watchdog не запущен. Запусти:  /opt/etc/init.d/S40invnet-pingcheck start"
 fi
 
+# === Канал обновлений: переводим установку под управление opkg ===
+# Иначе получается ловушка: панель стоит, а `opkg upgrade invnet` отвечает "Unknown package"
+# — пакета в базе opkg нет, потому что файлы разложены из tarball. Поэтому здесь: чиним
+# HTTPS для opkg, прописываем фид и, если он отдаёт версию не старше распакованной,
+# регистрируем панель как пакет (--force-overwrite: файлы уже на диске и «ничьи»).
+# Данные (профили, meta, маршруты) в манифест пакета не входят и не трогаются.
+FEED_URL="https://invisible25.github.io/keenetic-vpn-xor"
+info "Настраиваю обновления через opkg..."
+/opt/bin/opkg list-installed 2>/dev/null | grep -q '^wget-ssl ' \
+  || run_t 300 /opt/bin/opkg install wget-ssl ca-bundle ca-certificates >/dev/null 2>&1 || true
+if [ -x /opt/bin/wget ]; then mkdir -p /opt/usr/bin; ln -sf /opt/bin/wget /opt/usr/bin/wget; fi
+mkdir -p /opt/etc/opkg
+printf 'src/gz invnet %s\n' "$FEED_URL" > /opt/etc/opkg/invnet.conf
+run_t 180 /opt/bin/opkg update >/dev/null 2>&1 || true
+FEED_VER=$(/opt/bin/opkg list invnet 2>/dev/null | awk '$1=="invnet"{print $3; exit}')
+if [ -n "$FEED_VER" ] && /opt/bin/opkg compare-versions "$FEED_VER" '>=' "$INVNET_VERSION"; then
+  if run_t 600 /opt/bin/opkg install --force-overwrite invnet >/dev/null 2>&1; then
+    ok "Обновления через opkg включены (invnet $FEED_VER)"
+  else
+    warn "Не удалось зарегистрировать пакет invnet. Повтори:  opkg install --force-overwrite invnet"
+  fi
+elif [ -n "$FEED_VER" ]; then
+  # Фид отстаёт от tarball только между релизом и публикацией Pages (минуты).
+  warn "В фиде пока invnet $FEED_VER (старше установленной) — обнови позже: opkg update && opkg install --force-overwrite invnet"
+else
+  warn "Фид обновлений недоступен. Он прописан — когда появится сеть, обновляйся так: opkg update && opkg upgrade invnet"
+fi
+
 # === Финал ===
 # Робастное определение LAN-IP роутера (для ссылки http://<IP>:8888/).
 # Подсеть и имя моста у разных Keenetic РАЗНЫЕ (br0/br1, 192.168.1.1 /
@@ -282,6 +310,9 @@ echo
 echo "  Если у роутера несколько каналов в интернет или включён штатный VPN Keenetic —"
 echo "  выбери в профиле физический WAN (вкладка «Профили» → ✎). Иначе openvpn может"
 echo "  уходить мимо нужного канала, и подключение не поднимется."
+echo
+echo "Обновление в будущем — одной командой:"
+echo "  opkg update && opkg upgrade invnet"
 echo
 echo "Если что-то не так — проверь по SSH:"
 echo "  /opt/sbin/invnetctl status              # какие профили подняты"

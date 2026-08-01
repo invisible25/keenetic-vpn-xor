@@ -8,25 +8,20 @@
 доступа и статические маршруты-исключения в Keenetic (у каждого маршрута выбор «через VPN ↔ напрямую»);
 перетаскивание `.ovpn` в форму добавления профиля.
 
-## Установка через opkg (рекомендуется)
+## Установка и обновление — одна команда
 
-На роутере с установленным Entware (SSH, порт 222) подключите фид и поставьте пакет:
+На роутере с установленным Entware (SSH, порт 222):
 
 ```sh
-# 1) opkg должен уметь HTTPS: фид на github.io отдаётся только по TLS, а встроенный
-#    busybox-wget его НЕ тянет ("not an http or ftp url"). Ставим wget-ssl и направляем на него:
-opkg install wget-ssl ca-bundle ca-certificates
-ln -sf /opt/bin/wget /opt/usr/bin/wget       # opkg берёт wget из /opt/usr/bin — пусть это будет SSL-версия
-
-# 2) подключаем фид и ставим пакет
-mkdir -p /opt/etc/opkg
-echo 'src/gz invnet https://invisible25.github.io/keenetic-vpn-xor' > /opt/etc/opkg/invnet.conf
-opkg update
-opkg install invnet
+opkg update && opkg install curl ca-bundle
+curl -fsSL https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/boot.sh | sh
 ```
 
-`opkg` сам поставит панель, XOR-openvpn под вашу архитектуру и зависимости. После установки
-откройте `http://<IP-роутера>:8888/`. **Обновление** — как у любого пакета Entware:
+Команда идемпотентна и годится в любом состоянии роутера: ставит панель с нуля, обновляет
+уже установленную и **чинит роутеры, где панель ставили старым способом** (из tarball) —
+переводит их на пакетное обновление. Она же настраивает HTTPS для `opkg` и прописывает фид.
+
+После установки откройте `http://<IP-роутера>:8888/`. Дальше обновляйтесь как любым пакетом Entware:
 
 ```sh
 opkg update && opkg upgrade invnet
@@ -34,21 +29,44 @@ opkg update && opkg upgrade invnet
 
 Профили, привязки устройств, маршруты и настройки при обновлении сохраняются (не входят в пакет).
 
+> Если `opkg upgrade invnet` отвечает `Unknown package 'invnet'` — панель ставилась до появления
+> фида и в базе `opkg` её нет. Запустите команду с `boot.sh` выше: она перенимает уже лежащие
+> файлы под управление пакета, ничего не теряя.
+
+### Вручную, без boot.sh
+
+```sh
+# 1) opkg должен уметь HTTPS: фид на github.io отдаётся только по TLS, а встроенный
+#    busybox-wget его НЕ тянет ("not an http or ftp url"). Ставим wget-ssl и направляем на него:
+opkg install wget-ssl ca-bundle ca-certificates
+ln -sf /opt/bin/wget /opt/usr/bin/wget       # opkg берёт wget из /opt/usr/bin — пусть это будет SSL-версия
+
+# 2) подключаем фид и ставим пакет (--force-overwrite нужен, если панель уже лежит из tarball)
+mkdir -p /opt/etc/opkg
+echo 'src/gz invnet https://invisible25.github.io/keenetic-vpn-xor' > /opt/etc/opkg/invnet.conf
+opkg update
+opkg install --force-overwrite invnet
+```
+
+> В выводе `opkg` строки `Package openvpn-openssl … has no valid architecture, ignoring` — это норма,
+> а не ошибка: в общем индексе фида лежат пакеты всех трёх архитектур, и `opkg` отбрасывает чужие.
+
 > **Почему шаг 1?** opkg вызывает `wget`, а в `PATH` первым идёт `/opt/usr/bin/wget` → busybox
 > (без TLS). `wget-ssl` ставится как `/opt/bin/wget`; симлинк выше отдаёт opkg именно его. Проверено
 > на живом роутере: без этого `opkg update` по нашему фиду падает с `wget returned 1`.
 
-## Установка одной командой (tarball)
+## Установка из tarball (офлайн-перенос)
 
-Альтернатива без фида (офлайн-перенос). На роутере с Entware:
+Нужна, когда до `github.io` не достучаться. `boot.sh` откатывается на этот путь сам, но можно и вручную:
+скачайте `vpn-xor-install-clean.tar.gz` из [релизов](https://github.com/invisible25/keenetic-vpn-xor/releases/latest),
+положите на роутер и распакуйте:
 
 ```sh
-opkg update && opkg install curl ca-bundle
-curl -fsSL https://raw.githubusercontent.com/invisible25/keenetic-vpn-xor/main/boot.sh | sh
+tar xzf vpn-xor-install-clean.tar.gz && cd vpn-xor-install && sh install.sh
 ```
 
-Скрипт скачает последний релиз, **сам определит архитектуру** (`opkg print-architecture`),
-поставит нужный `openvpn+XOR`, зависимости и поднимет панель. После установки откройте `http://<IP-роутера>:8888/`.
+`install.sh` **сам определит архитектуру** (`opkg print-architecture`), поставит нужный `openvpn+XOR`,
+зависимости, поднимет панель — и настроит обновление через `opkg`, если до фида есть доступ.
 
 > **Почему не `wget`?** Встроенный в прошивку BusyBox-`wget` часто собран без HTTPS (на `https://`-ссылку
 > отвечает `wget: not an http or ftp url`). Поэтому качаем через `curl`. Если предпочитаете `wget` —
