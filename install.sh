@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.7.2   # перестройка правил без окна утечки (make-before-break + хеш-гейт)
+INVNET_VERSION=1.7.3   # выбор в выпадающих списках мышью (focusout гасил click)
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }

@@ -293,7 +293,10 @@ main{min-width:0}
 .xsel-btn .xchev{width:16px;height:16px;flex:none;color:var(--muted);transition:transform var(--dur-1)}
 .xsel.open .xsel-btn{border-color:var(--accent)}
 .xsel.open .xchev{transform:rotate(90deg)}
-.xsel-pop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:60;display:none;
+/* z-index 95, а не 60: раскрытый список лежит внутри .app (свой стекинг-контекст), где нижний
+   таб-бар мобильной раскладки .side стоит на 90 — он накрывал нижние опции, и клик по каналу
+   уезжал в переключение вкладки. 95 держит список выше таб-бара, но ниже модалки (100). */
+.xsel-pop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:95;display:none;
   max-height:280px;overflow:auto;padding:6px;border-radius:var(--r-md);
   border:1px solid var(--hairline-hi);box-shadow:var(--elev-2);
   background:color-mix(in srgb,var(--bg) 90%,var(--ink) 5%);
@@ -363,7 +366,14 @@ main{min-width:0}
   border:2px solid var(--hairline-hi);border-top-color:var(--accent);animation:rot .8s linear infinite}
 
 /* тосты */
+/* pointer-events:none обязателен: контейнер тостов лежит на z-index 120 — ВЫШЕ модалки (100),
+   растянут в правом нижнем углу и перехватывал клики по тому, что под ним. При ширине окна
+   ~900–1150px он ложится ровно на «Сохранить» в редакторе профиля (соседние «Отмена»/«Удалить»
+   при этом жмутся), на мобильном накрывает футер нижней шторки. Тост живёт 2.8с + 0.3с на
+   затухании, причём в фазе .out он уже невидим, но всё ещё ловил клик — выглядело как
+   «кнопка мёртвая». Кликов по тостам нет, так что сквозной проход безопасен. */
 #toast{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:120;
+  pointer-events:none;
   display:flex;flex-direction:column;gap:8px;max-width:min(92vw,380px)}
 .toast{padding:12px 16px;border-radius:var(--r-md);font-size:var(--t-sm);font-weight:600;
   background:var(--glass-strong);border:1px solid var(--hairline);color:var(--ink);
@@ -797,7 +807,7 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
       <button class="tab" data-tab="settings" role="tab" aria-selected="false"><svg class="ico"><use href="#ic-gear"/></svg>Настройки</button>
     </nav>
     <!-- версию подставляет build-ipk.sh из INVNET_VERSION при сборке пакета -->
-    <div class="sfoot">INVISIBLE NET · v1.7.2</div>
+    <div class="sfoot">INVISIBLE NET · v1.7.3</div>
   </aside>
 
   <main>
@@ -1261,7 +1271,14 @@ function apiFetch(ep,params,opt){
   // Доказательство same-origin для csrf_guard: <img>, <form> и навигация заголовки ставить
   // не умеют, а кросс-origin fetch с кастомным заголовком уходит в preflight и не проходит.
   o.headers=Object.assign({'X-Invnet':'1'},o.headers||{});
-  if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout) o.signal=AbortSignal.timeout(API_TIMEOUT);
+  // Без таймаута зависший запрос не отпускает TOGGLE_BUSY, и тумблер профиля остаётся
+  // некликабельным (.tgl.busy{pointer-events:none}) до перезагрузки страницы. AbortSignal.timeout
+  // есть не везде (Chrome <103, Safari <16, старые WebView на Android-телефонах) — там раньше
+  // таймаут молча отключался. Подстраховываемся ручным AbortController.
+  if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout){ o.signal=AbortSignal.timeout(API_TIMEOUT); }
+  else if(typeof AbortController!=='undefined'){
+    const c=new AbortController(); setTimeout(()=>c.abort(),API_TIMEOUT); o.signal=c.signal;
+  }
   return fetch(url,o).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r; });
 }
 const API={
@@ -1446,6 +1463,10 @@ function toast(msg,kind){
 /* ════════════════════════════ ФОКУС-ЛОВУШКА + ПОДТВЕРЖДЕНИЕ ════════════════════════════ */
 const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 function trapFocus(box){
+  // снимаем предыдущий перехват, если он был: иначе повторный вызов (два клика по карандашу,
+  // пока грузится профиль, или наложенные подтверждения) оставлял лишний keydown-обработчик
+  // навсегда — на Tab начинали спорить несколько preventDefault()+focus()
+  releaseFocus(box);
   box._trap=e=>{
     if(e.key!=='Tab') return;
     const f=[...box.querySelectorAll(FOCUSABLE)].filter(el=>el.offsetParent!==null);
@@ -1457,20 +1478,28 @@ function trapFocus(box){
   box.addEventListener('keydown',box._trap);
 }
 function releaseFocus(box){ if(box._trap){ box.removeEventListener('keydown',box._trap); box._trap=null; } }
+// Диалог подтверждения — синглтон, а состояние вызова жило в замыкании: второй вызов поверх
+// первого перезаписывал обработчики, и первый промис не разрешался никогда (`await confirmModal`
+// в удалении профиля висел молча). Его keydown-слушатель тоже оставался на document и на
+// следующий Escape обесточивал кнопки уже актуального диалога. Добиваем предыдущий вызов.
+let CONFIRM_DONE=null;
 function confirmModal(text,okLabel){
   return new Promise(res=>{
+    if(CONFIRM_DONE){ const d=CONFIRM_DONE; CONFIRM_DONE=null; d(false); }
     const ov=$('#confirm-overlay'), box=$('#confirm-box'), yes=$('#confirm-yes'), no=$('#confirm-no');
     $('#confirm-text').textContent=text; yes.textContent=okLabel||'Удалить';
     const prev=document.activeElement;
     ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
     trapFocus(box); yes.focus();
     const done=v=>{
+      if(CONFIRM_DONE===done) CONFIRM_DONE=null;
       releaseFocus(box);
       ov.classList.remove('open'); ov.setAttribute('aria-hidden','true');
       yes.onclick=no.onclick=ov.onclick=null; document.removeEventListener('keydown',onKey);
       if(prev&&prev.focus) prev.focus();
       res(v);
     };
+    CONFIRM_DONE=done;
     const onKey=e=>{ if(e.key==='Escape'){ e.preventDefault(); done(false); } };
     yes.onclick=()=>done(true); no.onclick=()=>done(false);
     ov.onclick=e=>{ if(e.target===ov) done(false); };
@@ -1515,6 +1544,12 @@ function enhanceSelect(sel,opts){
       if(e.relatedTarget && wrap.contains(e.relatedTarget)) return;
       closeAllXsel();
     });
+    // Клик мышью начинается с mousedown, а он уводит фокус с кнопки: опция — это div без
+    // tabindex, фокус уезжает на body. Обработчик focusout выше закрывал попап уже на этом
+    // шаге, mouseup приходился на скрытый элемент — и браузер НЕ генерировал click вовсе.
+    // Выбор мышью не работал ни в одном списке (клавиатурой работал, поэтому и не заметили).
+    // preventDefault оставляет фокус на кнопке, focusout не срабатывает, click доходит.
+    pop.addEventListener('mousedown',e=>e.preventDefault());
     pop.addEventListener('click',e=>{
       const o=e.target.closest('.xsel-opt'); if(!o||o.classList.contains('dis')) return;
       pickXsel(wrap,o.dataset.val);
@@ -1558,16 +1593,30 @@ function toggleXsel(wrap){
     wrap.classList.add('open');
     wrap._btn.setAttribute('aria-expanded','true');
     const r=wrap.getBoundingClientRect();
-    wrap.classList.toggle('up', r.bottom+290>innerHeight && r.top>320);
+    // Место считаем по ближайшему скроллящему контейнеру (окно редактора с overflow:auto),
+    // а не по вьюпорту: при высоком окне «вниз» проходило по вьюпорту, но нижние опции
+    // срезались границей модалки — клик по ним уходил в оверлей мимо списка. Заодно
+    // подрезаем высоту списка под доступное место, чтобы он всегда помещался целиком.
+    const clip=wrap.closest('.modal');
+    const lim=clip?clip.getBoundingClientRect():{top:0,bottom:innerHeight};
+    const up=r.bottom+290>lim.bottom && r.top-lim.top>320;
+    wrap.classList.toggle('up', up);
+    const room=(up ? r.top-lim.top : lim.bottom-r.bottom)-14;
+    wrap._pop.style.maxHeight=Math.max(120,Math.min(280,room))+'px';
     const o=wrap._pop.querySelector('.xsel-opt.sel')||wrap._pop.querySelector('.xsel-opt:not(.dis)');
     if(o) o.scrollIntoView({block:'nearest'});
   }
 }
+// объявлено здесь, а не рядом с renderRoutes: closeAllXsel читает флаг и стоит в файле выше
+let ROUTES_PENDING=false;
 function closeAllXsel(){ $$('.xsel.open').forEach(w=>{ w.classList.remove('open','up');
   w._btn.setAttribute('aria-expanded','false');
   w._pop.querySelectorAll('.hl').forEach(o=>o.classList.remove('hl'));
   if(w._dirty) buildXsel(w);          // догоняем опросы, отложенные на время открытия
-}); }
+});
+  // и перерисовку маршрутов, отложенную на время раскрытого списка
+  if(ROUTES_PENDING && typeof renderRoutes==='function') renderRoutes();
+}
 function pickXsel(wrap,val){
   const sel=wrap.querySelector('select');
   // опция могла исчезнуть, пока попап был открыт (профиль остановлен/удалён): присвоение
@@ -1577,8 +1626,11 @@ function pickXsel(wrap,val){
   wrap.classList.remove('open','up');
   wrap._btn.setAttribute('aria-expanded','false');
   sel.value=val; buildXsel(wrap);
-  wrap._btn.focus();
+  // change раньше focus: обработчик на «Маршрутах» перерисовывает весь список строк, и кнопка,
+  // на которую мы только что вернули фокус, удаляется вместе с ней — фокус улетал в секцию.
+  // Возвращаем его после перерисовки и только если кнопка пережила её.
   if(changed) sel.dispatchEvent(new Event('change',{bubbles:true}));
+  if(wrap._btn.isConnected) wrap._btn.focus();
 }
 function xselKey(e,wrap){
   const open=wrap.classList.contains('open');
@@ -2292,8 +2344,15 @@ $('#upload-btn').addEventListener('click',async()=>{
 
 /* ════════════════════════════ ПРОФИЛИ: РЕДАКТОР ════════════════════════════ */
 async function editProfile(name){
+  // Пока идёт запрос (на занятом роутере — до API_TIMEOUT), карандаши остаются кликабельными,
+  // а видимой реакции нет: пользователь жмёт ещё раз. Оба промиса разрешались → окно
+  // инициализировалось дважды и оставляло лишний перехват фокуса на #profile-modal.
+  if(MODAL_OPEN||editProfile._busy) return;
+  editProfile._busy=true;
   let d;
-  try{ d=await API.json('profile',{name}); }catch(e){ return toast('Не удалось загрузить профиль','error'); }
+  try{ d=await API.json('profile',{name}); }
+  catch(e){ return toast('Не удалось загрузить профиль','error'); }
+  finally{ editProfile._busy=false; }
   if(d.error) return toast(d.error,'error');
   MODAL_NAME=name; MODAL_OPEN=true;
   $('#m-title').textContent='Профиль «'+name+'»';
@@ -2326,6 +2385,12 @@ async function editProfile(name){
 }
 let MODAL_RETURN=null;
 function closeModal(){
+  // Закрытие с раскрытым списком (Esc, «Сохранить», крестик — все идут без click-события,
+  // поэтому документный closeAllXsel не срабатывает) оставляло класс .open на обёртке.
+  // При следующем открытии редактора buildXsel упирался в guard «не перестраивать открытый»
+  // и показывал опции ПРЕДЫДУЩЕГО профиля, а клик по ним не находил значение в новом select
+  // и молча гасил список. Первый клик по самой кнопке тоже был холостым.
+  closeAllXsel();
   MODAL_OPEN=false; MODAL_NAME='';
   const ov=$('#profile-modal-overlay');
   releaseFocus($('#profile-modal'));
@@ -2337,7 +2402,15 @@ function closeModal(){
 }
 $('#m-close').addEventListener('click',closeModal);
 $('#m-cancel').addEventListener('click',closeModal);
-$('#profile-modal-overlay').addEventListener('click',e=>{ if(e.target.id==='profile-modal-overlay') closeModal(); });
+$('#profile-modal-overlay').addEventListener('click',e=>{
+  if(e.target.id!=='profile-modal-overlay') return;
+  // Список каналов — position:absolute внутри .modal с overflow:auto, поэтому опции, не
+  // влезшие в окно редактора, обрезаются клип-боксом, и клик по ним достаётся оверлею.
+  // Без этой проверки промах по последней опции закрывал редактор вместе с несохранёнными
+  // правками .ovpn. Теперь такой клик гасит только список.
+  if(document.querySelector('.xsel.open')){ closeAllXsel(); return; }
+  closeModal();
+});
 document.addEventListener('keydown',e=>{
   // не закрываем редактор, если поверх него открыто подтверждение (Esc гасит только его)
   if(e.key==='Escape'&&MODAL_OPEN&&!$('#confirm-overlay').classList.contains('open')) closeModal();
@@ -2502,9 +2575,16 @@ async function toggleSchedule(name,card){
   let sch;
   try{ sch=await API.json('schedule',{profile:name}); }catch(e){ return toast('Не удалось загрузить расписание','error'); }
   if(sch.error) return toast(sch.error,'error');
+  // Пока шёл запрос, тик поллинга мог перерисовать список профилей целиком — тогда card
+  // оторван от DOM, renderSchedBox падает, а SCHED_OPEN остаётся выставленным. После этого
+  // renderProfilesView навсегда выходит по guard `if(MODAL_OPEN||SCHED_OPEN) return`:
+  // статусы, бейджи и тумблеры замирают, интерфейс «не реагирует» до F5. Берём живую карточку.
+  const live=document.querySelector('.pcard[data-name="'+CSS.escape(name)+'"]')||card;
+  const box=live&&live.querySelector('[data-sched-box]');
+  if(!box||!box.isConnected) return toast('Не удалось открыть расписание','error');
   SCHED_OPEN=name; SCHED_ENABLED=!!sch.enabled; SGRID=actionsToGrid(sch);
-  const box=card.querySelector('[data-sched-box]');
-  renderSchedBox(box); box.classList.add('open');
+  try{ renderSchedBox(box); box.classList.add('open'); }
+  catch(e){ SCHED_OPEN=null; toast('Не удалось открыть расписание','error'); }
 }
 
 /* ════════════════════════════ УСТРОЙСТВА ════════════════════════════ */
@@ -2634,6 +2714,12 @@ ON_ENTER.devices=async()=>{
 let ROUTES_ARR=[];
 const cidrOk=s=>/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(s);
 function renderRoutes(){
+  // Перерисовка сносит #routes-list целиком через innerHTML — вместе с раскрытым списком
+  // направления. Guard _dirty здесь не спасает: гибнет сама обёртка .xsel, и выбор,
+  // начатый пользователем, молча пропадает (любой тумблер/добавление/импорт в этот момент
+  // запускают перерисовку). Пока список раскрыт — откладываем, closeAllXsel догонит.
+  if($('#routes-list').querySelector('.xsel.open')){ ROUTES_PENDING=true; return; }
+  ROUTES_PENDING=false;
   $('#routes-count').textContent=ROUTES_ARR.length
     ? ROUTES_ARR.length+' '+plural(ROUTES_ARR.length,['маршрут','маршрута','маршрутов']) : '';
   $('#routes-list').innerHTML=ROUTES_ARR.length?ROUTES_ARR.map((r,i)=>{
