@@ -556,6 +556,80 @@ apply_wan_policy() {
 }
 
 # ---- reconcile: факт → желаемое ----
+# ---- подключённые к роутеру частные сети — всегда мимо VPN ----
+# Режим «весь LAN» (prio 70+slot, iif br*) и VPN-полосы уводят в таблицу туннеля ВСЁ, включая
+# сети, подключённые к самому роутеру: подсеть вышестоящего роутера за WAN (192.168.88.0/24
+# на eth3), соседний сегмент (10.0.0.0/24 на eth2.4), вторую LAN (br1). В таблице туннеля про
+# них ничего нет — только default dev tun, — и пакет к 192.168.88.1 улетал на VPN-сервер, а
+# при выключенном VPN всё работало. Ручной маршрут к такому адресу не помогал: направление
+# по умолчанию «через VPN» (prio 40) отправляло его в туннель ещё настойчивее.
+#
+# Для каждой такой сети: копия её connected-маршрута в таблицу 250 + правило prio 25 (раньше
+# всех полос панели) `to <сеть> lookup 250`. Своя таблица, а не `lookup main`: в main есть
+# default, и при упавшем интерфейсе сети main выпустил бы трафик через обычный WAN мимо
+# kill-switch. Ядро само вычищает маршруты упавшего интерфейса из всех таблиц — lookup 250
+# ничего не находит, и пакет идёт дальше по полосам VPN. `suppress_prefixlength 0` решил бы
+# это короче, но его нет в ядре 3.4 на EcoNet (88.1).
+#
+# Только частные диапазоны (RFC1918, CGNAT 100.64/10, link-local): публичная провайдерская
+# подсеть на WAN — это уже интернет, её решают правила VPN. Сети самих туннелей панели
+# (tun_invnet*) не трогаем — у них свои таблицы и kill-switch.
+LOCAL_TABLE=250
+LOCAL_PRIO=25
+is_private_net() {
+  case "$1" in
+    10.*|192.168.*|169.254.*) return 0 ;;
+    172.1[6-9].*|172.2[0-9].*|172.3[01].*) return 0 ;;
+    100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) return 0 ;;
+  esac
+  return 1
+}
+apply_localnets() {
+  WFL="$RUN/.wantlocal"; WTL="$RUN/.wantlocal_t"
+  : > "$WFL"; : > "$WTL"
+  ip route show table main proto kernel scope link 2>/dev/null \
+  | awk '$2=="dev"{ s=""; for(i=3;i<NF;i++) if($i=="src") s=$(i+1); print $1, $3, s }' \
+  | while read -r net dev src; do
+      case "$dev" in tun_invnet*) continue ;; esac
+      is_private_net "$net" || continue
+      echo "$net dev $dev${src:+ src $src}" >> "$WTL"
+      echo "from all to $net lookup $LOCAL_TABLE" >> "$WFL"
+    done
+
+  # Маршруты таблицы — replace на каждом прогоне, вне хеш-гейта (несколько сетей, дёшево).
+  # Иначе: интерфейс упал → ядро стёрло маршрут из 250 → интерфейс поднялся, а хеш правил
+  # тот же → гейт ничего не делает, и сеть осталась бы без маршрута до смены конфигурации.
+  # Маршрут ставим РАНЬШЕ правила: правило без маршрута безопасно (пакет уходит в VPN).
+  while IFS= read -r line; do
+    [ -n "$line" ] && ip route replace $line table "$LOCAL_TABLE" 2>/dev/null
+  done < "$WTL"
+  ip route show table "$LOCAL_TABLE" 2>/dev/null | awk '{print $1}' | while read -r have; do
+    awk -v n="$have" '$1==n{f=1} END{exit !f}' "$WTL" || ip route del "$have" table "$LOCAL_TABLE" 2>/dev/null
+  done
+
+  EXPL=$(grep -c . "$WFL")
+  NEWHASH=$(hashof < "$WFL")
+  HF="$RUN/.local.applyhash"
+  if [ "$NEWHASH" = "$(cat "$HF" 2>/dev/null)" ] && [ "$(rule_count_at "$LOCAL_PRIO")" = "$EXPL" ]; then
+    rm -f "$WFL" "$WTL"; return 0
+  fi
+  rule_add_missing "$LOCAL_PRIO" "$WFL"
+  rule_remove_stale "$LOCAL_PRIO" "$WFL"
+  rm -f "$WFL" "$WTL"
+  echo "$NEWHASH" > "$HF"
+}
+# снять исключения целиком — при удалении пакета (prerm), чтобы не оставлять правила в ядре
+unapply_localnets() {
+  rules_snapshot
+  rule_lines_at "$LOCAL_PRIO" | while IFS= read -r c; do
+    [ -z "$c" ] && continue
+    set -- $c
+    ip rule del "$@" priority "$LOCAL_PRIO" 2>/dev/null
+  done
+  ip route flush table "$LOCAL_TABLE" 2>/dev/null
+  rm -f "$RUN/.local.applyhash"
+}
+
 reconcile() {
   for f in "$PROFILES"/*.ovpn; do
     [ -f "$f" ] || continue
@@ -582,6 +656,7 @@ apply() {
     sleep 1
   done
   rules_snapshot   # один снимок ip rule на весь вызов — полосы функций не пересекаются
+  apply_localnets  # prio 25: подключённые частные сети мимо VPN — раньше всех полос
   for sf in "$RUN"/*.slot; do
     [ -f "$sf" ] || continue
     apply_one "$(basename "$sf" .slot)"
@@ -735,6 +810,7 @@ case "$1" in
   reconcile) reconcile ;;
   apply)     apply ;;
   stopall)   stopall ;;
+  localnets-clear) unapply_localnets ;;
   status)    status_json ;;
   schedule-tick) schedule_tick ;;
   schedule-sync) schedule_sync "$2" ;;
