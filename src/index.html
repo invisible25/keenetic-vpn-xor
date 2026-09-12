@@ -636,6 +636,39 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
   .rrow .rcomm{flex-basis:100%;order:5}
   .rrow .xsel{max-width:none;flex:1;min-width:0}
 }
+/* Массовый выбор. Панель «липнет» к верху при прокрутке — на 50+ маршрутах иначе приходится
+   отмечать строки внизу и листать обратно к кнопкам. Фон непрозрачный (--glass = 5% альфы,
+   строки просвечивали бы насквозь), той же формулой, что и у раскрытого списка .xsel-pop.
+   z-index 20: над строками, но ниже мобильного таб-бара (.side, 90) и модалок (100). */
+.rbulk{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:10px;
+  padding:12px 14px;margin-bottom:10px;background:color-mix(in srgb,var(--bg) 92%,var(--ink) 6%)}
+.rbulk-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.rbulk-top .search{position:relative;flex:1;min-width:180px}
+.rbulk-top .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);
+  width:15px;height:15px;color:var(--muted);pointer-events:none}
+.rbulk-top .search input{padding-left:34px}
+.rall{display:inline-flex;align-items:center;gap:8px;flex:none;cursor:pointer;
+  font-size:var(--t-sm);font-weight:600}
+.rall input,.rrow .rsel{width:17px;height:17px;margin:0;flex:none;cursor:pointer;accent-color:var(--accent)}
+.rbulk-act{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rbulk-n{font-size:var(--t-sm);font-weight:600;color:var(--muted)}
+.rbulk.has .rbulk-n{color:var(--ink)}
+.rbulk-act .grow{flex:1}
+.rclear{background:none;border:0;padding:4px 2px;color:var(--muted);font-family:inherit;font-size:var(--t-sm);font-weight:600;
+  cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.rclear:hover{color:var(--ink)}
+.rclear:disabled{display:none}      /* нечего снимать — не маячит */
+.rbulk-act .xsel{flex:none;width:auto;min-width:200px}
+.rrow.sel{border-color:color-mix(in srgb,var(--accent) 70%,transparent);
+  background:color-mix(in srgb,var(--accent) 9%,var(--glass-soft))}
+.rrow .rcidr,.rrow .rcomm{cursor:pointer;user-select:none}   /* клик по строке = выбрать */
+@media(max-width:640px){
+  .rbulk-act .grow{flex-basis:100%;height:0}   /* перенос: счётчик и «снять» — строкой выше действий */
+  /* на телефоне панель в 4 строки (~260px) — прилипшей она закрывала бы треть экрана */
+  .rbulk{position:static}
+  .rbulk-act .xsel{flex:1 1 100%;min-width:0}
+  .rbulk-act .btn{flex:1 1 auto}
+}
 .kimport{margin-top:14px;display:none}
 .kimport.show{display:block}
 .krow{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);
@@ -953,6 +986,25 @@ textarea.input{font-family:var(--f-mono);font-size:.72rem;min-height:150px;resiz
         </div>
         <div class="kimport" id="keenetic-routes-import"></div>
       </div>
+      <!-- Массовые действия: вне #routes-list, чтобы перерисовка списка по опросу не сносила
+           панель вместе с раскрытым в ней списком направлений -->
+      <div class="rbulk card glass" id="routes-bulk" hidden>
+        <div class="rbulk-top">
+          <label class="rall"><input type="checkbox" id="routes-all" aria-label="Выбрать все показанные маршруты"><span>Все</span></label>
+          <div class="search"><svg><use href="#ic-search"/></svg>
+            <input class="input" id="routes-search" type="search" placeholder="CIDR, комментарий или канал…" autocomplete="off" aria-label="Фильтр маршрутов"></div>
+        </div>
+        <div class="rbulk-act" role="group" aria-label="Действия с выбранными маршрутами">
+          <span class="rbulk-n" id="routes-selcount" aria-live="polite">Ничего не выбрано</span>
+          <button class="rclear" id="routes-bulk-clear" disabled>снять</button>
+          <span class="grow"></span>
+          <select id="routes-bulk-dir" aria-label="Куда направить выбранные маршруты"></select>
+          <button class="btn primary" id="routes-bulk-apply" disabled><svg><use href="#ic-via"/></svg>Направить</button>
+          <button class="btn" id="routes-bulk-on" disabled><svg><use href="#ic-check"/></svg>Включить</button>
+          <button class="btn" id="routes-bulk-off" disabled><svg><use href="#ic-x"/></svg>Выключить</button>
+          <button class="btn danger" id="routes-bulk-del" disabled><svg><use href="#ic-trash"/></svg>Удалить</button>
+        </div>
+      </div>
       <div class="dlist" id="routes-list"><div class="skel"></div></div>
     </section>
 
@@ -1212,6 +1264,15 @@ function fmtRate(bps){ bps=+bps||0;
           if(act==='setdir'&&ROUTES[idx]){
             if(wan){ ROUTES[idx].direct=true; ROUTES[idx].wan=wan; }
             else{ ROUTES[idx].direct=false; delete ROUTES[idx].wan; } }
+          if(act.startsWith('bulk')){
+            const set=new Set(decodeURIComponent((body.match(/cidrs=([^&]*)/)||[])[1]||'').split(',').filter(Boolean));
+            if(!set.size) return J({error:'no routes selected'});
+            const on=(body.match(/&on=([01])/)||[])[1];
+            if(act==='bulkdel') ROUTES=ROUTES.filter(r=>!set.has(r.cidr));
+            else ROUTES.forEach(r=>{ if(!set.has(r.cidr)) return;
+              if(act==='bulkset') r.enabled=on==='1';
+              if(act==='bulkdir'){ if(wan){ r.direct=true; r.wan=wan; } else { r.direct=false; delete r.wan; } } });
+          }
         }
         return J(ROUTES);
       case 'keenetic-routes': return J(KEEN);
@@ -2713,6 +2774,58 @@ ON_ENTER.devices=async()=>{
 /* ════════════════════════════ МАРШРУТЫ ════════════════════════════ */
 let ROUTES_ARR=[];
 const cidrOk=s=>/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(s);
+// Выбор храним по CIDR, а не по индексу строки: переживает перерисовку по опросу, фильтр и
+// удаление соседних строк. ROUTES_ANCHOR — CIDR последнего клика для выделения Shift-диапазоном.
+const ROUTES_SEL=new Set();
+let ROUTES_Q='', ROUTES_ANCHOR=null;
+function routeMatches(r){
+  if(!ROUTES_Q) return true;
+  const via=r.direct?'напрямую '+wanLabel(r.wan)+' '+(r.wan||''):'через vpn';
+  return (r.cidr+' '+(r.comment||'')+' '+via).toLowerCase().includes(ROUTES_Q);
+}
+const visibleRoutes=()=>ROUTES_ARR.filter(routeMatches);
+function syncRouteRows(){          // точечно, без перерисовки: не рвёт фокус и раскрытые списки строк
+  $$('#routes-list .rrow[data-cidr]').forEach(row=>{
+    const on=ROUTES_SEL.has(row.dataset.cidr);
+    row.classList.toggle('sel',on);
+    const cb=row.querySelector('.rsel'); if(cb) cb.checked=on;
+  });
+}
+function updateRoutesBulk(){
+  const box=$('#routes-bulk');
+  box.hidden=!ROUTES_ARR.length;
+  const vis=visibleRoutes(), selVis=vis.filter(r=>ROUTES_SEL.has(r.cidr)).length;
+  const all=$('#routes-all');
+  all.disabled=!vis.length;
+  all.checked=vis.length>0&&selVis===vis.length;
+  all.indeterminate=selVis>0&&selVis<vis.length;
+  // Действия применяются ТОЛЬКО к видимым выбранным строкам. Выбранные, но скрытые фильтром,
+  // запоминаются (вернутся при очистке фильтра), но под действие не попадают: на сотнях
+  // маршрутов «удалить выбранные» не должно задевать то, чего на экране нет.
+  const hid=ROUTES_SEL.size-selVis;
+  $('#routes-selcount').textContent=(selVis?'Выбрано: '+selVis:'Ничего не выбрано')+
+    (hid?' · ещё '+hid+' скрыто фильтром, не затрагиваются':'');
+  box.classList.toggle('has',selVis>0);
+  ['apply','on','off','del'].forEach(k=>{ $('#routes-bulk-'+k).disabled=!selVis; });
+  $('#routes-bulk-clear').disabled=!ROUTES_SEL.size;
+  const sel=$('#routes-bulk-dir'), keep=sel.value;
+  const opts='<option value="">Через VPN</option>'+STATE.wans.map(w=>
+    '<option value="'+esc(w.iface)+'">↗ напрямую '+esc(w.label||w.iface)+'</option>').join('');
+  if(sel.dataset.sig!==opts){
+    sel.innerHTML=opts; sel.dataset.sig=opts;
+    if([...sel.options].some(o=>o.value===keep)) sel.value=keep;
+  }
+  enhanceSelect(sel,{compact:true});
+}
+function pickRoute(cidr,on,shift){
+  const vis=visibleRoutes().map(r=>r.cidr);
+  if(shift&&ROUTES_ANCHOR&&vis.includes(ROUTES_ANCHOR)&&vis.includes(cidr)){
+    let a=vis.indexOf(ROUTES_ANCHOR), b=vis.indexOf(cidr); if(a>b) [a,b]=[b,a];
+    vis.slice(a,b+1).forEach(c=>{ on?ROUTES_SEL.add(c):ROUTES_SEL.delete(c); });
+  } else { on?ROUTES_SEL.add(cidr):ROUTES_SEL.delete(cidr); }
+  ROUTES_ANCHOR=cidr;
+  syncRouteRows(); updateRoutesBulk();
+}
 function renderRoutes(){
   // Перерисовка сносит #routes-list целиком через innerHTML — вместе с раскрытым списком
   // направления. Guard _dirty здесь не спасает: гибнет сама обёртка .xsel, и выбор,
@@ -2720,31 +2833,78 @@ function renderRoutes(){
   // запускают перерисовку). Пока список раскрыт — откладываем, closeAllXsel догонит.
   if($('#routes-list').querySelector('.xsel.open')){ ROUTES_PENDING=true; return; }
   ROUTES_PENDING=false;
+  // выбор строк, которых больше нет (удалены здесь или в другой вкладке), не должен висеть в счётчике
+  for(const c of ROUTES_SEL) if(!ROUTES_ARR.some(r=>r.cidr===c)) ROUTES_SEL.delete(c);
   $('#routes-count').textContent=ROUTES_ARR.length
     ? ROUTES_ARR.length+' '+plural(ROUTES_ARR.length,['маршрут','маршрута','маршрутов']) : '';
-  $('#routes-list').innerHTML=ROUTES_ARR.length?ROUTES_ARR.map((r,i)=>{
+  // i — индекс в полном ROUTES_ARR, а не в отфильтрованном: по нему работают одиночные действия
+  const rows=ROUTES_ARR.map((r,i)=>({r,i})).filter(x=>routeMatches(x.r));
+  $('#routes-list').innerHTML=rows.length?rows.map(({r,i})=>{
+    const on=ROUTES_SEL.has(r.cidr);
     const dir='<select data-dir="'+i+'" aria-label="Направление маршрута">'+
       '<option value=""'+(!r.direct?' selected':'')+'>Через VPN</option>'+
       STATE.wans.map(w=>'<option value="'+esc(w.iface)+'"'+(r.direct&&r.wan===w.iface?' selected':'')+'>↗ напрямую '+esc(w.label||w.iface)+'</option>').join('')+
       '</select>';
-    return '<div class="rrow'+(r.enabled?'':' offr')+'">'+
+    return '<div class="rrow'+(r.enabled?'':' offr')+(on?' sel':'')+'" data-cidr="'+esc(r.cidr)+'">'+
+      '<input type="checkbox" class="rsel"'+(on?' checked':'')+' aria-label="Выбрать '+esc(r.cidr)+'">'+
       '<button class="tgl'+(r.enabled?' on':'')+'" data-rtgl="'+i+'" aria-label="Маршрут '+esc(r.cidr)+' '+(r.enabled?'включён':'выключен')+'"></button>'+
       '<span class="rcidr">'+esc(r.cidr)+'</span>'+
       '<span class="rcomm">'+esc(r.comment||'')+'</span>'+dir+
       '<button class="icobtn" data-rdel="'+i+'" title="Удалить" aria-label="Удалить '+esc(r.cidr)+'"><svg><use href="#ic-trash"/></svg></button>'+
     '</div>';
   }).join('')
-  : '<div class="card glass"><div class="empty"><svg><use href="#ic-via"/></svg>'+
-    '<b>Маршрутов нет</b><span>добавьте CIDR или импортируйте из Keenetic</span></div></div>';
+  : ROUTES_ARR.length
+    ? '<div class="card glass"><div class="empty"><svg><use href="#ic-search"/></svg>'+
+      '<b>Ничего не найдено</b><span>измените или очистите фильтр</span></div></div>'
+    : '<div class="card glass"><div class="empty"><svg><use href="#ic-via"/></svg>'+
+      '<b>Маршрутов нет</b><span>добавьте CIDR или импортируйте из Keenetic</span></div></div>';
   $$('#routes-list select[data-dir]').forEach(s=>enhanceSelect(s,{compact:true}));
+  updateRoutesBulk();
 }
 async function routesPost(body){
   try{
-    ROUTES_ARR=await API.post('routes',null,body).then(x=>x.json());
-    if(!Array.isArray(ROUTES_ARR)) throw new Error((ROUTES_ARR||{}).error||'bad response');
-    renderRoutes(); return true;
+    // в локальную переменную: CGI при ошибке отвечает {"error":…} вместо массива, и прямое
+    // присваивание в ROUTES_ARR ломало следующий рендер (.filter/.map на объекте)
+    const r=await API.post('routes',null,body).then(x=>x.json());
+    if(!Array.isArray(r)) throw new Error((r||{}).error||'bad response');
+    ROUTES_ARR=r; renderRoutes(); return true;
   }catch(e){ toast('Маршруты: '+(e.message||'ошибка'),'error'); return false; }
 }
+async function routesBulk(action,extra,okMsg){
+  const list=visibleRoutes().filter(r=>ROUTES_SEL.has(r.cidr)).map(r=>r.cidr);
+  if(!list.length) return toast('Ничего не выбрано','error');
+  $$('#routes-bulk .btn').forEach(b=>{ b.disabled=true; });
+  const ok=await routesPost('action='+action+'&cidrs='+list.map(encodeURIComponent).join(',')+(extra||''));
+  if(ok) toast(okMsg(list.length),'ok');
+  updateRoutesBulk();       // вернуть кнопкам доступность по факту выбора
+  return ok;
+}
+const nRoutes=n=>n+' '+plural(n,['маршрут','маршрута','маршрутов']);
+$('#routes-all').addEventListener('change',e=>{
+  visibleRoutes().forEach(r=>{ e.target.checked?ROUTES_SEL.add(r.cidr):ROUTES_SEL.delete(r.cidr); });
+  ROUTES_ANCHOR=null; syncRouteRows(); updateRoutesBulk();
+});
+$('#routes-search').addEventListener('input',e=>{
+  ROUTES_Q=e.target.value.trim().toLowerCase(); ROUTES_ANCHOR=null; renderRoutes();
+});
+$('#routes-bulk-apply').addEventListener('click',()=>{
+  const w=$('#routes-bulk-dir').value;
+  const where=w?'напрямую через '+wanLabel(w):'через VPN';
+  routesBulk('bulkdir','&wan='+encodeURIComponent(w),n=>nRoutes(n)+' → '+where);
+});
+$('#routes-bulk-on').addEventListener('click',()=>
+  routesBulk('bulkset','&on=1',n=>'Включено: '+nRoutes(n)));
+$('#routes-bulk-off').addEventListener('click',()=>
+  routesBulk('bulkset','&on=0',n=>'Выключено: '+nRoutes(n)));
+$('#routes-bulk-del').addEventListener('click',async()=>{
+  const n=visibleRoutes().filter(r=>ROUTES_SEL.has(r.cidr)).length; if(!n) return;
+  if(!await confirmModal('Удалить выбранные: '+nRoutes(n)+'? Отменить нельзя.')) return;
+  await routesBulk('bulkdel','',k=>'Удалено: '+nRoutes(k));
+  // удалённые CIDR renderRoutes вычистит из выбора сам; скрытые фильтром остаются выбранными
+});
+$('#routes-bulk-clear').addEventListener('click',()=>{
+  ROUTES_SEL.clear(); ROUTES_ANCHOR=null; syncRouteRows(); updateRoutesBulk();
+});
 async function loadRoutes(){
   try{ ROUTES_ARR=await API.json('routes'); renderRoutes(); }
   catch(e){ $('#routes-list').innerHTML='<div class="card glass"><div class="empty">'+
@@ -2765,7 +2925,14 @@ $('#routes-list').addEventListener('click',e=>{
   if(del){
     const r=ROUTES_ARR[+del.dataset.rdel];
     confirmModal('Удалить маршрут '+r.cidr+'?').then(ok=>{ if(ok) routesPost('action=delete&index='+del.dataset.rdel); });
+    return;
   }
+  const row=e.target.closest('.rrow[data-cidr]'); if(!row) return;
+  const cb=e.target.closest('.rsel');
+  // чекбокс браузер уже переключил сам — берём его новое состояние;
+  // клик по CIDR/комментарию (не по тумблеру, списку или корзине) переключает выбор строки
+  if(cb) pickRoute(row.dataset.cidr,cb.checked,e.shiftKey);
+  else if(e.target.closest('.rcidr,.rcomm')) pickRoute(row.dataset.cidr,!ROUTES_SEL.has(row.dataset.cidr),e.shiftKey);
 });
 $('#routes-list').addEventListener('change',e=>{
   const s=e.target.closest('[data-dir]'); if(!s) return;

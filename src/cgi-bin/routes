@@ -39,6 +39,15 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   COMMENT=$(urldecode "$COMMENT_RAW" | tr -d '"' | head -c 80)
   IDX=$(echo "$BODY" | tr '&' '\n' | grep '^index=' | sed 's/^index=//' | tr -cd '0-9')
   WAN_SEL=$(echo "$BODY" | tr '&' '\n' | grep '^wan=' | sed 's/^wan=//' | tr -cd 'A-Za-z0-9._-')
+  # Массовые действия адресуют маршруты по CIDR, а не по индексу: между отрисовкой списка и
+  # запросом он мог измениться (импорт, вторая вкладка, удаление), и пачка индексов тихо
+  # применилась бы к чужим строкам. CIDR в конфиге уникален (add/import не пускают дубли).
+  # cidrs=<cidr>,<cidr>,…  (запятая и слеш могут прийти как %2C/%2F)
+  CIDRS=$(echo "$BODY" | tr '&' '\n' | grep '^cidrs=' | sed 's/^cidrs=//' \
+    | sed 's/%2[Ff]/\//g; s/%2[Cc]/,/g' | tr -cd '0-9./,')
+  SET=$(printf '%s' "$CIDRS" | tr ',' '\n' | jq -R . 2>/dev/null | jq -sc 'map(select(length>0))' 2>/dev/null)
+  [ -n "$SET" ] || SET='[]'
+  ON=$(echo "$BODY" | tr '&' '\n' | grep '^on=' | sed 's/^on=//' | tr -cd '01')
 
   # снять старые точечные iptables-правила прямых маршрутов ДО перезаписи конфига
   . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_remove_directroutes 2>/dev/null
@@ -90,6 +99,26 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
       else
         jq --argjson i "${IDX:-0}" --arg w "$WAN_SEL" 'if ($i>=0 and $i<length) then .[$i] |= (.direct=true | .wan=$w) else . end' "$F" > "$F.tmp" 2>/dev/null && jq -e '.' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
       fi
+      ;;
+    bulkdir|bulkset|bulkdel)
+      # Пачка — одна атомарная запись и один apply: N одиночных запросов дали бы N перестроек
+      # правил и N ожиданий lock'а, а при обрыве посередине — половину применённого набора.
+      if [ "$SET" = "[]" ]; then echo '{"error":"no routes selected"}'; exit 0; fi
+      case "$ACTION" in
+        bulkdir)
+          if [ -z "$WAN_SEL" ]; then
+            FLT='map(if (.cidr as $c | any($s[]; . == $c)) then (.direct=false | del(.wan)) else . end)'
+          else
+            FLT='map(if (.cidr as $c | any($s[]; . == $c)) then (.direct=true | .wan=$w) else . end)'
+          fi ;;
+        bulkset)
+          case "$ON" in 1) ;; 0) ;; *) echo '{"error":"on must be 0 or 1"}'; exit 0 ;; esac
+          FLT='map(if (.cidr as $c | any($s[]; . == $c)) then .enabled=($on=="1") else . end)' ;;
+        bulkdel)
+          FLT='map(select((.cidr as $c | any($s[]; . == $c)) | not))' ;;
+      esac
+      jq --argjson s "$SET" --arg w "$WAN_SEL" --arg on "$ON" "$FLT" "$F" > "$F.tmp" 2>/dev/null \
+        && jq -e 'type=="array"' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
       ;;
   esac
   /opt/sbin/invnetctl apply >/dev/null 2>&1
