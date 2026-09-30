@@ -63,6 +63,7 @@ grep -q "INVISIBLE NET · v${VERSION}<" "$FOOT" || { echo "версия не п�
 inst logo.svg       opt/share/invnet/logo.svg 644
 inst logo-mark.svg  opt/share/invnet/logo-mark.svg 644
 mkdir -p "$DATA/opt/share/invnet/fonts" "$DATA/opt/share/invnet/cgi-bin"
+mkdir -p "$DATA/opt/share/invnet/.denied"   # пустой корень для запросов с чужим Host (invnet.conf)
 cp "$SRC/fonts/"*.woff2 "$DATA/opt/share/invnet/fonts/"; chmod 644 "$DATA/opt/share/invnet/fonts/"*
 cp "$SRC/cgi-bin/"* "$DATA/opt/share/invnet/cgi-bin/"; chmod 755 "$DATA/opt/share/invnet/cgi-bin/"*
 

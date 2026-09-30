@@ -15,8 +15,10 @@ F=$DIR/${NAME}.ovpn
 
 . /opt/share/invnet/invnet-lib.sh
 
+# и на GET: он отдаёт .ovpn целиком, с ключами — чужая страница не должна его прочитать
+csrf_guard
+
 if [ "$REQUEST_METHOD" = "POST" ]; then
-  csrf_guard
   [ -f "$F" ] || { echo '{"error":"not found"}'; exit 0; }
   BODY=$(head -c 200000)
 

@@ -1336,16 +1336,17 @@ function apiFetch(ep,params,opt){
   // некликабельным (.tgl.busy{pointer-events:none}) до перезагрузки страницы. AbortSignal.timeout
   // есть не везде (Chrome <103, Safari <16, старые WebView на Android-телефонах) — там раньше
   // таймаут молча отключался. Подстраховываемся ручным AbortController.
-  if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout){ o.signal=AbortSignal.timeout(API_TIMEOUT); }
+  const tmo=o.timeout||API_TIMEOUT; delete o.timeout;
+  if(typeof AbortSignal!=='undefined'&&AbortSignal.timeout){ o.signal=AbortSignal.timeout(tmo); }
   else if(typeof AbortController!=='undefined'){
-    const c=new AbortController(); setTimeout(()=>c.abort(),API_TIMEOUT); o.signal=c.signal;
+    const c=new AbortController(); setTimeout(()=>c.abort(),tmo); o.signal=c.signal;
   }
   return fetch(url,o).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r; });
 }
 const API={
   text:(ep,params)=>apiFetch(ep,params).then(r=>r.text()),
   json:(ep,params)=>apiFetch(ep,params).then(r=>r.json()),
-  post:(ep,params,body)=>apiFetch(ep,params,{method:'POST',body:body||''}),
+  post:(ep,params,body,timeout)=>apiFetch(ep,params,{method:'POST',body:body||'',timeout}),
 };
 
 /* ════════════════════════════ ТЕМЫ (пресеты + custom-движок) ════════════════════════════ */
@@ -2861,14 +2862,27 @@ function renderRoutes(){
   $$('#routes-list select[data-dir]').forEach(s=>enhanceSelect(s,{compact:true}));
   updateRoutesBulk();
 }
+// Правка маршрутов ждёт, пока роутер применит правила: на слабых моделях с сотней-другой
+// прямых маршрутов это заметно дольше общих 12 с. Раньше запрос обрывался по таймауту,
+// хотя роутер правку уже сохранил, — панель показывала ошибку и старое состояние.
+const ROUTES_TIMEOUT=60000;
 async function routesPost(body){
   try{
     // в локальную переменную: CGI при ошибке отвечает {"error":…} вместо массива, и прямое
     // присваивание в ROUTES_ARR ломало следующий рендер (.filter/.map на объекте)
-    const r=await API.post('routes',null,body).then(x=>x.json());
+    const r=await API.post('routes',null,body,ROUTES_TIMEOUT).then(x=>x.json());
     if(!Array.isArray(r)) throw new Error((r||{}).error||'bad response');
     ROUTES_ARR=r; renderRoutes(); return true;
-  }catch(e){ toast('Маршруты: '+(e.message||'ошибка'),'error'); return false; }
+  }catch(e){
+    // Обрыв ответа не значит, что правка не прошла: роутер мог её сохранить и доприменить.
+    // Показываем фактическое состояние с роутера, а не угаданное — иначе следующий щелчок
+    // действует исходя из неверной картинки.
+    const slow=e&&(e.name==='TimeoutError'||e.name==='AbortError');
+    toast(slow?'Маршруты: роутер отвечает долго — показано фактическое состояние'
+              :'Маршруты: '+(e.message||'ошибка'),'error');
+    loadRoutes();
+    return false;
+  }
 }
 async function routesBulk(action,extra,okMsg){
   const list=visibleRoutes().filter(r=>ROUTES_SEL.has(r.cidr)).map(r=>r.cidr);
@@ -2919,12 +2933,21 @@ $('#route-add').addEventListener('click',async()=>{
   }
 });
 $('#routes-list').addEventListener('click',e=>{
+  // Одиночные действия адресуются по CIDR и задают ЦЕЛЕВОЕ состояние (bulk*), а не
+  // «переверни N-й». Прежний toggle&index был относительным: пока роутер применял первый
+  // щелчок, второй переворачивал маршрут обратно, и включить его было невозможно.
   const tgl=e.target.closest('[data-rtgl]');
-  if(tgl){ routesPost('action=toggle&index='+tgl.dataset.rtgl); return; }
+  if(tgl){
+    const r=ROUTES_ARR[+tgl.dataset.rtgl];
+    if(!r||tgl.classList.contains('busy')) return;
+    tgl.classList.add('busy'); tgl.classList.toggle('on',!r.enabled);   // сразу видно, что щелчок принят
+    routesPost('action=bulkset&on='+(r.enabled?0:1)+'&cidrs='+encodeURIComponent(r.cidr));
+    return;
+  }
   const del=e.target.closest('[data-rdel]');
   if(del){
-    const r=ROUTES_ARR[+del.dataset.rdel];
-    confirmModal('Удалить маршрут '+r.cidr+'?').then(ok=>{ if(ok) routesPost('action=delete&index='+del.dataset.rdel); });
+    const r=ROUTES_ARR[+del.dataset.rdel]; if(!r) return;
+    confirmModal('Удалить маршрут '+r.cidr+'?').then(ok=>{ if(ok) routesPost('action=bulkdel&cidrs='+encodeURIComponent(r.cidr)); });
     return;
   }
   const row=e.target.closest('.rrow[data-cidr]'); if(!row) return;
@@ -2936,7 +2959,8 @@ $('#routes-list').addEventListener('click',e=>{
 });
 $('#routes-list').addEventListener('change',e=>{
   const s=e.target.closest('[data-dir]'); if(!s) return;
-  routesPost('action=setdir&index='+s.dataset.dir+'&wan='+encodeURIComponent(s.value));
+  const r=ROUTES_ARR[+s.dataset.dir]; if(!r) return;
+  routesPost('action=bulkdir&wan='+encodeURIComponent(s.value)+'&cidrs='+encodeURIComponent(r.cidr));
 });
 $('#route-import-btn').addEventListener('click',async()=>{
   const box=$('#keenetic-routes-import');

@@ -433,11 +433,14 @@ apply_routes() {
       GW=$(wan_gw "$w")
       if [ -n "$GW" ]; then ip route replace default via "$GW" dev "$w" table "$DT" 2>/dev/null
       else ip route replace default dev "$w" table "$DT" 2>/dev/null; fi
+      # один awk на весь список, а не `echo | tr` на КАЖДЫЙ CIDR: на сотне-другой маршрутов
+      # это сотни процессов и ~2с на каждом холостом apply слабого роутера (Giga SE, MIPS).
+      # gsub построчный — переводы строк не схлопываются (ср. грабля с tr в apply_one).
+      # «/32» срезаем: `ip rule show` печатает хост без маски, и строка `to X/32` никогда не
+      # совпадала с живой — сверка снимала правило как лишнее, а повторный add ядро отвергало
+      # как дубль. Хосты /32 пропадали и возвращались через раз на каждом открытии хеш-гейта.
       jq -r --arg w "$w" '.[] | select(.enabled != false and .direct == true and ((.wan // "") == $w)) | .cidr' "$ROUTES_FILE" 2>/dev/null \
-      | while read -r cidr; do
-          cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
-          echo "from all to $cidr lookup $DT"
-        done >> "$WF39"
+      | awk -v t="$DT" '{ gsub(/[ \t\r]/, ""); sub(/\/32$/, "") } $0 != "" { print "from all to " $0 " lookup " t }' >> "$WF39"
     done
 
     # ── маршруты ЧЕРЕЗ VPN: через primary (минимальный slot) активный профиль ──
@@ -460,10 +463,8 @@ apply_routes() {
         TABLE=$HOLD_TABLE
         ip route replace blackhole default table "$HOLD_TABLE" 2>/dev/null
       fi
-      printf '%s\n' "$VPN_CIDRS" | while read -r cidr; do
-        cidr=$(echo "$cidr" | tr -d '[:space:]'); [ -z "$cidr" ] && continue
-        echo "from all to $cidr lookup $TABLE"
-      done >> "$WF40"
+      printf '%s\n' "$VPN_CIDRS" \
+      | awk -v t="$TABLE" '{ gsub(/[ \t\r]/, ""); sub(/\/32$/, "") } $0 != "" { print "from all to " $0 " lookup " t }' >> "$WF40"
     fi
   fi
 
@@ -513,10 +514,8 @@ apply_wan_policy() {
       else
         ip route replace default dev "$WIF" table "$TBL" 2>/dev/null
       fi
-      echo "$e" | jq -r '.devices[]?' | while read -r d; do
-        d=$(echo "$d" | tr -d '[:space:]'); [ -z "$d" ] && continue
-        echo "$PRIO from $d lookup $TBL"
-      done
+      echo "$e" | jq -r '.devices[]?' \
+      | awk -v p="$PRIO" -v t="$TBL" '{ gsub(/[ \t\r]/, "") } $0 != "" { print p " from " $0 " lookup " t }'
       i=$((i+1))
     done > "$WF_ALL"
   fi

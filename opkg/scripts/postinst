@@ -5,7 +5,7 @@
 
 # рантайм-каталоги + дефолтные конфиги (не перетираем существующие)
 mkdir -p /opt/etc/openvpn/profiles /opt/etc/openvpn/profile-meta \
-         /opt/var/run/invnet /opt/var/log /opt/etc/ndm/netfilter.d
+         /opt/var/run/invnet /opt/var/log /opt/etc/ndm/netfilter.d /opt/share/invnet/.denied
 [ -f /opt/etc/openvpn/invnet-mode.conf ]       || echo devices > /opt/etc/openvpn/invnet-mode.conf
 [ -f /opt/etc/openvpn/invnet-devices.conf ]    || : > /opt/etc/openvpn/invnet-devices.conf
 [ -f /opt/etc/openvpn/invnet-routes.conf ]     || echo '[]' > /opt/etc/openvpn/invnet-routes.conf

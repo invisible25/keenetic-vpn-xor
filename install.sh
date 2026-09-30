@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.7.5   # подключённые к роутеру частные сети всегда мимо VPN
+INVNET_VERSION=1.7.6   # быстрые маршруты, /32 не пропадают, защита панели от DNS rebinding
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
@@ -104,7 +104,7 @@ chmod +x /opt/etc/init.d/S95invnet-autostart 2>/dev/null
 chmod +x /opt/sbin/invnetctl 2>/dev/null
 chmod +x /opt/etc/openvpn/invnet-up.sh /opt/etc/openvpn/invnet-down.sh 2>/dev/null
 chmod +x /opt/etc/openvpn/invnet-fw.sh 2>/dev/null
-mkdir -p /opt/etc/ndm/netfilter.d
+mkdir -p /opt/etc/ndm/netfilter.d /opt/share/invnet/.denied
 chmod +x /opt/etc/ndm/netfilter.d/50-invnet.sh 2>/dev/null
 chmod +x /opt/share/invnet/cgi-bin/* 2>/dev/null
 

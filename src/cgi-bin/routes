@@ -6,17 +6,23 @@ printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
 F=/opt/etc/openvpn/invnet-routes.conf
 LOCK=/opt/var/run/invnet-routes.lock
 
-# Простой mkdir-lock (атомарен в любой fs). Ждём до 5 сек.
-i=0
-while ! mkdir "$LOCK" 2>/dev/null; do
-  i=$((i+1)); [ "$i" -ge 50 ] && break; sleep 0.1 2>/dev/null || sleep 1
-done
-trap 'rmdir "$LOCK" 2>/dev/null' EXIT
-
-# Гарантируем валидную базу: если файл битый/пустой — стартуем с []
-if ! jq -e '.' "$F" >/dev/null 2>&1; then
-  echo '[]' > "$F"
-fi
+# mkdir-лок только на запись, с PID владельца. Не дождались живого владельца — правку НЕ пишем
+# (раньше запрос шёл дальше без лока, и два быстрых щелчка правили конфиг одновременно).
+# Лок, оставшийся от умершего процесса (ребут посреди записи, CGI убит сигналом), снимаем:
+# /opt/var/run переживает перезагрузку, и иначе правка маршрутов отвечала бы «занято» вечно.
+routes_lock() {
+  _i=0
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    _h=$(cat "$LOCK/pid" 2>/dev/null)
+    if [ -n "$_h" ] && ! grep -qa "cgi-bin/routes" "/proc/$_h/cmdline" 2>/dev/null; then rm -rf "$LOCK"; continue; fi
+    if [ -z "$_h" ] && [ "$_i" -ge 20 ]; then rm -rf "$LOCK"; continue; fi
+    _i=$((_i+1)); [ "$_i" -ge 50 ] && return 1
+    sleep 0.1 2>/dev/null || sleep 1
+  done
+  echo $$ > "$LOCK/pid"
+  trap 'rm -rf "$LOCK"' EXIT
+  trap 'exit 1' TERM HUP INT
+}
 
 # Границы обязательны, и проверять их надо ЗДЕСЬ: панель без авторизации, фронтовый cidrOk
 # доверенной границей не является. Прежняя регулярка пропускала «999.1.1.1/99» и, что важнее,
@@ -32,6 +38,9 @@ is_valid_cidr() {
 
 if [ "$REQUEST_METHOD" = "POST" ]; then
   csrf_guard
+  routes_lock || { echo '{"error":"маршруты сейчас меняются — повторите через пару секунд"}'; exit 0; }
+  # битый/пустой файл — стартуем с [] (под локом: иначе можно затереть чужую запись)
+  jq -e '.' "$F" >/dev/null 2>&1 || echo '[]' > "$F"
   BODY=$(head -c 65536)
   ACTION=$(echo "$BODY" | tr '&' '\n' | grep '^action=' | sed 's/^action=//' | tr -cd 'a-z')
   CIDR=$(echo "$BODY" | tr '&' '\n' | grep '^cidr=' | sed 's/^cidr=//' | sed 's/%2F/\//g; s/%2f/\//g; s/+/ /g' | tr -cd '0-9./')
@@ -49,8 +58,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
   [ -n "$SET" ] || SET='[]'
   ON=$(echo "$BODY" | tr '&' '\n' | grep '^on=' | sed 's/^on=//' | tr -cd '01')
 
-  # снять старые точечные iptables-правила прямых маршрутов ДО перезаписи конфига
-  . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_remove_directroutes 2>/dev/null
+  # запомнить пары прямых маршрутов ДО правки: после записи снимем iptables-правила только
+  # тех, что перестали быть нужны (см. invnet_fw_prune_directroutes)
+  . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && OLD_PAIRS=$(invnet_fw_directroute_pairs all 2>/dev/null)
 
   case "$ACTION" in
     add)
@@ -121,7 +131,11 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         && jq -e 'type=="array"' "$F.tmp" >/dev/null 2>&1 && mv "$F.tmp" "$F" || rm -f "$F.tmp"
       ;;
   esac
+  command -v invnet_fw_prune_directroutes >/dev/null 2>&1 && invnet_fw_prune_directroutes "$OLD_PAIRS" 2>/dev/null
+  # конфиг записан — лок отпускаем до apply: у apply свой лок, а держать этот все время
+  # применения значило заставлять следующий щелчок ждать и падать по таймауту
+  rm -rf "$LOCK"; trap - EXIT TERM HUP INT
   /opt/sbin/invnetctl apply >/dev/null 2>&1
 fi
 
-cat "$F"
+jq -e '.' "$F" >/dev/null 2>&1 && cat "$F" || echo '[]'
