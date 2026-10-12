@@ -1,8 +1,8 @@
 #!/bin/sh
-# Перепаковывает XOR-openvpn .ipk, поднимая Version до epoch'нутой (по умолчанию 1:2.6.14-4).
+# Перепаковывает XOR-openvpn .ipk, поднимая Version до epoch'нутой (по умолчанию 1:2.6.23-1).
 #
 # Зачем: наш XOR-бинарь пакуется как пакет `openvpn-openssl` (перекрывает стоковый). У стока
-# из Entware — та же базовая версия (2.6.14-4), поэтому без epoch'а opkg мог бы выбрать сток.
+# из Entware — та же базовая версия, поэтому без epoch'а opkg мог бы выбрать сток.
 # Epoch (1:) детерминированно ставит НАШ XOR выше при install/upgrade. Бинарь не трогаем.
 #
 # Использование:  sh repack-openvpn.sh [src-dir] [out-dir] [new-version]
@@ -11,7 +11,7 @@ set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRCDIR="${1:-$HERE/openvpn}"
 OUT="${2:-$HERE/out}"
-NEWVER="${3:-1:2.6.14-4}"
+NEWVER="${3:-1:2.6.23-1}"
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)     # абсолютный путь: ниже делаем cd в $tmp перед tar -czf "$OUT/..."
 

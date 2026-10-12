@@ -149,7 +149,7 @@ tail -f /opt/var/log/invnet-web.err         # ошибки веб-панели
 
 ## OpenVPN + XOR
 
-`openvpn` 2.6.14 собран с патчем Tunnelblick **scramble** (`scramble obfuscate <key>` / `scramble xormask <key>`)
+`openvpn` 2.6.23 собран с патчем Tunnelblick **scramble** (`scramble obfuscate <key>` / `scramble xormask <key>`)
 для обфускации трафика и обхода DPI. Сборка — Entware buildroot, по одному `.ipk` на архитектуру.
 
 ## 💚 Поддержать проект

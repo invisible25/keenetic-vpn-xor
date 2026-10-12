@@ -77,7 +77,7 @@ Architecture: all
 Maintainer: invisible25
 Section: net
 Priority: optional
-Depends: openvpn-openssl (>= 1:2.6.14-4), jq, lighttpd, lighttpd-mod-cgi, iptables, ip-full, curl, tar
+Depends: openvpn-openssl (>= 1:2.6.23-1), jq, lighttpd, lighttpd-mod-cgi, iptables, ip-full, curl, tar
 Installed-Size: $ISIZE
 Description: Invisible Net VPN+XOR — веб-панель управления (мульти-туннель, обход DPI)
 EOF
