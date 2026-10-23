@@ -50,6 +50,11 @@ inst invnet-fw.sh   opt/etc/openvpn/invnet-fw.sh   755
 inst ndm/netfilter.d/50-invnet.sh opt/etc/ndm/netfilter.d/50-invnet.sh 755
 inst invnetctl      opt/sbin/invnetctl 755
 inst invnet.conf    opt/etc/lighttpd/invnet.conf 644          # conffile
+# postinst заменяет нетронутый старый конфиг по списку md5 выпущенных версий — нынешняя обязана в нём быть,
+# иначе при следующей правке invnet.conf роутеры с этой версией застрянут на ней (.conf-opkg рядом)
+CONF_MD5=$(md5sum < "$SRC/invnet.conf" | cut -c1-32)
+grep -q "$CONF_MD5" "$HERE/scripts/postinst" || {
+  echo "md5 src/invnet.conf ($CONF_MD5) нет в списке opkg/scripts/postinst — допишите" >&2; exit 1; }
 inst invnet-lib.sh  opt/share/invnet/invnet-lib.sh 644
 inst index.html     opt/share/invnet/index.html 644
 # версия в подвале сайдбара = версия пакета (иначе панель врёт про свою версию).

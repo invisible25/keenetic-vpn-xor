@@ -21,6 +21,19 @@ chmod 0755 /opt/sbin/invnetctl \
            /opt/etc/ndm/netfilter.d/50-invnet.sh 2>/dev/null
 chmod 0755 /opt/share/invnet/cgi-bin/* 2>/dev/null
 
+# Конфиг lighttpd — conffile: если файл на роутере не совпал с прежним пакетом (ставили из tarball),
+# opkg оставляет старый, а новый кладёт рядом как .conf-opkg — и панель остаётся без новых защит
+# (фильтр Host от DNS rebinding с 1.7.6). Если старый файл — нетронутая копия из прежней версии
+# (md5 всех выпущенных invnet.conf), меняем на новый сами; правленный руками не трогаем.
+LC=/opt/etc/lighttpd/invnet.conf
+if [ -f "$LC-opkg" ] && command -v md5sum >/dev/null 2>&1; then
+  case "$(md5sum < "$LC" | cut -c1-32)" in
+    fb965806e1b528fc0e67986882d2d196|8c1933af29b25cb7362ce7f418d56391|fcd3eb2c1071cd4c66ab7959c64c0f10)
+      mv -f "$LC-opkg" "$LC" && echo "invnet: $LC обновлён (прежний был стандартным)" ;;
+    *) echo "invnet: $LC правлен вручную — новый лежит в $LC-opkg, сравните: diff $LC $LC-opkg" ;;
+  esac
+fi
+
 # (пере)запуск служб — идемпотентно (restart перечитывает новый код/конфиг; на свежей = start)
 for s in S31invnet-web S41invnet-sched S40invnet-pingcheck; do
   /opt/etc/init.d/$s restart >/dev/null 2>&1 || /opt/etc/init.d/$s start >/dev/null 2>&1
