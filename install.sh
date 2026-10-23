@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.7.7   # OpenVPN 2.6.23 (закрыты уязвимости 2.6.15–2.6.23)
+INVNET_VERSION=1.7.8   # postinst сам ставит новый invnet.conf вместо нетронутого старого
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
