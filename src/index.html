@@ -697,6 +697,28 @@ textarea.input{font-family:var(--f-mono);font-size:.8125rem;min-height:150px;res
 .qrow .qm small{font:500 var(--t-xs) var(--f-text);color:var(--muted)}
 .qrow .qm b{font-size:var(--t-md);color:var(--ink)}
 .q-good{color:var(--ok)!important} .q-warn{color:var(--warn)!important} .q-bad{color:var(--bad)!important}
+/* подключения Keenetic в «Обзоре» */
+.knvpn{margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline)}
+.knvpn .kh{font-size:var(--t-xs);color:var(--muted);margin-bottom:4px}
+.knr{display:flex;align-items:center;gap:12px;padding:7px 0;font-size:var(--t-sm)}
+.knr .kn{font-weight:600;flex:none}
+.knr .kt{color:var(--muted)}
+.knr .ks{margin-left:auto;color:var(--ink2);white-space:nowrap}
+.knr .ka{font-family:var(--f-mono);font-size:.8125rem;color:var(--muted)}
+/* проверка роутера и доступность сервисов */
+.rep{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--hairline);font-size:var(--t-sm)}
+.rep:first-child{border-top:0}
+.rep .rm{flex:none;width:20px;font-weight:700;text-align:center}
+.rep.ok .rm{color:var(--ok)} .rep.warn .rm{color:var(--warn)} .rep.bad .rm{color:var(--bad)} .rep.info .rm{color:var(--muted)}
+.rep .rt{font-weight:600}
+.rep .rd{color:var(--muted)}
+.svct{width:100%;border-collapse:collapse;font-size:var(--t-sm)}
+.svct th{font-weight:500;color:var(--muted);text-align:left;padding:6px 8px;font-size:var(--t-xs)}
+.svct td{padding:8px;border-top:1px solid var(--hairline)}
+.svct td.c{white-space:nowrap}
+.svct .y{color:var(--ok)} .svct .n{color:var(--bad);font-weight:600}
+.svct .ms{color:var(--muted);margin-left:6px}
+.svc-wrap{overflow-x:auto}
 /* соединения: кто, куда и через что (диагностика) */
 .conn-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .conn-tools .xsel{flex:none;width:auto;min-width:220px}
@@ -907,6 +929,8 @@ textarea.input{font-family:var(--f-mono);font-size:.8125rem;min-height:150px;res
         <div class="topo" id="topo" hidden></div>
         <!-- выключенные и запускающиеся профили; работающие — строками карты выше -->
         <div class="tiles" id="tiles"><div class="skel"></div></div>
+        <!-- VPN-подключения самого Keenetic: только показ, управляются в веб-интерфейсе роутера -->
+        <div class="knvpn" id="knvpn" hidden></div>
       </div>
 
       <div class="duo">
@@ -1046,6 +1070,17 @@ textarea.input{font-family:var(--f-mono);font-size:.8125rem;min-height:150px;res
     <!-- ════════════════ ВИД: ДИАГНОСТИКА ════════════════ -->
     <section class="view" data-view="diag">
       <div class="vhead"><h2>Диагностика</h2></div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Проверка роутера <span class="qsub" id="rep-when"></span></h3>
+        <div id="rep-list"><p class="hint">Службы, место на диске, время, OpenVPN с XOR, интернет, DNS и каждый включённый туннель. Отчёт можно скачать и переслать в поддержку — ключей и паролей в нём нет.</p></div>
+        <div class="mfoot"><a class="btn" id="rep-file" href="cgi-bin/report?a=file" download><svg><use href="#ic-import"/></svg>Скачать отчёт</a>
+          <span class="grow"></span><button class="btn primary" id="rep-run"><svg><use href="#ic-check"/></svg>Запустить все проверки</button></div>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Доступность сервисов <span class="qsub" id="svc-when"></span></h3>
+        <div id="svc-box"><p class="hint">Открываются ли сервисы через каждый работающий туннель и напрямую. Проверка занимает около 10 секунд.</p></div>
+        <div class="mfoot"><span class="grow"></span><button class="btn" id="svc-run"><svg><use href="#ic-globe"/></svg>Проверить</button></div>
+      </div>
       <div class="card glass" style="margin-bottom:14px">
         <h3>Качество каналов <span class="qsub">среднее за 24 ч</span></h3>
         <div id="quality-list"><div class="empty"><svg><use href="#ic-diag"/></svg><b>Пока нет данных</b><span>watchdog копит статистику по активным туннелям (замер раз в 30 с)</span></div></div>
@@ -1365,6 +1400,21 @@ function fmtRate(bps){ bps=+bps||0;
         else if(q.tool==='trace') out=' 1  192.168.7.1  0.4 ms\n 2  *\n 3  *\n 4  10.60.0.1  212 ms\n 5  64.31.20.9  221 ms';
         else out='PING '+tgt+': 56 data bytes\n64 bytes: seq=0 ttl=56 time=212 ms\n64 bytes: seq=1 ttl=56 time=219 ms\n64 bytes: seq=2 ttl=56 time=210 ms\n\n--- '+tgt+' ping statistics ---\n4 packets transmitted, 4 received, 0% loss';
         return new Promise(res=>setTimeout(()=>res(T(head+out)),800)); }
+      case 'knvpn': return J([{id:'OpenVPN0',label:'V1',type:'OpenVPN',up:true,connected:true,uptime:13440,address:'10.132.0.6'},
+                               {id:'OpenVPN1',label:'V2',type:'OpenVPN',up:false,connected:false,uptime:0,address:''}]);
+      case 'svccheck':{ const S=['Google','YouTube','Telegram','WhatsApp','Instagram','ChatGPT'], C=['tun_invnet2','tun_invnet0','eth3'];
+        const cells=[]; C.forEach((ch,i)=>S.forEach((s,j)=>{ const ok=!(ch==='eth3'&&(s==='YouTube'||s==='Instagram'||s==='ChatGPT'));
+          cells.push({ch,svc:s,ok,code:ok?'200':'000',ms:ok?180+((i*7+j*13)%9)*40:6000}); }));
+        return J({ts:Math.floor(Date.now()/1000),services:S,channels:C,cells}); }
+      case 'report':
+        return J({ts:Math.floor(Date.now()/1000),checks:[
+          {id:'watchdog',st:'ok',title:'Сторож туннелей работает',detail:''},
+          {id:'disk',st:'ok',title:'Места на /opt достаточно',detail:'занято 4%, свободно 11.8G'},
+          {id:'xor',st:'ok',title:'OpenVPN с XOR',detail:'версия 2.6.23'},
+          {id:'net',st:'ok',title:'Интернет напрямую работает',detail:'google.com ответил'},
+          {id:'p-Helsinki',st:'ok',title:'Туннель Helsinki работает',detail:'tun_invnet2, маршруты, защита от утечки и правила на месте'},
+          {id:'p-Oslo',st:'bad',title:'Туннель Oslo работает с ошибками',detail:'нет правил пропуска трафика (iptables);'},
+          {id:'ver',st:'warn',title:'Доступно обновление invnet',detail:'1.7.8 → 1.8.0'}]});
       case 'connections':{
         const nm={}; DEVICES.forEach(d=>nm[d.ip]=d.name);
         const dst=[['142.250.74.110','443','tcp'],['149.154.167.99','443','tcp'],['87.240.137.164','443','tcp'],
@@ -3226,7 +3276,51 @@ async function loadQuality(){
 $('#exit-recheck').addEventListener('click',runExitChecks);
 $$('[data-diag]').forEach(b=>b.addEventListener('click',()=>runDiag(b.dataset.diag)));
 $('#diag-target').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); runDiag('ping'); } });
-ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); loadQuality(); loadConnections(); };
+ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); loadQuality(); loadConnections(); loadSvcCached(); };
+
+/* ════════════════════════════ ПРОВЕРКА РОУТЕРА ════════════════════════════ */
+const REP_MARK={ok:'✓',warn:'!',bad:'✕',info:'i'};
+const fmtTime=ts=>new Date(ts*1000).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+async function runReport(){
+  const b=$('#rep-run'); b.disabled=true; $('#rep-when').textContent='проверяю…';
+  try{
+    const d=await API.json('report');
+    const bad=d.checks.filter(c=>c.st==='bad').length, warn=d.checks.filter(c=>c.st==='warn').length;
+    $('#rep-when').textContent=(bad?bad+' '+plural(bad,['ошибка','ошибки','ошибок']):warn?warn+' '+plural(warn,['замечание','замечания','замечаний']):'всё в порядке')+' · '+fmtTime(d.ts);
+    // сначала то, что требует внимания
+    const ord={bad:0,warn:1,info:2,ok:3};
+    $('#rep-list').innerHTML=d.checks.slice().sort((a,c)=>ord[a.st]-ord[c.st]).map(c=>
+      '<div class="rep '+esc(c.st)+'"><span class="rm" aria-label="'+esc(c.st)+'">'+(REP_MARK[c.st]||'')+'</span>'+
+      '<span><span class="rt">'+esc(c.title)+'</span>'+(c.detail?'<br><span class="rd">'+esc(c.detail)+'</span>':'')+'</span></div>').join('');
+  }catch(e){ $('#rep-when').textContent='не удалось: '+(e.message||'нет связи'); }
+  finally{ b.disabled=false; }
+}
+$('#rep-run').addEventListener('click',runReport);
+
+/* ════════════════════════════ ДОСТУПНОСТЬ СЕРВИСОВ ════════════════════════════ */
+function svcChLabel(ch){
+  const m=ch.match(/^tun_invnet(\d+)$/);
+  if(m){ const p=STATE.profiles.find(x=>String(x.slot)===m[1]); return p?p.name:'туннель '+m[1]; }
+  return 'напрямую · '+wanLabel(ch);
+}
+function renderSvc(d){
+  if(!d||!d.cells||!d.cells.length) return;
+  const cell={}; d.cells.forEach(c=>cell[c.ch+'|'+c.svc]=c);
+  $('#svc-when').textContent='проверено в '+fmtTime(d.ts);
+  $('#svc-box').innerHTML='<div class="svc-wrap"><table class="svct"><thead><tr><th>Сервис</th>'+
+    d.channels.map(ch=>'<th>'+esc(svcChLabel(ch))+'</th>').join('')+'</tr></thead><tbody>'+
+    d.services.map(s=>'<tr><td>'+esc(s)+'</td>'+d.channels.map(ch=>{ const c=cell[ch+'|'+s];
+      return '<td class="c">'+(!c?'—':c.ok?'<span class="y">открывается</span><span class="ms">'+c.ms+' мс</span>':'<span class="n">нет</span>')+'</td>'; }).join('')+'</tr>').join('')+
+    '</tbody></table></div>';
+}
+async function runSvc(){
+  const b=$('#svc-run'); b.disabled=true; $('#svc-when').textContent='проверяю, около 10 секунд…';
+  try{ const d=await apiFetch('svccheck',null,{timeout:30000}).then(r=>r.json()); if(d.error) throw new Error(d.error); renderSvc(d); }
+  catch(e){ $('#svc-when').textContent='не удалось: '+(e.message||'нет связи'); }
+  finally{ b.disabled=false; }
+}
+$('#svc-run').addEventListener('click',runSvc);
+async function loadSvcCached(){ try{ renderSvc(await API.json('svccheck',{cached:1})); }catch(e){} }
 
 /* ════════════════════════════ СОЕДИНЕНИЯ ════════════════════════════ */
 /* Кто, куда и через что ушёл (cgi-bin/connections, по примеру AWG-Manager). Выход приходит
@@ -3476,8 +3570,22 @@ ON_ENTER.settings=()=>{
   $('#cu-accent').value=CUSTOM.accent; $('#cu-bg').value=CUSTOM.bg; $('#cu-text').value=CUSTOM.text;
 };
 
+/* VPN-подключения самого Keenetic — строками под туннелями invnet, только показ */
+let KN_SIG='';
+async function loadKnVpn(){
+  let a; try{ a=await API.json('knvpn'); }catch(e){ return; }
+  if(!Array.isArray(a)) return;
+  const sig=JSON.stringify(a.map(x=>[x.id,x.label,x.up,x.connected,Math.floor((x.uptime||0)/60),x.address]));
+  if(sig===KN_SIG) return; KN_SIG=sig;
+  const box=$('#knvpn'); box.hidden=!a.length;
+  box.innerHTML=a.length?'<div class="kh">Подключения Keenetic · управляются в веб-интерфейсе роутера</div>'+a.map(x=>
+    '<div class="knr"><span class="dot '+(x.connected?'live':x.up?'pending':'')+'"></span><span class="kn">'+esc(x.label)+'</span>'+
+    '<span class="kt">'+esc(x.type)+'</span>'+(x.address?'<span class="ka">'+esc(x.address)+'</span>':'')+
+    '<span class="ks">'+(x.connected?'подключено · '+fmtUp(x.uptime):x.up?'подключается…':'выключено')+'</span></div>').join(''):'';
+}
+
 /* регистрация в главном цикле 5с */
-LOADERS.push(loadProfiles, loadStats);
+LOADERS.push(loadProfiles, loadStats, loadKnVpn);
 
 /* ════════════════════════════ ОБНОВИТЬ ВСЁ ════════════════════════════ */
 async function loadAll(){

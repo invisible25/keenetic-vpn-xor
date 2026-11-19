@@ -1,0 +1,14 @@
+#!/bin/sh
+# Собственные VPN-подключения Keenetic (OpenVPN, WireGuard, SSTP, L2TP, PPTP, IPsec) — для «Обзора»:
+# рядом с туннелями invnet видно, что поднял сам роутер. Только чтение: управляются они в
+# веб-интерфейсе Keenetic. Ответ: [{id,label,type,up,connected,uptime,address}].
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null | jq -c '
+  [ to_entries[] | .key as $k | .value as $v
+    | select(["OpenVPN","Wireguard","SSTP","L2TP","PPTP","IPsec","OpenConnect"] | index($v.type // "") != null)
+    | { id: $k, label: ($v.description // $k), type: $v.type,
+        up: (($v.state // "") == "up"), connected: (($v.connected // "no") == "yes"),
+        uptime: ($v.uptime // 0), address: ($v.address // "") } ]
+  | sort_by(.label)' 2>/dev/null || echo '[]'

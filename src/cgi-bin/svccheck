@@ -1,0 +1,43 @@
+#!/bin/sh
+# Доступность сервисов через каждый работающий туннель и напрямую: матрица «канал × сервис».
+# Сервис считается доступным, если на HTTPS-запрос пришёл любой HTTP-ответ, даже 403/404:
+# соединение и TLS прошли, значит не режется. Запрос привязан к интерфейсу (curl --interface),
+# как в checkip. Таймаут 6 с на ячейку, ячейки параллельно — ответ примерно за 7 с.
+#   GET           → прогнать и вернуть {ts, services, channels, cells:[{ch,svc,ok,code,ms}]}
+#   GET ?cached=1 → последний результат (его же кладёт в отчёт cgi-bin/report)
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+RUN=/opt/var/run/invnet; OUT=$RUN/svccheck.json
+mkdir -p "$RUN"
+case "$QUERY_STRING" in *cached=1*) cat "$OUT" 2>/dev/null || echo '{}'; exit 0 ;; esac
+
+T=/tmp/invnet-svc.$$; mkdir -p "$T"; trap 'rm -rf "$T"' EXIT
+cat > "$T/svcs" <<'EOF'
+Google|https://www.google.com/generate_204
+YouTube|https://www.youtube.com/generate_204
+Telegram|https://web.telegram.org/
+WhatsApp|https://web.whatsapp.com/
+Instagram|https://www.instagram.com/
+ChatGPT|https://chatgpt.com/
+EOF
+
+CH=""
+for d in /sys/class/net/tun_invnet*; do [ -e "$d" ] && CH="$CH ${d##*/}"; done
+WAN=$(ip route show default 2>/dev/null | grep -v tun_invnet | sed -n 's/.*dev \([^ ]*\).*/\1/p' | head -1)
+[ -n "$WAN" ] && CH="$CH $WAN"
+[ -n "$CH" ] || { echo '{"error":"нет ни туннелей, ни WAN по умолчанию"}'; exit 0; }
+
+for ch in $CH; do
+  while IFS='|' read -r name url; do
+    ( r=$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time 6 --interface "$ch" "$url" 2>/dev/null)
+      echo "$ch|$name|$r" > "$T/r.$ch.$name" ) &
+  done < "$T/svcs"
+done
+wait
+
+cat "$T"/r.* 2>/dev/null | awk -F'|' '{ split($3,a," "); ok=(a[1]!="" && a[1]!="000")
+    printf "{\"ch\":\"%s\",\"svc\":\"%s\",\"ok\":%s,\"code\":\"%s\",\"ms\":%d}\n", $1, $2, ok?"true":"false", a[1], a[2]*1000 }' \
+  | jq -s --argjson ts "$(date +%s)" --arg s "$(cut -d'|' -f1 "$T/svcs" | tr '\n' ' ')" --arg c "$CH" \
+      '{ts:$ts, services:($s|split(" ")|map(select(length>0))), channels:($c|split(" ")|map(select(length>0))), cells:.}' \
+  | tee "$OUT"

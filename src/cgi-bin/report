@@ -1,0 +1,100 @@
+#!/bin/sh
+# Проверка роутера одной кнопкой и отчёт для поддержки (по примеру «Проверок» AWG-Manager).
+#   GET          → {ts, checks:[{id,st,title,detail}]}   st: ok | warn | bad | info
+#   GET ?a=file  → текстовый отчёт на скачивание: проверки, версии, профили, правила, логи
+# В отчёт не попадают .ovpn и строки логов со словами pass/key/secret/token — его можно
+# пересылать в поддержку. Адреса серверов и устройств в нём есть: они нужны для разбора.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+RUN=/opt/var/run/invnet; META=/opt/etc/openvpn/profile-meta; LOGD=/opt/var/log
+R=/tmp/invnet-report.$$; trap 'rm -f "$R"' EXIT; : > "$R"
+chk() { printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4" >> "$R"; }
+alive() { ps w 2>/dev/null | grep -v grep | grep -q "$1"; }
+
+# ── службы ──
+alive S40invnet-pingcheck && chk watchdog ok "Сторож туннелей работает" "" \
+  || chk watchdog bad "Сторож туннелей не запущен" "/opt/etc/init.d/S40invnet-pingcheck start"
+alive S41invnet-sched && chk sched ok "Расписание работает" "" \
+  || chk sched warn "Расписание не запущено" "/opt/etc/init.d/S41invnet-sched start"
+
+# ── место, время, OpenVPN ──
+USE=$(df -k /opt 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')
+FREE=$(df -h /opt 2>/dev/null | awk 'NR==2{print $4}')
+if [ -z "$USE" ]; then chk disk warn "Не удалось узнать место на /opt" ""
+elif [ "$USE" -ge 90 ]; then chk disk bad "Место на /opt почти кончилось" "занято ${USE}%, свободно $FREE"
+elif [ "$USE" -ge 80 ]; then chk disk warn "Место на /opt заканчивается" "занято ${USE}%, свободно $FREE"
+else chk disk ok "Места на /opt достаточно" "занято ${USE}%, свободно $FREE"; fi
+[ "$(date +%Y)" -ge 2026 ] 2>/dev/null && chk time ok "Время роутера верное" "$(date '+%F %T')" \
+  || chk time bad "Время роутера сбито" "$(date '+%F %T') — без верного времени TLS к серверам VPN не пройдёт"
+OV=$(/opt/sbin/openvpn --version 2>/dev/null | head -1 | awk '{print $2}')
+grep -q scramble /opt/sbin/openvpn 2>/dev/null && chk xor ok "OpenVPN с XOR" "версия ${OV:-?}" \
+  || chk xor bad "OpenVPN без XOR-патча" "версия ${OV:-?}: обфускация не будет работать, переустановите openvpn-openssl из фида invnet"
+
+# ── интернет ──
+WAN=$(ip route show default 2>/dev/null | grep -v tun_invnet | sed -n 's/.*dev \([^ ]*\).*/\1/p' | head -1)
+[ -n "$WAN" ] && chk wan ok "Есть основной выход в интернет" "$WAN" || chk wan bad "Нет основного выхода в интернет" "в таблице main нет маршрута по умолчанию"
+nslookup google.com >/dev/null 2>&1 && chk dns ok "DNS отвечает" "" || chk dns bad "DNS не отвечает" "nslookup google.com не прошёл"
+C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 6 https://www.google.com/generate_204 2>/dev/null)
+[ "$C" = 204 ] && chk net ok "Интернет напрямую работает" "google.com ответил" \
+  || chk net warn "Интернет напрямую не отвечает" "google.com: код ${C:-нет ответа}"
+
+# ── туннели ──
+N=0
+for m in "$META"/*.json; do
+  [ -f "$m" ] || continue
+  [ "$(jq -r '.enabled // false' "$m" 2>/dev/null)" = true ] || continue
+  p=$(basename "$m" .json); N=$((N + 1))
+  PID=$(cat "$RUN/$p.pid" 2>/dev/null); S=$(cat "$RUN/$p.slot" 2>/dev/null)
+  if [ -z "$PID" ] || ! kill -0 "$PID" 2>/dev/null; then chk "p-$p" bad "Туннель $p не запущен" "включён, но процесса нет — смотрите журнал профиля"; continue; fi
+  if [ -z "$S" ] || ! ip link show "tun_invnet$S" >/dev/null 2>&1; then chk "p-$p" warn "Туннель $p поднимается" "процесс есть, интерфейса ещё нет"; continue; fi
+  TB=$((101 + S)); PROB=""
+  ip route show table "$TB" 2>/dev/null | grep -q "default dev tun_invnet$S" || PROB="$PROB нет маршрута через туннель (таблица $TB);"
+  ip route show table "$TB" 2>/dev/null | grep -q blackhole || PROB="$PROB нет защиты от утечки (blackhole);"
+  iptables -S FORWARD 2>/dev/null | grep -q "tun_invnet$S" || PROB="$PROB нет правил пропуска трафика (iptables);"
+  [ -z "$PROB" ] && chk "p-$p" ok "Туннель $p работает" "tun_invnet$S, маршруты, защита от утечки и правила на месте" \
+    || chk "p-$p" bad "Туннель $p работает с ошибками" "${PROB# }"
+done
+[ "$N" -eq 0 ] && chk tunnels info "Включённых туннелей нет" ""
+
+# ── логи, доступ, версия ──
+BIG=$(ls -l "$LOGD"/invnet-*.log 2>/dev/null | awk '$5>1048576{print $NF}' | head -3 | xargs -n1 basename 2>/dev/null | tr '\n' ' ')
+[ -z "$BIG" ] && chk logs ok "Журналы не разрослись" "" || chk logs warn "Большие журналы" "$BIG— сторож их подрежет, если он запущен"
+[ -s /opt/etc/openvpn/invnet-web-acl.conf ] && chk acl info "Панель открывается только из сетей: $(cat /opt/etc/openvpn/invnet-web-acl.conf)" "" \
+  || chk acl info "Панель открывается из всех сетей роутера" "ограничить — «Настройки → Доступ к панели»"
+VER=$(opkg list-installed invnet 2>/dev/null | awk '{print $3; exit}')
+AV=$(awk '$1=="invnet"{print $5}' "$RUN/update.avail" 2>/dev/null)
+[ -n "$AV" ] && chk ver warn "Доступно обновление invnet" "$VER → $AV" || chk ver info "Версия invnet ${VER:-не из пакета}" ""
+
+A=$(printf '%s' "$QUERY_STRING" | tr '&' '\n' | sed -n 's/^a=//p' | head -1 | tr -cd 'a-z')
+if [ "$A" != file ]; then
+  printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+  awk -F'|' '{ for(i=1;i<=4;i++) gsub(/["\\]/, "", $i)
+    printf "{\"id\":\"%s\",\"st\":\"%s\",\"title\":\"%s\",\"detail\":\"%s\"}\n", $1, $2, $3, $4 }' "$R" \
+    | jq -s --argjson ts "$(date +%s)" '{ts:$ts, checks:.}'
+  exit 0
+fi
+
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard
+H=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/version 2>/dev/null)
+printf "Content-Type: text/plain; charset=utf-8\r\nContent-Disposition: attachment; filename=\"invnet-report-%s.txt\"\r\n\r\n" "$(date +%Y%m%d-%H%M)"
+clean() { grep -viE 'pass|secret|token|key' ; }
+sec() { printf '\n==== %s ====\n' "$1"; }
+echo "Отчёт invnet · $(date '+%F %T')"
+echo "Роутер: $(echo "$H" | jq -r '"\(.model // "?") · KeeneticOS \(.title // .release // "?")"' 2>/dev/null)"
+echo "invnet ${VER:-?} · OpenVPN ${OV:-?} · $(uname -r)"
+sec "Проверки"
+awk -F'|' '{ m=($2=="ok")?"[ok]  ":($2=="warn")?"[!]   ":($2=="bad")?"[ОШ]  ":"[i]   "; print m $3 ($4!=""?" — " $4:"") }' "$R"
+sec "Профили"; /opt/sbin/invnetctl status 2>/dev/null | jq -r '.[] | "\(.name): \(if .running then "работает" elif .enabled then "включён, не работает" else "выключен" end) · слот \(.slot) · WAN \(.wan // "авто") · \(.mode) · \(.remote)"' 2>/dev/null
+sec "Каналы (WAN)"; /opt/share/invnet/cgi-bin/wans 2>/dev/null | sed '1,/^\r*$/d' | jq -r '.[] | "\(.label) — \(.iface) \(.ip)\(if .default then " · основной" else "" end)\(if .connected then "" else " · не подключён" end)"' 2>/dev/null
+sec "Правила маршрутизации invnet (ip rule < 100)"; ip rule 2>/dev/null | awk -F: '$1+0<100 && $1+0>0' | head -80
+echo "маршрутов в invnet-routes.conf: $(jq 'length' /opt/etc/openvpn/invnet-routes.conf 2>/dev/null)"
+sec "Доступность сервисов (последняя проверка)"; jq -r '.cells[]? | "\(.ch) · \(.svc): \(if .ok then "есть, \(.ms) мс" else "нет" end)"' "$RUN/svccheck.json" 2>/dev/null
+sec "Качество каналов (последние 24 ч)"
+for q in /opt/var/lib/invnet/q-*.log; do [ -f "$q" ] || continue
+  awk -v n="$(basename "$q" .log | sed 's/^q-//')" '{c++; l+=$3; if($2!="-"){r+=$2; k++}} END{ if(c) printf "%s: пинг %s мс, потери %.1f%%, замеров %d\n", n, (k?int(r/k):"-"), l/c, c }' "$q"
+done
+for f in "$LOGD"/invnet-*.log; do [ -f "$f" ] || continue
+  sec "Журнал $(basename "$f") (последние 40 строк)"; tail -n 40 "$f" | clean
+done
+sec "Ошибки веб-сервера"; tail -n 20 "$LOGD/invnet-web.err" 2>/dev/null | clean

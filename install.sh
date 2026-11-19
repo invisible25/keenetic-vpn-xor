@@ -10,7 +10,7 @@
 
 set -e
 
-INVNET_VERSION=1.7.8   # postinst сам ставит новый invnet.conf вместо нетронутого старого
+INVNET_VERSION=1.8.0   # новый вид, соединения, доступ по сетям, резервные копии, обновление и проверки из панели
 
 # === Цвета для красоты ===
 info()  { printf "\033[1;36m[i]\033[0m %s\n" "$1"; }
@@ -101,7 +101,7 @@ chmod +x /opt/etc/init.d/S31invnet-web 2>/dev/null
 chmod +x /opt/etc/init.d/S40invnet-pingcheck 2>/dev/null
 chmod +x /opt/etc/init.d/S41invnet-sched 2>/dev/null
 chmod +x /opt/etc/init.d/S95invnet-autostart 2>/dev/null
-chmod +x /opt/sbin/invnetctl 2>/dev/null
+chmod +x /opt/sbin/invnetctl /opt/sbin/invnet-webacl 2>/dev/null
 chmod +x /opt/etc/openvpn/invnet-up.sh /opt/etc/openvpn/invnet-down.sh 2>/dev/null
 chmod +x /opt/etc/openvpn/invnet-fw.sh 2>/dev/null
 mkdir -p /opt/etc/ndm/netfilter.d /opt/share/invnet/.denied
