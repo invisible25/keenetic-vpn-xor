@@ -803,6 +803,20 @@ _M
   echo; echo ']'
 }
 
+# Снимок пользовательских настроек: профили, мета, конфиги invnet. Делается перед обновлением
+# пакета (prerm), перед импортом и по кнопке в панели; хранятся 5 последних. В архиве ключи
+# из .ovpn — поэтому только 600 и только на роутере.
+BACKUPS=/opt/var/backups/invnet
+snapshot() {
+  label=$(printf '%s' "${1:-manual}" | tr -cd 'A-Za-z0-9._-' | head -c 32)
+  mkdir -p "$BACKUPS" || return 1
+  f="$BACKUPS/$(date +%Y%m%d-%H%M%S)-${label:-manual}.tar.gz"
+  ( cd /opt/etc/openvpn && tar -czf "$f" $(ls -d profiles profile-meta invnet-*.conf 2>/dev/null) )     || { rm -f "$f"; return 1; }
+  chmod 600 "$f"
+  ls -1t "$BACKUPS"/*.tar.gz 2>/dev/null | tail -n +6 | while read -r old; do rm -f "$old"; done
+  echo "$f"
+}
+
 case "$1" in
   enable)   mkdir -p "$META"; set_meta_enabled "$2" true;  reconcile ;;
   disable)  mkdir -p "$META"; set_meta_enabled "$2" false; reconcile ;;
@@ -815,5 +829,6 @@ case "$1" in
   schedule-sync) schedule_sync "$2" ;;
   start-one) start_one "$2"; sleep 1; apply ;;
   stop-one)  stop_one "$2"; apply ;;
-  *) echo "usage: $0 {enable|disable|reconcile|apply|stopall|status|schedule-tick|schedule-sync} [profile]"; exit 1 ;;
+  snapshot)  snapshot "$2" ;;
+  *) echo "usage: $0 {enable|disable|reconcile|apply|stopall|status|schedule-tick|schedule-sync|snapshot} [profile|label]"; exit 1 ;;
 esac

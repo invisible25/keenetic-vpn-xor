@@ -1,0 +1,58 @@
+#!/bin/sh
+# Обновление invnet из панели.
+#   GET               → {installed, available, ovpn_available, state, checked, log}
+#   POST ?a=check     → в фоне opkg update + список обновлений
+#   POST ?a=upgrade   → в фоне снимок настроек и opkg upgrade invnet openvpn-openssl
+# Работа идёт в отвязанном фоне: postinst пакета перезапускает панель (lighttpd), и процесс,
+# привязанный к CGI, погиб бы посреди установки. Страница опрашивает GET и перезагружается,
+# когда версия сменилась. state: idle | checking | upgrading | error.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+RUN=/opt/var/run/invnet
+ST=$RUN/update.state; AV=$RUN/update.avail; LOG=/opt/var/log/invnet-update.log
+mkdir -p "$RUN"
+A=$(printf '%s' "$QUERY_STRING" | tr '&' '\n' | sed -n 's/^a=//p' | head -1 | tr -cd 'a-z')
+
+state() { cat "$ST" 2>/dev/null || echo idle; }
+busy() { case "$(state)" in checking|upgrading) return 0 ;; esac; return 1; }
+
+if [ "$REQUEST_METHOD" != "POST" ]; then
+  INST=$(opkg list-installed invnet 2>/dev/null | awk '{print $3; exit}')
+  INV=$(awk '$1=="invnet"{print $5}' "$AV" 2>/dev/null)
+  OVPN=$(awk '$1=="openvpn-openssl"{print $5}' "$AV" 2>/dev/null)
+  CHK=$(date -r "$AV" +%s 2>/dev/null || echo 0)
+  jq -n --arg i "${INST:-}" --arg a "${INV:-}" --arg o "${OVPN:-}" --arg s "$(state)" \
+        --argjson c "${CHK:-0}" --arg l "$(tail -n 15 "$LOG" 2>/dev/null)" \
+    '{installed:$i, available:$a, ovpn_available:$o, state:$s, checked:$c, log:$l}'
+  exit 0
+fi
+
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard
+busy && { echo '{"error":"уже идёт проверка или установка"}'; exit 0; }
+
+case "$A" in
+  check)
+    echo checking > "$ST"
+    ( trap '' HUP TERM
+      { echo "== $(date '+%F %T') проверка обновлений"; opkg update; } > "$LOG" 2>&1
+      if opkg list-upgradable > "$AV.tmp" 2>>"$LOG"; then mv "$AV.tmp" "$AV"; echo idle > "$ST"
+      else echo error > "$ST"; fi
+      grep -qiE 'failed to download|wget returned' "$LOG" && echo error > "$ST"
+    ) </dev/null >/dev/null 2>&1 &
+    echo '{"ok":true}'
+    ;;
+  upgrade)
+    echo upgrading > "$ST"
+    ( trap '' HUP TERM
+      { echo "== $(date '+%F %T') обновление"
+        /opt/sbin/invnetctl snapshot before-update
+        opkg update && opkg upgrade invnet openvpn-openssl; } >> "$LOG" 2>&1 \
+        && { opkg list-upgradable > "$AV" 2>/dev/null; echo idle > "$ST"; } \
+        || echo error > "$ST"
+    ) </dev/null >/dev/null 2>&1 &
+    echo '{"ok":true}'
+    ;;
+  *) echo '{"error":"неизвестное действие"}' ;;
+esac

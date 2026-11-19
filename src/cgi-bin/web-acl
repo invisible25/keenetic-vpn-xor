@@ -1,0 +1,52 @@
+#!/bin/sh
+# Из каких сетей роутера открывается панель.
+#   GET              → {restricted, segments:[{id,label,net,allowed}], client, client_seg}
+#   POST allow=Bridge0,Bridge1   (пусто или все сети = без ограничения)
+# Нельзя сохранить список, в который не входит сеть, из которой пришёл сам запрос: иначе
+# панель закроется у того, кто её настраивает. Применяется перезапуском lighttpd в фоне —
+# ответ уходит раньше, страница сама переподключится.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+ACL=/opt/sbin/invnet-webacl
+CONF=/opt/etc/openvpn/invnet-web-acl.conf
+CLIENT=$(printf '%s' "$REMOTE_ADDR" | tr -cd '0-9.')
+
+if [ "$REQUEST_METHOD" != "POST" ]; then
+  SEG=$("$ACL" seg "$CLIENT")
+  "$ACL" json | jq --arg c "$CLIENT" --arg s "$SEG" '. + {client:$c, client_seg:$s}'
+  exit 0
+fi
+
+. /opt/share/invnet/invnet-lib.sh
+csrf_guard
+
+BODY=$(head -c 2048)
+RAW=$(echo "$BODY" | tr '&' '\n' | grep '^allow=' | head -1 | sed 's/^allow=//')
+WANT=$(urldecode "$RAW" | tr -cs 'A-Za-z0-9' ' ')
+
+KNOWN=$("$ACL" json | jq -r '.segments[].id' | tr '\n' ' ')
+[ -n "$KNOWN" ] || { echo '{"error":"роутер не отдал список сетей — попробуйте ещё раз"}'; exit 0; }
+SEL=""
+for id in $WANT; do
+  case " $KNOWN " in *" $id "*) SEL="$SEL $id" ;; *) echo "{\"error\":\"неизвестная сеть: $id\"}"; exit 0 ;; esac
+done
+SEL=${SEL# }
+
+NK=$(echo $KNOWN | wc -w); NS=$(echo $SEL | wc -w)
+if [ "$NS" -eq 0 ] || [ "$NS" -eq "$NK" ]; then
+  rm -f "$CONF"                                   # все сети = ограничения нет
+else
+  case "$CLIENT" in
+    127.*) ;;
+    *) MY=$("$ACL" seg "$CLIENT")
+       case " $SEL " in *" $MY "*) ;;
+         *) echo '{"error":"self","message":"в списке нет сети, из которой вы сейчас подключены — панель закрылась бы для вас"}'; exit 0 ;;
+       esac ;;
+  esac
+  echo "$SEL" > "$CONF.tmp" && mv "$CONF.tmp" "$CONF"
+fi
+
+# перезапуск панели — в отвязанном фоне: lighttpd завершает свои CGI, а этот процесс должен пережить его
+( trap '' HUP TERM; sleep 1; /opt/etc/init.d/S31invnet-web restart ) </dev/null >/dev/null 2>&1 &
+echo "{\"ok\":true,\"allow\":\"$SEL\"}"

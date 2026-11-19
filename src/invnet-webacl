@@ -1,0 +1,85 @@
+#!/bin/sh
+# Доступ к панели только из выбранных сетей роутера (как «Интерфейсы» у AWG-Manager).
+#
+#   invnet-webacl          условие для lighttpd: его вызывает include_shell в invnet.conf при
+#                          каждом старте панели; копия напечатанного — в $RUN/webacl.loaded
+#   invnet-webacl dry      то же без записи копии (сторож S40 сверяет, не поменялись ли сети)
+#   invnet-webacl json     сети роутера и какие из них разрешены (для CGI web-acl)
+#   invnet-webacl seg IP   имя сети, в которой адрес IP (пусто — ни в одной)
+#
+# Список разрешённых — имена мостов Keenetic (Bridge0 …) через пробел в $CONF; нет файла —
+# пускаем все сети. Отличить гостевую сеть автоматически нельзя: на 7.1 «Air Breathe»
+# помечена private так же, как Home, поэтому выбор за пользователем.
+#
+# Безопасность настройки: 127.0.0.1 разрешён всегда; если ни одна выбранная сеть не нашлась
+# (RCI не ответил при загрузке роутера, сеть удалили), условие пустое и панель открыта —
+# лучше открыть, чем запереть владельца снаружи. Скрипт обязан выходить с кодом 0:
+# ненулевой код include_shell не даёт lighttpd стартовать вовсе.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+CONF=/opt/etc/openvpn/invnet-web-acl.conf
+RUN=/opt/var/run/invnet
+
+# «Bridge0 Home 192.168.7.0/24» на строку: мосты с адресом, сеть посчитана из адреса и маски
+segments() {
+  curl -s --max-time 3 http://127.0.0.1:79/rci/show/interface 2>/dev/null \
+  | jq -r 'to_entries[] | select(.value.type=="Bridge" and (.value.address // "") != ""
+           and (.value.mask // "") != "")
+           | "\(.key) \(.value.address) \(.value.mask) \((.value.description // .key) | split(" ") | join("_"))"' 2>/dev/null \
+  | awk '
+    function bits(m){ return m==255?8:m==254?7:m==252?6:m==248?5:m==240?4:m==224?3:m==192?2:m==128?1:0 }
+    { split($2,a,"."); split($3,m,"."); p=0; net=""
+      for(i=1;i<=4;i++){ blk=256-m[i]; o=(blk>=256)?0:int(a[i]/blk)*blk; p+=bits(m[i]); net=net (i>1?".":"") o }
+      print $1, $4, net "/" p }'
+}
+
+allowed() { [ -f "$CONF" ] && tr -cs 'A-Za-z0-9' ' ' < "$CONF"; }
+
+rule() {
+  A=$(allowed)
+  [ -n "$A" ] || return 0                     # нет списка — пускаем все сети
+  NETS=""; NAMES=""
+  segments > /tmp/invnet-webacl.$$ 2>/dev/null
+  while read -r id label net; do
+    case " $A " in *" $id "*) NETS="$NETS $net"; NAMES="$NAMES $id" ;; esac
+  done < /tmp/invnet-webacl.$$
+  rm -f /tmp/invnet-webacl.$$
+  [ -n "$NETS" ] || return 0                  # выбранные сети не нашлись — не запираем
+  echo "# invnet-webacl: панель открывается только из${NAMES}"
+  depth=1; pad=''
+  printf '%s$HTTP["remoteip"] != "127.0.0.0/8" {\n' "$pad"
+  for n in $NETS; do
+    pad="$pad  "; depth=$((depth + 1))
+    printf '%s$HTTP["remoteip"] != "%s" {\n' "$pad" "$n"
+  done
+  printf '%s  server.document-root = "/opt/share/invnet/.denied"\n' "$pad"
+  while [ "$depth" -gt 0 ]; do
+    printf '%s}\n' "$pad"; pad=${pad%  }; depth=$((depth - 1))
+  done
+}
+
+# адрес IP входит в сеть net/len? (только IPv4, целочисленно)
+in_net() {
+  awk -v ip="$1" -v net="$2" 'BEGIN{ split(net,nm,"/"); split(ip,a,"."); split(nm[1],b,".")
+    x=((a[1]*256+a[2])*256+a[3])*256+a[4]; y=((b[1]*256+b[2])*256+b[3])*256+b[4]
+    s=2^(32-nm[2]); exit !(int(x/s)==int(y/s)) }'
+}
+
+case "$1" in
+  json)
+    A=" $(allowed) "
+    segments | while read -r id label net; do
+      case "$A" in "  ") on=true ;; *" $id "*) on=true ;; *) on=false ;; esac
+      printf '{"id":"%s","label":"%s","net":"%s","allowed":%s}\n' "$id" "$(echo "$label" | tr '_' ' ')" "$net" "$on"
+    done | jq -s --arg r "$( [ -n "$(allowed)" ] && echo 1 )" '{restricted:($r=="1"),segments:.}' 2>/dev/null \
+      || echo '{"restricted":false,"segments":[]}'
+    ;;
+  seg)
+    segments | while read -r id label net; do in_net "$2" "$net" && { echo "$id"; break; }; done
+    ;;
+  dry) rule ;;
+  *)
+    mkdir -p "$RUN" 2>/dev/null
+    rule | tee "$RUN/webacl.loaded" 2>/dev/null
+    ;;
+esac
+exit 0

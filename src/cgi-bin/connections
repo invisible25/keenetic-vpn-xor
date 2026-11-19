@@ -1,0 +1,58 @@
+#!/bin/sh
+# Живые соединения через роутер: кто, куда и через что ушло (по примеру «Соединений» AWG-Manager).
+# Только чтение. Источник — /proc/net/nf_conntrack, выход определяется так:
+#   ifw=N   Keenetic сам пишет номер Linux-интерфейса выхода (WAN и свои VPN-клиенты);
+#   NAT     у трафика через tun_invnet* поля ifw нет, но адрес ответа (dst второй половины
+#           записи) равен адресу интерфейса, через который шёл маскарад;
+#   local   адрес ответа = источнику: соединение не уходило наружу (внутри сетей роутера);
+#   router  соединение к самому роутеру (панель, DNS, SSH).
+# Если у tun_invnet и VPN-клиента Keenetic один адрес (бывает у TorGuard), побеждает tun_invnet.
+# Ответ: {total, shown, names:{ip:имя}, flows:[{p,st,s,d,dp,b,via,r}]} — до 400 самых больших по трафику.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
+CT=/proc/net/nf_conntrack
+[ -r "$CT" ] || { echo '{"error":"таблица соединений недоступна (/proc/net/nf_conntrack)"}'; exit 0; }
+LIM=400
+
+NAMES=$(curl -s --max-time 3 http://127.0.0.1:79/rci/show/ip/hotspot 2>/dev/null \
+  | jq -c '[.host[]? | select((.ip // "") != "" and .ip != "0.0.0.0")
+            | {(.ip): ((.name // "") | if . == "" then null else . end)}] | add // {}' 2>/dev/null)
+[ -n "$NAMES" ] || NAMES='{}'
+
+TMPF=/tmp/invnet-conn.$$
+trap 'rm -f "$TMPF"' EXIT
+{ ip -o -4 addr show 2>/dev/null | awk '{split($4,a,"/"); print "A", a[1], $2}'
+  ip -o link 2>/dev/null | awk -F': ' '{split($2,n,"@"); print "I", $1, n[1]}'
+  cat "$CT"
+} | awk '
+  $1=="A" { if (!($2 in addr) || $3 ~ /^tun_invnet/) addr[$2]=$3; next }
+  $1=="I" { idx[$2]=$3; next }
+  { tot++
+    p=$3; st=(p=="tcp")?$6:""; n=0; s1=""; d1=""; d2=""; dp=""; b=0; w=""
+    for (i=4; i<=NF; i++) {
+      f=$i
+      if (f ~ /^src=/) { n++; if (n==1) s1=substr(f,5) }
+      else if (f ~ /^dst=/) { if (n==1) d1=substr(f,5); else if (n==2) d2=substr(f,5) }
+      else if (f ~ /^dport=/ && n==1 && dp=="") dp=substr(f,7)
+      else if (f ~ /^bytes=/) b+=substr(f,7)
+      else if (f ~ /^ifw=/) w=substr(f,5)
+    }
+    if (s1=="" || s1 ~ /:/) next                       # только IPv4
+    r=(s1 in addr)?1:0                                  # соединение начал сам роутер
+    if (w!="" && (w in idx))            via=idx[w]
+    else if (r)                         via=addr[s1]      # своё соединение роутера: выход = интерфейс адреса источника
+    else if (d2 in addr && d2!=s1)      via=addr[d2]
+    else if (d1 in addr)                via="router"
+    else if (d2==s1)                    via="local"
+    else                                via="?"
+    printf "%d\t{\"p\":\"%s\",\"st\":\"%s\",\"s\":\"%s\",\"d\":\"%s\",\"dp\":\"%s\",\"b\":%d,\"via\":\"%s\",\"r\":%d}\n", b, p, st, s1, d1, dp, b, via, r
+  }
+  END { print "TOTAL\t" tot+0 > "/dev/stderr" }
+' 2>"$TMPF.t" | sort -rn | head -n "$LIM" | cut -f2- > "$TMPF"
+
+TOTAL=$(awk -F'\t' '$1=="TOTAL"{print $2}' "$TMPF.t" 2>/dev/null); rm -f "$TMPF.t"
+SHOWN=$(wc -l < "$TMPF")
+printf '{"total":%d,"shown":%d,"names":%s,"flows":[' "${TOTAL:-0}" "${SHOWN:-0}" "$NAMES"
+awk 'NR>1{printf ","} {printf "%s", $0}' "$TMPF"
+printf ']}\n'

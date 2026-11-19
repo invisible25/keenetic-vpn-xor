@@ -1,0 +1,78 @@
+#!/bin/sh
+# Резервная копия настроек invnet: профили (.ovpn), мета профилей, конфиги invnet-*.conf.
+#   GET  ?a=list          → {snaps:[{f,size,ts}]} — снимки на роутере (перед обновлениями, импортом)
+#   GET  ?a=export        → свежий архив на скачивание
+#   GET  ?a=get&f=ИМЯ     → скачать снимок из списка
+#   POST ?a=snap          → снять снимок сейчас
+#   POST ?a=import        → тело запроса = архив .tar.gz; восстановить из него
+# В архиве ключи и пароли из .ovpn — отдаём только своим (csrf_guard и на чтении).
+# Импорт пускает в архиве только known-пути и не трогает профили, которых в нём нет;
+# перед импортом снимается снимок текущего состояния, чтобы шаг можно было отменить.
+PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+. /opt/share/invnet/invnet-lib.sh
+BK=/opt/var/backups/invnet
+DIR=/opt/etc/openvpn
+A=$(printf '%s' "$QUERY_STRING" | tr '&' '\n' | sed -n 's/^a=//p' | head -1 | tr -cd 'a-z')
+
+json() { printf "Content-Type: application/json; charset=utf-8\r\n\r\n"; }
+fail() { json; printf '{"error":"%s"}\n' "$1"; exit 0; }
+
+send_file() {  # send_file <путь> <имя для сохранения>
+  printf "Content-Type: application/gzip\r\nContent-Disposition: attachment; filename=\"%s\"\r\nContent-Length: %s\r\n\r\n" \
+    "$2" "$(wc -c < "$1")"
+  cat "$1"
+}
+
+case "$REQUEST_METHOD:$A" in
+  GET:list|GET:)
+    json
+    ls -1t "$BK"/*.tar.gz 2>/dev/null | while read -r f; do
+      printf '{"f":"%s","size":%s,"ts":%s}\n' "$(basename "$f")" "$(wc -c < "$f")" "$(date -r "$f" +%s 2>/dev/null || echo 0)"
+    done | jq -s '{snaps:.}'
+    ;;
+  GET:export)
+    csrf_guard
+    T=/tmp/invnet-export.$$.tar.gz; trap 'rm -f "$T"' EXIT
+    ( cd "$DIR" && tar -czf "$T" $(ls -d profiles profile-meta invnet-*.conf 2>/dev/null) ) || fail "не удалось собрать архив"
+    send_file "$T" "invnet-$(date +%Y%m%d-%H%M).tar.gz"
+    ;;
+  GET:get)
+    csrf_guard
+    F=$(printf '%s' "$QUERY_STRING" | tr '&' '\n' | sed -n 's/^f=//p' | head -1 | tr -cd 'A-Za-z0-9._-')
+    case "$F" in *.tar.gz) ;; *) fail "нет такого снимка" ;; esac
+    [ -f "$BK/$F" ] || fail "нет такого снимка"
+    send_file "$BK/$F" "$F"
+    ;;
+  POST:snap)
+    csrf_guard
+    F=$(/opt/sbin/invnetctl snapshot manual) || fail "не удалось сохранить снимок"
+    json; printf '{"ok":true,"f":"%s"}\n' "$(basename "$F")"
+    ;;
+  POST:import)
+    csrf_guard
+    LEN=$(printf '%s' "$CONTENT_LENGTH" | tr -cd '0-9')
+    [ -n "$LEN" ] && [ "$LEN" -gt 0 ] || fail "пустой файл"
+    [ "$LEN" -le 2097152 ] || fail "архив больше 2 МБ — это не похоже на настройки invnet"
+    T=/tmp/invnet-import.$$; X="$T.d"; trap 'rm -rf "$T" "$X"' EXIT
+    head -c "$LEN" > "$T"
+    LIST=$(tar -tzf "$T" 2>/dev/null) || fail "это не архив .tar.gz"
+    # только известные пути: никаких ../, абсолютных путей и посторонних файлов
+    BAD=$(printf '%s\n' "$LIST" | sed 's#^\./##' | grep -vE '^(profiles/?|profile-meta/?|profiles/[A-Za-z0-9._-]+\.ovpn|profile-meta/[A-Za-z0-9._-]+\.json|invnet-[a-z0-9-]+\.conf)$' | grep -v '^$' | head -3)
+    [ -z "$BAD" ] || fail "в архиве посторонние файлы: $(echo $BAD | tr -cd 'A-Za-z0-9._/ -')"
+    mkdir -p "$X" && tar -xzf "$T" -C "$X" 2>/dev/null || fail "архив не распаковался"
+    for m in "$X"/profile-meta/*.json; do
+      [ -f "$m" ] || continue
+      jq -e 'type=="object"' "$m" >/dev/null 2>&1 || fail "битая мета: $(basename "$m")"
+    done
+    N=$(ls "$X"/profiles/*.ovpn 2>/dev/null | wc -l)
+    /opt/sbin/invnetctl snapshot before-import >/dev/null 2>&1
+    mkdir -p "$DIR/profiles" "$DIR/profile-meta"
+    for f in "$X"/profiles/*.ovpn; do [ -f "$f" ] && cp "$f" "$DIR/profiles/" && chmod 600 "$DIR/profiles/$(basename "$f")"; done
+    for f in "$X"/profile-meta/*.json; do [ -f "$f" ] && cp "$f" "$DIR/profile-meta/"; done
+    for f in "$X"/invnet-*.conf; do [ -f "$f" ] && cp "$f" "$DIR/"; done
+    ( trap '' HUP TERM; /opt/sbin/invnetctl reconcile; /opt/sbin/invnetctl apply ) </dev/null >/dev/null 2>&1 &
+    json; printf '{"ok":true,"profiles":%d}\n' "$N"
+    ;;
+  *) fail "неизвестное действие" ;;
+esac

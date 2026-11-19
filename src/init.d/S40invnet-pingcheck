@@ -66,7 +66,16 @@ sample_quality() {
   done
 }
 
+# Доступ к панели по сетям: правило собирается при старте lighttpd из адресов мостов. Если
+# сети поменялись или при загрузке RCI ещё не ответил, правило устарело — перезапускаем панель.
+webacl_sync() {
+  [ -x /opt/sbin/invnet-webacl ] && grep -q invnet-webacl /opt/etc/lighttpd/invnet.conf 2>/dev/null || return 0
+  now=$(/opt/sbin/invnet-webacl dry | md5sum); was=$(md5sum < "$RUN/webacl.loaded" 2>/dev/null)
+  [ "${now%% *}" = "${was%% *}" ] || /opt/etc/init.d/S31invnet-web restart >/dev/null 2>&1
+}
+
 watchdog_loop() {
+  WEBACL_N=0
   while true; do
     rotate_logs
     for meta in "$META"/*.json; do
@@ -89,6 +98,7 @@ watchdog_loop() {
     . /opt/etc/openvpn/invnet-fw.sh 2>/dev/null && invnet_fw_assert_all
     "$MGR" apply >/dev/null 2>&1
     sample_quality      # замер качества каналов (после перезапусков — по реально живым)
+    WEBACL_N=$((WEBACL_N + 1)); [ "$WEBACL_N" -ge 10 ] && { WEBACL_N=0; webacl_sync; }   # раз в 5 минут
     sleep 30
   done
 }

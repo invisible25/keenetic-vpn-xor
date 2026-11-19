@@ -257,7 +257,7 @@ main{min-width:0}
 .vhead .count{font:500 .875rem var(--f-text);color:var(--muted)}
 .vhead .grow{flex:1}
 .card{padding:var(--sp-5)}
-.card h3{font-size:.9375rem;font-weight:600;color:var(--ink);margin-bottom:var(--sp-4)}
+.card h3{font-size:.9375rem;font-weight:600;color:var(--ink);margin-bottom:var(--sp-4);display:flow-root}   /* flow-root: плавающий .qsub не вылезает и не сужает ряд под заголовком */
 
 /* кнопки */
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--r-sm);
@@ -697,6 +697,43 @@ textarea.input{font-family:var(--f-mono);font-size:.8125rem;min-height:150px;res
 .qrow .qm small{font:500 var(--t-xs) var(--f-text);color:var(--muted)}
 .qrow .qm b{font-size:var(--t-md);color:var(--ink)}
 .q-good{color:var(--ok)!important} .q-warn{color:var(--warn)!important} .q-bad{color:var(--bad)!important}
+/* соединения: кто, куда и через что (диагностика) */
+.conn-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.conn-tools .xsel{flex:none;width:auto;min-width:220px}
+.chips-f{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 100%}
+.chipf{padding:5px 11px;border-radius:999px;border:1px solid var(--hairline-hi);font-size:var(--t-sm);
+  font-weight:600;color:var(--ink2)}
+.chipf b{font-weight:500;color:var(--muted);margin-left:6px}
+.chipf:hover{color:var(--ink)}
+.chipf.on{background:var(--glass-strong);color:var(--ink);border-color:var(--ink2)}
+.ctab{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--t-sm)}
+.ctab th{font-weight:500;color:var(--muted);text-align:left;padding:6px 8px;font-size:var(--t-xs)}
+.ctab td{padding:9px 8px;border-top:1px solid var(--hairline);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctab .n{text-align:right}
+.ctab .dst{font-family:var(--f-mono);font-size:.8125rem}
+.ctab .pr{font-family:var(--f-text);color:var(--muted);font-size:var(--t-xs)}
+.ctab .via{color:var(--ink2)} .ctab .via.vpn{color:var(--accent-2)}
+.conn-more{margin-top:10px}
+@media(max-width:640px){       /* таблица → строки в две линии: устройство и трафик, ниже адрес и выход */
+  .ctab thead{display:none}
+  .ctab tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;padding:8px 0;border-top:1px solid var(--hairline)}
+  .ctab td{border:0;padding:1px 0}
+  .ctab .dev{grid-area:1/1}.ctab .b{grid-area:1/2}.ctab .dst{grid-area:2/1}.ctab .via{grid-area:2/2;text-align:right}
+}
+/* доступ к панели и резервные копии */
+.acl-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--hairline);cursor:pointer}
+.acl-row:first-child{border-top:0}
+.acl-row input{width:17px;height:17px;accent-color:var(--accent);flex:none}
+.acl-row .an{font-weight:600}
+.acl-row .anet{font-family:var(--f-mono);font-size:.8125rem;color:var(--muted)}
+.acl-row .ame{margin-left:auto;font-size:var(--t-xs);color:var(--muted)}
+.bk-h{font-size:var(--t-xs);color:var(--muted);margin:14px 0 2px}
+.bk-row{display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--hairline);font-size:var(--t-sm)}
+.bk-row .bf{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-row .bs{color:var(--muted)}
+.bk-row a{color:var(--ink);font-weight:600;text-underline-offset:3px}
+@media(max-width:600px){.setrow{flex-wrap:wrap}.setrow .stext{flex-basis:100%}}
+
 /* ════════════════════════════ НАСТРОЙКИ ════════════════════════════ */
 .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:14px}
 .tsw{display:flex;flex-direction:column;gap:7px;padding:10px;border-radius:var(--r-md);
@@ -1014,6 +1051,15 @@ textarea.input{font-family:var(--f-mono);font-size:.8125rem;min-height:150px;res
         <div id="quality-list"><div class="empty"><svg><use href="#ic-diag"/></svg><b>Пока нет данных</b><span>watchdog копит статистику по активным туннелям (замер раз в 30 с)</span></div></div>
       </div>
       <div class="card glass" style="margin-bottom:14px">
+        <h3>Соединения <span class="qsub" id="conn-sum"></span></h3>
+        <div class="conn-tools">
+          <div class="chips-f" id="conn-via" role="group" aria-label="Через что ушли соединения"></div>
+          <select id="conn-client" aria-label="Устройство"></select>
+          <button class="btn" id="conn-refresh"><svg><use href="#ic-refresh"/></svg>Обновить</button>
+        </div>
+        <div id="conn-list"><div class="empty"><svg><use href="#ic-via"/></svg><b>Загружаю…</b></div></div>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
         <h3>Проверка выхода в интернет</h3>
         <p class="hint">Сравнивает внешний IP через туннель и напрямую через WAN — видно, что трафик реально уходит в VPN и в какой стране выход. Если IP совпадают — трафик мимо туннеля (утечка).</p>
         <div id="exit-checks"><div class="empty"><svg><use href="#ic-globe"/></svg><b>Нажмите «Проверить»</b><span>для активных туннелей</span></div></div>
@@ -1078,6 +1124,33 @@ textarea.input{font-family:var(--f-mono);font-size:.8125rem;min-height:150px;res
             <span>enabled-профили поднимутся сами после перезагрузки</span></div>
           <button class="tgl" id="autostart-toggle" role="switch" aria-checked="false" aria-label="Автозапуск VPN"></button>
         </div>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Доступ к панели</h3>
+        <p class="hint" id="acl-hint">&nbsp;</p>
+        <div id="acl-list"></div>
+        <div class="mfoot"><span class="grow"></span><button class="btn primary" id="acl-save"><svg><use href="#ic-check"/></svg>Сохранить</button></div>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Обновление</h3>
+        <div class="setrow">
+          <div class="stext"><b id="upd-ver">&nbsp;</b><span id="upd-note">&nbsp;</span></div>
+          <a class="btn" href="https://github.com/invisible25/keenetic-vpn-xor/releases/latest" target="_blank" rel="noopener">Что нового</a>
+          <button class="btn" id="upd-check"><svg><use href="#ic-refresh"/></svg>Проверить</button>
+          <button class="btn primary" id="upd-go" hidden><svg><use href="#ic-import"/></svg>Обновить</button>
+        </div>
+        <pre class="logpre" id="upd-log" hidden style="margin-top:12px"></pre>
+      </div>
+      <div class="card glass" style="margin-bottom:14px">
+        <h3>Резервная копия настроек</h3>
+        <p class="hint">Профили вместе с ключами, привязки устройств, маршруты и расписания. Храните файл как пароль.</p>
+        <div class="diag-btns">
+          <a class="btn" id="bk-export" href="cgi-bin/backup?a=export" download><svg><use href="#ic-import"/></svg>Скачать</a>
+          <label class="btn" for="bk-file" tabindex="0"><svg><use href="#ic-upload"/></svg>Восстановить из файла</label>
+          <input type="file" id="bk-file" accept=".gz,.tgz,application/gzip" class="sr-only">
+          <button class="btn" id="bk-snap">Снимок на роутере</button>
+        </div>
+        <div id="bk-list"></div>
       </div>
       <div class="card glass" id="sysinfo">
         <h3>Система <span style="float:right;font-family:var(--f-mono);text-transform:none" id="sys-arch"></span></h3>
@@ -1292,6 +1365,28 @@ function fmtRate(bps){ bps=+bps||0;
         else if(q.tool==='trace') out=' 1  192.168.7.1  0.4 ms\n 2  *\n 3  *\n 4  10.60.0.1  212 ms\n 5  64.31.20.9  221 ms';
         else out='PING '+tgt+': 56 data bytes\n64 bytes: seq=0 ttl=56 time=212 ms\n64 bytes: seq=1 ttl=56 time=219 ms\n64 bytes: seq=2 ttl=56 time=210 ms\n\n--- '+tgt+' ping statistics ---\n4 packets transmitted, 4 received, 0% loss';
         return new Promise(res=>setTimeout(()=>res(T(head+out)),800)); }
+      case 'connections':{
+        const nm={}; DEVICES.forEach(d=>nm[d.ip]=d.name);
+        const dst=[['142.250.74.110','443','tcp'],['149.154.167.99','443','tcp'],['87.240.137.164','443','tcp'],
+                   ['104.16.124.96','443','udp'],['17.253.144.10','443','tcp'],['91.108.56.130','5222','tcp']];
+        const via=['tun_invnet2','tun_invnet2','eth2','tun_invnet0','eth3','local'];
+        const flows=[]; let k=0;
+        DEVICES.forEach((d,i)=>dst.forEach((x,j)=>{ if((i+j)%2) return; k++;
+          flows.push({p:x[2],st:x[2]==='tcp'?'ESTABLISHED':'',s:d.ip,d:x[0],dp:x[1],b:Math.floor(5e7/(k*1.7)),via:via[(i+j)%via.length],r:0}); }));
+        flows.push({p:'udp',st:'',s:'95.85.96.12',d:'203.0.113.24',dp:'1194',b:4.1e8,via:'eth3',r:1});
+        flows.sort((a,b)=>b.b-a.b);
+        return J({total:flows.length+180,shown:flows.length,names:nm,flows}); }
+      case 'web-acl':
+        if(opt&&opt.method==='POST') return J({ok:true});
+        return J({restricted:false,client:'192.168.7.20',client_seg:'Bridge0',segments:[
+          {id:'Bridge0',label:'Home',net:'192.168.7.0/24',allowed:true},
+          {id:'Bridge1',label:'Гостевая',net:'10.1.30.0/24',allowed:true}]});
+      case 'update':
+        if(opt&&opt.method==='POST') return J({ok:true});
+        return J({installed:'1.7.8',available:'1.8.0',ovpn_available:'',state:'idle',checked:Math.floor(Date.now()/1000)-5400,log:''});
+      case 'backup':
+        if(opt&&opt.method==='POST') return J(q.a==='import'?{ok:true,profiles:4}:{ok:true,f:'20261119-2130-manual.tar.gz'});
+        return J({snaps:[{f:'20261119-213000-manual.tar.gz',size:18240,ts:0},{f:'20261112-090412-before-update.tar.gz',size:17980,ts:0}]});
       case 'sysinfo': return J({model:'Giga (KN-1012)',hw_id:'KN-1012',os_title:'5.1.1',os_release:'5.01.C.1.0-0',
         os_sandbox:'preview',os_date:'3 Jul 2026',arch:'aarch64',cpu:'',cpumodel:'MT7981',cpucores:2,cputemp:61,
         wifi24temp:52,wifi5temp:52,cpuload:7,memtotal:524288,memfree:58360,memused:303876,
@@ -3131,7 +3226,60 @@ async function loadQuality(){
 $('#exit-recheck').addEventListener('click',runExitChecks);
 $$('[data-diag]').forEach(b=>b.addEventListener('click',()=>runDiag(b.dataset.diag)));
 $('#diag-target').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); runDiag('ping'); } });
-ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); loadQuality(); };
+ON_ENTER.diag=async()=>{ if(!STATE.profiles.length) await loadProfiles(); populateDiagVia(); loadQuality(); loadConnections(); };
+
+/* ════════════════════════════ СОЕДИНЕНИЯ ════════════════════════════ */
+/* Кто, куда и через что ушёл (cgi-bin/connections, по примеру AWG-Manager). Выход приходит
+   Linux-именем: tun_invnetN — профиль со слотом N, eth и ppp — WAN по подписи Keenetic,
+   local, router, br и lo — трафик внутри сетей роутера. */
+const CONN={data:null,via:'',client:'',all:false};
+function connVia(f){
+  const v=f.via||'', m=v.match(/^tun_invnet(\d+)$/);
+  if(m){ const p=STATE.profiles.find(x=>String(x.slot)===m[1]); return {k:v,label:p?p.name:'VPN',vpn:1}; }
+  if(v==='local'||v==='router'||v==='lo'||/^br\d/.test(v)) return {k:'lan',label:'Внутри сети'};
+  if(!v||v==='?') return {k:'?',label:'—'};
+  return {k:v,label:wanLabel(v)};
+}
+async function loadConnections(){
+  const btn=$('#conn-refresh'); btn.disabled=true;
+  try{ const d=await API.json('connections'); if(d.error) throw new Error(d.error); CONN.data=d; renderConnections(); }
+  catch(e){ $('#conn-list').innerHTML='<div class="empty"><svg><use href="#ic-alert"/></svg><b>Не удалось получить соединения</b>'+
+    '<span>'+esc(e.message||'')+'</span></div>'; }
+  finally{ btn.disabled=false; }
+}
+function renderConnections(){
+  const d=CONN.data; if(!d) return;
+  const names=d.names||{};
+  const flows=(d.flows||[]).map(f=>({...f,v:connVia(f),n:f.r?'роутер':(names[f.s]||f.s),c:f.r?'router':f.s}));
+  const byVia={}; flows.forEach(f=>{ (byVia[f.v.k]=byVia[f.v.k]||{label:f.v.label,n:0}).n++; });
+  if(CONN.via&&!byVia[CONN.via]) CONN.via='';
+  $('#conn-via').innerHTML='<button class="chipf'+(CONN.via?'':' on')+'" data-via="">Все<b>'+flows.length+'</b></button>'+
+    Object.entries(byVia).sort((a,b)=>b[1].n-a[1].n).map(([k,o])=>
+      '<button class="chipf'+(CONN.via===k?' on':'')+'" data-via="'+esc(k)+'">'+esc(o.label)+'<b>'+o.n+'</b></button>').join('');
+  const byCl={}; flows.forEach(f=>{ (byCl[f.c]=byCl[f.c]||{label:f.n,n:0}).n++; });
+  if(CONN.client&&!byCl[CONN.client]) CONN.client='';
+  const sel=$('#conn-client');
+  sel.innerHTML='<option value="">Все устройства</option>'+Object.entries(byCl).sort((a,b)=>b[1].n-a[1].n)
+    .map(([k,o])=>'<option value="'+esc(k)+'">'+esc(o.label)+' · '+o.n+'</option>').join('');
+  sel.value=CONN.client; enhanceSelect(sel);
+  const rows=flows.filter(f=>(!CONN.via||f.v.k===CONN.via)&&(!CONN.client||f.c===CONN.client));
+  const shown=CONN.all?rows:rows.slice(0,50);
+  $('#conn-sum').textContent=d.total+' '+plural(d.total,['соединение','соединения','соединений'])+
+    (d.total>d.shown?' · показаны '+d.shown+' крупнейших':'');
+  $('#conn-list').innerHTML=rows.length
+    ? '<table class="ctab"><thead><tr><th style="width:30%">Устройство</th><th style="width:36%">Куда</th>'+
+      '<th style="width:20%">Через</th><th class="n" style="width:14%">Трафик</th></tr></thead><tbody>'+
+      shown.map(f=>'<tr><td class="dev" title="'+esc(f.s)+'">'+esc(f.n)+'</td>'+
+        '<td class="dst">'+esc(f.d)+(f.dp?':'+esc(f.dp):'')+' <span class="pr">'+esc(f.p)+'</span></td>'+
+        '<td class="via'+(f.v.vpn?' vpn':'')+'">'+esc(f.v.label)+'</td><td class="n b">'+fmtBytes(f.b)+'</td></tr>').join('')+
+      '</tbody></table>'+(rows.length>shown.length?'<button class="btn conn-more" id="conn-all">Показать все '+rows.length+'</button>':'')
+    : '<div class="empty"><b>Под этот фильтр соединений нет</b></div>';
+}
+$('#conn-via').addEventListener('click',e=>{ const b=e.target.closest('[data-via]'); if(!b) return;
+  CONN.via=b.dataset.via; CONN.all=false; renderConnections(); });
+$('#conn-client').addEventListener('change',e=>{ CONN.client=e.target.value; CONN.all=false; renderConnections(); });
+$('#conn-list').addEventListener('click',e=>{ if(e.target.closest('#conn-all')){ CONN.all=true; renderConnections(); } });
+$('#conn-refresh').addEventListener('click',loadConnections);
 
 /* ════════════════════════════ ЖУРНАЛ ════════════════════════════ */
 let LOG_TIMER=null;
@@ -3232,8 +3380,99 @@ $('#custom-apply').addEventListener('click',()=>{
   applyTheme('custom',{accent:$('#cu-accent').value,bg:$('#cu-bg').value,text:$('#cu-text').value});
   toast('Своя тема применена','ok');
 });
+/* ════════════════════════════ ДОСТУП К ПАНЕЛИ ════════════════════════════ */
+let ACL=null;
+async function loadAcl(){
+  try{ ACL=await API.json('web-acl'); }
+  catch(e){ $('#acl-list').innerHTML='<div class="empty"><b>Не удалось получить список сетей</b></div>'; return; }
+  const segs=ACL.segments||[];
+  $('#acl-hint').textContent=ACL.restricted
+    ? 'Панель открывается только из отмеченных сетей. Устройства из остальных сетей роутера её не увидят.'
+    : 'Сейчас панель открывается из всех сетей роутера. Снимите отметку с сети, из которой открывать её не нужно, например гостевой.';
+  $('#acl-list').innerHTML=segs.length?segs.map(s=>'<label class="acl-row"><input type="checkbox" value="'+esc(s.id)+'"'+
+    (s.allowed?' checked':'')+'><span class="an">'+esc(s.label)+'</span><span class="anet">'+esc(s.net)+'</span>'+
+    (s.id===ACL.client_seg?'<span class="ame">вы подключены отсюда</span>':'')+'</label>').join('')
+    : '<div class="empty"><b>Роутер не отдал список сетей</b></div>';
+}
+$('#acl-save').addEventListener('click',async()=>{
+  if(!ACL) return;
+  const ids=[...$$('#acl-list input:checked')].map(i=>i.value);
+  if(!ids.length){ toast('Отметьте хотя бы одну сеть','error'); return; }
+  if(ACL.client_seg&&!ids.includes(ACL.client_seg)){ toast('Оставьте сеть, из которой вы подключены, иначе панель закроется для вас','error'); return; }
+  const r=await API.post('web-acl',null,'allow='+encodeURIComponent(ids.join(','))).then(x=>x.json()).catch(()=>({error:'нет связи с роутером'}));
+  if(r.error){ toast(r.message||r.error,'error'); return; }
+  toast('Сохранено — панель перезапускается','ok'); setTimeout(()=>location.reload(),2500);
+});
+
+/* ════════════════════════════ ОБНОВЛЕНИЕ ════════════════════════════ */
+/* Проверка и установка идут на роутере в фоне (cgi-bin/update). Во время установки панель
+   перезапускается — запросы падают, это нормально: ждём, пока сменится версия, и перезагружаемся. */
+let UPD_T=0, UPD_FROM='';
+const fmtWhen=ts=>new Date(ts*1000).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+async function loadUpdate(){
+  clearTimeout(UPD_T);
+  let d;
+  try{ d=await API.json('update'); }
+  catch(e){ if(UPD_FROM){ $('#upd-note').textContent='панель перезапускается…'; UPD_T=setTimeout(loadUpdate,3000); } return; }
+  if(UPD_FROM&&d.installed&&d.installed!==UPD_FROM){
+    toast('Обновлено до '+d.installed+' — перезагружаю панель','ok'); setTimeout(()=>location.reload(),1500); return; }
+  const busy=d.state==='checking'||d.state==='upgrading';
+  $('#upd-ver').textContent='Установлена версия '+(d.installed||'—');
+  const extra=d.ovpn_available?' · OpenVPN '+d.ovpn_available:'';
+  $('#upd-note').textContent=d.state==='checking'?'проверяю наличие обновлений…'
+    :d.state==='upgrading'?'устанавливаю обновление…'
+    :d.state==='error'?'не получилось — подробности ниже'
+    :d.available?'доступна версия '+d.available+extra
+    :d.ovpn_available?'доступно обновление OpenVPN '+d.ovpn_available
+    :d.checked?'это последняя версия · проверено '+fmtWhen(d.checked):'ещё не проверялось';
+  $('#upd-go').hidden=busy||!(d.available||d.ovpn_available);
+  $('#upd-check').disabled=busy;
+  const lg=$('#upd-log'); lg.hidden=!(d.log&&(busy||d.state==='error')); lg.textContent=d.log||'';
+  if(busy||UPD_FROM) UPD_T=setTimeout(loadUpdate,2000);
+}
+async function updAction(a){
+  const r=await API.post('update',{a}).then(x=>x.json()).catch(()=>({error:'нет связи с роутером'}));
+  if(r.error){ toast(r.error,'error'); UPD_FROM=''; return; }
+  loadUpdate();
+}
+$('#upd-check').addEventListener('click',()=>updAction('check'));
+$('#upd-go').addEventListener('click',async()=>{
+  if(!await confirmModal('Обновить invnet? Туннели продолжат работать, панель перезапустится. Перед установкой роутер сохранит снимок настроек.','Обновить')) return;
+  UPD_FROM=($('#upd-ver').textContent.match(/[\d.]+[^\s]*$/)||[''])[0]||'?';
+  updAction('upgrade');
+});
+
+/* ════════════════════════════ РЕЗЕРВНАЯ КОПИЯ ════════════════════════════ */
+const SNAP_WHY={manual:'вручную','before-import':'перед восстановлением','before-update':'перед обновлением',
+  'before-upgrade':'перед обновлением','before-remove':'перед удалением'};
+function snapLabel(f){
+  const m=f.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}-(.*)\.tar\.gz$/); if(!m) return f;
+  return m[3]+'.'+m[2]+'.'+m[1]+' '+m[4]+':'+m[5]+' · '+(SNAP_WHY[m[6]]||m[6]);
+}
+async function loadBackups(){
+  let d; try{ d=await API.json('backup',{a:'list'}); }catch(e){ return; }
+  const s=d.snaps||[];
+  $('#bk-list').innerHTML=s.length?'<div class="bk-h">Снимки на роутере (хранятся 5 последних)</div>'+s.map(x=>
+    '<div class="bk-row"><span class="bf">'+esc(snapLabel(x.f))+'</span><span class="bs">'+fmtBytes(x.size)+'</span>'+
+    '<a href="cgi-bin/backup?a=get&amp;f='+encodeURIComponent(x.f)+'" download>Скачать</a></div>').join(''):'';
+}
+$('#bk-snap').addEventListener('click',async()=>{
+  const r=await API.post('backup',{a:'snap'}).then(x=>x.json()).catch(()=>({error:'нет связи с роутером'}));
+  if(r.error){ toast(r.error,'error'); return; }
+  toast('Снимок сохранён на роутере','ok'); loadBackups();
+});
+$('#bk-file').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  if(f.size>2097152){ toast('Файл больше 2 МБ — это не похоже на настройки invnet','error'); return; }
+  if(!await confirmModal('Восстановить настройки из «'+f.name+'»? Профили из файла заменят одноимённые. Перед этим роутер сохранит снимок текущих настроек.','Восстановить')) return;
+  const r=await API.post('backup',{a:'import'},f,60000).then(x=>x.json()).catch(()=>({error:'нет связи с роутером'}));
+  if(r.error){ toast(r.error,'error'); return; }
+  toast('Восстановлено профилей: '+r.profiles,'ok'); PROFILES_SIG=''; loadProfiles(); loadBackups();
+});
+$('label[for=bk-file]').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('#bk-file').click(); } });
+
 ON_ENTER.settings=()=>{
-  loadSysinfo(); loadAutostart(); renderThemeGrid();
+  loadSysinfo(); loadAutostart(); renderThemeGrid(); loadAcl(); loadUpdate(); loadBackups();
   $('#cu-accent').value=CUSTOM.accent; $('#cu-bg').value=CUSTOM.bg; $('#cu-text').value=CUSTOM.text;
 };
 

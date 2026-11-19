@@ -16,7 +16,7 @@ mkdir -p /opt/etc/openvpn/profiles /opt/etc/openvpn/profile-meta \
 for s in S30invnet S31invnet-web S40invnet-pingcheck S41invnet-sched S95invnet-autostart; do
   chmod 0755 /opt/etc/init.d/$s 2>/dev/null
 done
-chmod 0755 /opt/sbin/invnetctl \
+chmod 0755 /opt/sbin/invnetctl /opt/sbin/invnet-webacl \
            /opt/etc/openvpn/invnet-up.sh /opt/etc/openvpn/invnet-down.sh /opt/etc/openvpn/invnet-fw.sh \
            /opt/etc/ndm/netfilter.d/50-invnet.sh 2>/dev/null
 chmod 0755 /opt/share/invnet/cgi-bin/* 2>/dev/null
@@ -28,7 +28,7 @@ chmod 0755 /opt/share/invnet/cgi-bin/* 2>/dev/null
 LC=/opt/etc/lighttpd/invnet.conf
 if [ -f "$LC-opkg" ] && command -v md5sum >/dev/null 2>&1; then
   case "$(md5sum < "$LC" | cut -c1-32)" in
-    fb965806e1b528fc0e67986882d2d196|8c1933af29b25cb7362ce7f418d56391|fcd3eb2c1071cd4c66ab7959c64c0f10)
+    fb965806e1b528fc0e67986882d2d196|8c1933af29b25cb7362ce7f418d56391|fcd3eb2c1071cd4c66ab7959c64c0f10|ca44ff57842252b43ec76a36913523c6)
       mv -f "$LC-opkg" "$LC" && echo "invnet: $LC обновлён (прежний был стандартным)" ;;
     *) echo "invnet: $LC правлен вручную — новый лежит в $LC-opkg, сравните: diff $LC $LC-opkg" ;;
   esac

@@ -49,6 +49,7 @@ inst invnet-down.sh opt/etc/openvpn/invnet-down.sh 755
 inst invnet-fw.sh   opt/etc/openvpn/invnet-fw.sh   755
 inst ndm/netfilter.d/50-invnet.sh opt/etc/ndm/netfilter.d/50-invnet.sh 755
 inst invnetctl      opt/sbin/invnetctl 755
+inst invnet-webacl  opt/sbin/invnet-webacl 755   # правило доступа к панели по сетям (include_shell)
 inst invnet.conf    opt/etc/lighttpd/invnet.conf 644          # conffile
 # postinst заменяет нетронутый старый конфиг по списку md5 выпущенных версий — нынешняя обязана в нём быть,
 # иначе при следующей правке invnet.conf роутеры с этой версией застрянут на ней (.conf-opkg рядом)
