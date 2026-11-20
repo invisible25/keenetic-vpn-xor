@@ -6,6 +6,12 @@
 # Работа идёт в отвязанном фоне: postinst пакета перезапускает панель (lighttpd), и процесс,
 # привязанный к CGI, погиб бы посреди установки. Страница опрашивает GET и перезагружается,
 # когда версия сменилась. state: idle | checking | upgrading | error.
+#
+# opkg ходит только в фид invnet (свой конфиг $OC без фидов Entware): у wget в opkg нет
+# таймаута, и с роутера, откуда bin.entware.net не открывается (SE за Туркментелекомом),
+# обычный `opkg update` висел вечно на первом же фиде, держа блокировку /opt/tmp/opkg.lock.
+# Зависимости (jq, lighttpd…) уже стоят и из фида Entware не нужны. Плюс сторож: если opkg
+# не уложился в $LIMIT секунд (фид invnet тоже закрыт — так у Netcraze), он снимается.
 PATH=/opt/bin:/opt/sbin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 printf "Content-Type: application/json; charset=utf-8\r\n\r\n"
@@ -13,6 +19,30 @@ RUN=/opt/var/run/invnet
 ST=$RUN/update.state; AV=$RUN/update.avail; LOG=/opt/var/log/invnet-update.log
 mkdir -p "$RUN"
 A=$(printf '%s' "$QUERY_STRING" | tr '&' '\n' | sed -n 's/^a=//p' | head -1 | tr -cd 'a-z')
+
+OC=/opt/tmp/opkg-invnet-only.conf; LIMIT=120
+
+# конфиг opkg только с фидом invnet; нет описания фида — обычный конфиг
+mkconf() {
+  if [ -f /opt/etc/opkg/invnet.conf ]; then
+    grep -E '^(arch|dest|lists_dir|option)' /opt/etc/opkg.conf > "$OC" 2>/dev/null
+    grep -h '^src' /opt/etc/opkg/invnet.conf >> "$OC"
+  else cp /opt/etc/opkg.conf "$OC"; fi
+}
+# opkg <аргументы> со сторожем: дольше $LIMIT с — снимаем его и его wget
+opkg_lim() {
+  opkg -f "$OC" "$@" & P=$!; i=0
+  while kill -0 "$P" 2>/dev/null; do
+    i=$((i + 2)); sleep 2
+    if [ "$i" -ge "$LIMIT" ]; then
+      for w in $(ps | awk '/[w]get .*opkg-/{print $1}'); do kill "$w" 2>/dev/null; done
+      kill "$P" 2>/dev/null
+      echo "фид invnet не ответил за $LIMIT с — роутер не может скачать с GitHub; пакет можно поставить вручную"
+      return 1
+    fi
+  done
+  wait "$P"
+}
 
 state() { cat "$ST" 2>/dev/null || echo idle; }
 busy() { case "$(state)" in checking|upgrading) return 0 ;; esac; return 1; }
@@ -23,7 +53,7 @@ if [ "$REQUEST_METHOD" != "POST" ]; then
   OVPN=$(awk '$1=="openvpn-openssl"{print $5}' "$AV" 2>/dev/null)
   CHK=$(date -r "$AV" +%s 2>/dev/null || echo 0)
   jq -n --arg i "${INST:-}" --arg a "${INV:-}" --arg o "${OVPN:-}" --arg s "$(state)" \
-        --argjson c "${CHK:-0}" --arg l "$(tail -n 15 "$LOG" 2>/dev/null)" \
+        --argjson c "${CHK:-0}" --arg l "$(grep -vE 'Duplicate src|^Collected errors:$' "$LOG" 2>/dev/null | tail -n 15)" \
     '{installed:$i, available:$a, ovpn_available:$o, state:$s, checked:$c, log:$l}'
   exit 0
 fi
@@ -36,8 +66,9 @@ case "$A" in
   check)
     echo checking > "$ST"
     ( trap '' HUP TERM
-      { echo "== $(date '+%F %T') проверка обновлений"; opkg update; } > "$LOG" 2>&1
-      if opkg list-upgradable > "$AV.tmp" 2>>"$LOG"; then mv "$AV.tmp" "$AV"; echo idle > "$ST"
+      mkconf
+      if { echo "== $(date '+%F %T') проверка обновлений"; opkg_lim update; } > "$LOG" 2>&1 \
+         && opkg -f "$OC" list-upgradable > "$AV.tmp" 2>>"$LOG"; then mv "$AV.tmp" "$AV"; echo idle > "$ST"
       else echo error > "$ST"; fi
       grep -qiE 'failed to download|wget returned' "$LOG" && echo error > "$ST"
     ) </dev/null >/dev/null 2>&1 &
@@ -46,10 +77,11 @@ case "$A" in
   upgrade)
     echo upgrading > "$ST"
     ( trap '' HUP TERM
+      mkconf
       { echo "== $(date '+%F %T') обновление"
         /opt/sbin/invnetctl snapshot before-update
-        opkg update && opkg upgrade invnet openvpn-openssl; } >> "$LOG" 2>&1 \
-        && { opkg list-upgradable > "$AV" 2>/dev/null; echo idle > "$ST"; } \
+        opkg_lim update && opkg_lim upgrade invnet openvpn-openssl; } >> "$LOG" 2>&1 \
+        && { opkg -f "$OC" list-upgradable > "$AV" 2>/dev/null; echo idle > "$ST"; } \
         || echo error > "$ST"
     ) </dev/null >/dev/null 2>&1 &
     echo '{"ok":true}'
